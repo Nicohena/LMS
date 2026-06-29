@@ -25,7 +25,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'admin' | 'users' | 'gamification' | 'course-create' | 'settings';
+type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'admin' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
 
 interface Course {
   id: number; title: string; description: string; instructor: string;
@@ -48,6 +48,7 @@ const navItems = [
   { label: 'Quizzes', icon: FileQuestion, view: 'quiz' as View },
   { label: 'Certificates', icon: Award, view: 'gamification' as View },
   { label: 'Discussions', icon: MessageSquare, badge: 5, view: 'discussions' as View },
+  { label: 'Messages', icon: MessageSquare, badge: 3, view: 'messages' as View },
   { label: 'Admin Panel', icon: BarChart3, view: 'admin' as View },
   { label: 'User Management', icon: Users, view: 'users' as View },
   { label: 'Create Course', icon: Plus, view: 'course-create' as View },
@@ -148,6 +149,7 @@ function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; on
           ))}
         </nav>
         <div className="absolute bottom-0 left-0 right-0 border-t border-slate-200 p-4">
+          <button onClick={() => onNavigate('profile')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><Users className="h-4 w-4" />My Profile</button>
           <button onClick={() => onNavigate('settings')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><Settings className="h-4 w-4" />Settings</button>
           <button onClick={() => onNavigate('login')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><LogOut className="h-4 w-4" />Logout</button>
         </div>
@@ -2029,6 +2031,309 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   );
 }
 
+// ─── Messages View ───────────────────────────────────────────────────────
+function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [activeChat, setActiveChat] = useState(1);
+  const [message, setMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  const conversations = [
+    { id: 1, name: 'Sarah Chen', avatar: 'SC', role: 'Teacher', lastMsg: 'Sure, I can help with that assignment', time: '2m ago', unread: 2, online: true },
+    { id: 2, name: 'Mike Rodriguez', avatar: 'MR', role: 'Teacher', lastMsg: 'The quiz is due tomorrow', time: '1h ago', unread: 0, online: true },
+    { id: 3, name: 'Emily Davis', avatar: 'ED', role: 'Student', lastMsg: 'Did you finish the wireframe?', time: '3h ago', unread: 1, online: false },
+    { id: 4, name: 'Design Team', avatar: 'DT', role: 'Group', lastMsg: 'James: Great work everyone!', time: '1d ago', unread: 0, online: false },
+    { id: 5, name: 'Lisa Wang', avatar: 'LW', role: 'Student', lastMsg: 'Thanks for the feedback!', time: '2d ago', unread: 0, online: false },
+  ];
+
+  const messages = [
+    { id: 1, sender: 'Sarah Chen', text: "Hi Ricky! How's the wireframing assignment going?", time: '10:30 AM', isMe: false },
+    { id: 2, sender: 'Me', text: "Hi Sarah! I'm working on it now. I have a question about the checkout screen.", time: '10:32 AM', isMe: true },
+    { id: 3, sender: 'Sarah Chen', text: 'Sure, what do you need help with?', time: '10:33 AM', isMe: false },
+    { id: 4, sender: 'Me', text: 'Should I include payment method selection or just the order summary?', time: '10:35 AM', isMe: true },
+    { id: 5, sender: 'Sarah Chen', text: "Great question! Include payment method selection — it's part of the checkout flow. Make it a simple radio button list.", time: '10:37 AM', isMe: false },
+    { id: 6, sender: 'Me', text: 'Got it, thanks! I\'ll add that now.', time: '10:38 AM', isMe: true },
+    { id: 7, sender: 'Sarah Chen', text: 'Sure, I can help with that assignment. Just let me know if you need more clarification!', time: '10:40 AM', isMe: false },
+  ];
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+    setMessage('');
+    // Simulate typing response
+    setIsTyping(true);
+    setTimeout(() => setIsTyping(false), 2000);
+  };
+
+  return (
+    <main className="flex h-[calc(100vh-4rem)] overflow-hidden">
+      {/* Conversations List */}
+      <div className="hidden w-72 shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col">
+        <div className="border-b border-slate-200 p-4">
+          <h1 className="text-lg font-bold text-slate-900">Messages</h1>
+          <div className="relative mt-2">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input placeholder="Search conversations..." className="pl-10 text-sm" />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {conversations.map((conv) => (
+            <button key={conv.id} onClick={() => setActiveChat(conv.id)} className={cn('flex w-full items-start gap-3 border-b border-slate-100 p-4 text-left transition-colors', activeChat === conv.id ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
+              <div className="relative">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{conv.avatar}</div>
+                {conv.online && <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <p className="truncate text-sm font-semibold text-slate-900">{conv.name}</p>
+                  <span className="ml-1 shrink-0 text-[10px] text-slate-400">{conv.time}</span>
+                </div>
+                <p className="text-[10px] text-slate-400">{conv.role}</p>
+                <div className="mt-0.5 flex items-center justify-between">
+                  <p className="truncate text-xs text-slate-500">{conv.lastMsg}</p>
+                  {conv.unread > 0 && <span className="ml-1 flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white">{conv.unread}</span>}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      <div className="flex flex-1 flex-col bg-slate-50">
+        {/* Chat Header */}
+        <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+          <button onClick={() => onNavigate('dashboard')} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 md:hidden"><ArrowLeft className="h-5 w-5" /></button>
+          <div className="relative">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{conversations.find(c => c.id === activeChat)?.avatar}</div>
+            {conversations.find(c => c.id === activeChat)?.online && <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-slate-900">{conversations.find(c => c.id === activeChat)?.name}</p>
+            <p className="text-xs text-emerald-600">{conversations.find(c => c.id === activeChat)?.online ? 'Online' : 'Offline'}</p>
+          </div>
+          <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><MoreHorizontal className="h-5 w-5" /></button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="mx-auto max-w-2xl space-y-3">
+            {messages.map((msg) => (
+              <div key={msg.id} className={cn('flex', msg.isMe ? 'justify-end' : 'justify-start')}>
+                <div className={cn('max-w-[75%] rounded-2xl px-4 py-2.5 text-sm', msg.isMe ? 'rounded-br-md bg-indigo-600 text-white' : 'rounded-bl-md bg-white text-slate-700 border border-slate-200')}>
+                  <p>{msg.text}</p>
+                  <p className={cn('mt-1 text-[10px]', msg.isMe ? 'text-indigo-200' : 'text-slate-400')}>{msg.time}</p>
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-white px-4 py-3 border border-slate-200">
+                  <div className="h-2 w-2 animate-bounce rounded-full bg-slate-300" style={{ animationDelay: '0ms' }} />
+                  <div className="h-2 w-2 animate-bounce rounded-full bg-slate-300" style={{ animationDelay: '150ms' }} />
+                  <div className="h-2 w-2 animate-bounce rounded-full bg-slate-300" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Message Input */}
+        <div className="border-t border-slate-200 bg-white p-4">
+          <div className="mx-auto flex max-w-2xl items-center gap-2">
+            <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><Plus className="h-5 w-5" /></button>
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Type a message..."
+              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            <button onClick={handleSend} disabled={!message.trim()} className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white transition-colors hover:bg-indigo-700 disabled:opacity-50">
+              <Sparkles className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ─── Profile View ─────────────────────────────────────────────────────────
+function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const achievements = [
+    { icon: Trophy, label: 'Level 9', sublabel: '3,240 XP', color: 'bg-amber-50 text-amber-600' },
+    { icon: Flame, label: '12-day streak', sublabel: 'Longest: 21 days', color: 'bg-orange-50 text-orange-600' },
+    { icon: BookOpen, label: '4 courses', sublabel: '2 in progress', color: 'bg-indigo-50 text-indigo-600' },
+    { icon: Award, label: '2 certificates', sublabel: 'This year', color: 'bg-emerald-50 text-emerald-600' },
+  ];
+
+  const courses = [
+    { title: 'UI Design Fundamentals', progress: 75, instructor: 'Sarah Chen', difficulty: 'Beginner' },
+    { title: 'Advanced TypeScript', progress: 40, instructor: 'Mike Rodriguez', difficulty: 'Advanced' },
+    { title: 'Project Management', progress: 90, instructor: 'Emily Davis', difficulty: 'Intermediate' },
+    { title: 'Data Science with Python', progress: 15, instructor: 'James Park', difficulty: 'Intermediate' },
+  ];
+
+  const activity = [
+    { type: 'quiz', title: 'Scored 92% on Design Principles Quiz', time: '2 hours ago', icon: FileQuestion, color: 'text-emerald-600' },
+    { type: 'lesson', title: 'Completed: Introduction to Generics', time: '5 hours ago', icon: CheckCircle2, color: 'text-indigo-600' },
+    { type: 'badge', title: 'Earned Badge: Quick Learner (+50 XP)', time: '1 day ago', icon: Zap, color: 'text-amber-600' },
+    { type: 'assignment', title: 'Submitted: User Research Report', time: '2 days ago', icon: FileText, color: 'text-blue-600' },
+    { type: 'certificate', title: 'Earned Certificate: UI Design Fundamentals', time: '3 days ago', icon: Award, color: 'text-purple-600' },
+  ];
+
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'courses', label: 'My Courses' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'badges', label: 'Badges' },
+  ];
+
+  return (
+    <main className="mx-auto max-w-5xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">My Profile</span>
+      </div>
+
+      {/* Profile Header */}
+      <Card className="mb-6 overflow-hidden border border-slate-200 shadow-sm">
+        <div className="h-28 bg-gradient-to-r from-indigo-600 to-purple-500" />
+        <div className="px-6 pb-6">
+          <div className="-mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-end gap-4">
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-indigo-100 text-2xl font-bold text-indigo-600 shadow-lg">RF</div>
+              <div className="pb-2">
+                <h1 className="text-xl font-bold text-slate-900">Ricky Fajrin</h1>
+                <p className="text-sm text-slate-500">Student · Joined Jan 2024</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50"><Trophy className="mr-1 h-3 w-3" />Level 9</Badge>
+                  <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50"><Flame className="mr-1 h-3 w-3" />12-day streak</Badge>
+                </div>
+              </div>
+            </div>
+            <Button variant="outline" className="border-slate-200 text-slate-600"><Edit className="mr-1.5 h-4 w-4" />Edit Profile</Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Achievement Cards */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {achievements.map((ach) => (
+          <Card key={ach.label} className="border border-slate-200 p-4 shadow-sm">
+            <div className={cn('mb-2 flex h-10 w-10 items-center justify-center rounded-lg', ach.color)}>
+              <ach.icon className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-bold text-slate-900">{ach.label}</p>
+            <p className="text-xs text-slate-400">{ach.sublabel}</p>
+          </Card>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-4 flex gap-1 border-b border-slate-200">
+        {tabs.map((tab) => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn('border-b-2 px-4 py-2.5 text-sm font-medium transition-colors', activeTab === tab.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700')}>{tab.label}</button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-slate-900">About</h2>
+            <p className="text-sm text-slate-600">Passionate UI/UX designer in training. Focused on creating intuitive, accessible digital experiences. Currently learning wireframing, design systems, and usability principles.</p>
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-slate-500"><Mail className="h-4 w-4 text-slate-400" />ricky@trenning.com</div>
+              <div className="flex items-center gap-2 text-slate-500"><BookOpen className="h-4 w-4 text-slate-400" />4 enrolled courses</div>
+              <div className="flex items-center gap-2 text-slate-500"><Award className="h-4 w-4 text-slate-400" />2 certificates earned</div>
+            </div>
+          </Card>
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-slate-900">Recent Activity</h2>
+            <div className="space-y-3">
+              {activity.slice(0, 4).map((act, idx) => (
+                <div key={idx} className="flex items-start gap-3">
+                  <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50', act.color)}>
+                    <act.icon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-900">{act.title}</p>
+                    <p className="text-xs text-slate-400">{act.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'courses' && (
+        <div className="space-y-3">
+          {courses.map((course) => (
+            <Card key={course.title} className="border border-slate-200 p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-slate-900">{course.title}</h3>
+                  <p className="text-xs text-slate-400">{course.instructor} · {course.difficulty}</p>
+                </div>
+                <div className="ml-4 w-32">
+                  <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-400">Progress</span><span className="font-semibold text-slate-700">{course.progress}%</span></div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600" style={{ width: `${course.progress}%` }} /></div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'activity' && (
+        <Card className="border border-slate-200 p-5 shadow-sm">
+          <div className="space-y-4">
+            {activity.map((act, idx) => (
+              <div key={idx} className="flex items-start gap-3 border-b border-slate-100 pb-4 last:border-0 last:pb-0">
+                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-50', act.color)}>
+                  <act.icon className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">{act.title}</p>
+                  <p className="text-xs text-slate-400">{act.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'badges' && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { name: 'Quick Learner', icon: Zap, color: 'bg-amber-50 text-amber-600', earned: true },
+            { name: 'Quiz Master', icon: FileQuestion, color: 'bg-indigo-50 text-indigo-600', earned: true },
+            { name: 'Perfect Score', icon: Star, color: 'bg-purple-50 text-purple-600', earned: true },
+            { name: 'Course Completer', icon: CheckCircle2, color: 'bg-emerald-50 text-emerald-600', earned: true },
+            { name: '7-Day Streak', icon: Flame, color: 'bg-orange-50 text-orange-600', earned: true },
+            { name: 'Discussion Pro', icon: MessageSquare, color: 'bg-blue-50 text-blue-600', earned: false },
+            { name: 'Design Master', icon: Award, color: 'bg-pink-50 text-pink-600', earned: false },
+            { name: 'Top 10', icon: Trophy, color: 'bg-yellow-50 text-yellow-600', earned: false },
+          ].map((badge) => (
+            <Card key={badge.name} className={cn('flex flex-col items-center p-4 text-center border shadow-sm', badge.earned ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-60')}>
+              <div className={cn('mb-2 flex h-12 w-12 items-center justify-center rounded-full', badge.earned ? badge.color : 'bg-slate-200 text-slate-400')}>
+                <badge.icon className="h-6 w-6" />
+              </div>
+              <p className="text-xs font-medium text-slate-900">{badge.name}</p>
+              <p className="text-[10px] text-slate-400">{badge.earned ? 'Earned' : 'Locked'}</p>
+            </Card>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState<View>('login');
@@ -2070,6 +2375,8 @@ export default function App() {
         {view === 'gamification' && <GamificationView onNavigate={handleNavigate} />}
         {view === 'course-create' && <CourseCreateView onNavigate={handleNavigate} />}
         {view === 'settings' && <SettingsView onNavigate={handleNavigate} />}
+        {view === 'messages' && <MessagesView onNavigate={handleNavigate} />}
+        {view === 'profile' && <ProfileView onNavigate={handleNavigate} />}
       </div>
     </div>
   );
