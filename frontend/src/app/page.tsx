@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -1712,9 +1712,11 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
   const { data: submissionsData } = useSubmissions(assignmentId || null);
   const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
   const createSubmission = useCreateSubmission();
+  const uploadFile = useUploadFile();
 
   const [submissionText, setSubmissionText] = useState('');
-  const [fileName, setFileName] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ public_id: string; secure_url: string; original_filename: string; size: number; format?: string }>>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
@@ -1727,7 +1729,36 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setFileName(file.name);
+    if (!file) return;
+    setError('');
+    // Validate file type
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (assignment?.allowedFileTypes?.length && ext && !assignment.allowedFileTypes.includes(ext)) {
+      setError(`File type ".${ext}" not allowed. Allowed: ${assignment.allowedFileTypes.join(', ')}`);
+      return;
+    }
+    // Validate file size
+    const maxSizeMB = assignment?.maxFileSizeMB ?? 10;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      setError(`File too large. Max size: ${maxSizeMB}MB.`);
+      return;
+    }
+    // Upload to Cloudinary
+    setUploadingFile(true);
+    uploadFile.mutate(file, {
+      onSuccess: (fileMeta) => {
+        setUploadedFiles((prev) => [...prev, fileMeta]);
+        setUploadingFile(false);
+      },
+      onError: (err: any) => {
+        setError(err.response?.data?.message || 'Failed to upload file. Cloudinary may not be configured.');
+        setUploadingFile(false);
+      },
+    });
+  };
+
+  const handleRemoveFile = (public_id: string) => {
+    setUploadedFiles((prev) => prev.filter((f) => f.public_id !== public_id));
   };
 
   const handleSubmit = () => {
@@ -1735,7 +1766,7 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
       setError('No active enrollment. Enroll in the course first.');
       return;
     }
-    if (!submissionText.trim()) {
+    if (!submissionText.trim() && uploadedFiles.length === 0) {
       setError('Please add a comment or upload a file.');
       return;
     }
@@ -1744,13 +1775,17 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
       {
         assignmentId,
         enrollmentId: matchingEnrollment.id,
-        content: { text: submissionText, links: [] },
+        content: {
+          text: submissionText.trim() || undefined,
+          files: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+          links: [],
+        },
       },
       {
         onSuccess: () => {
           setSubmitted(true);
           setSubmissionText('');
-          setFileName('');
+          setUploadedFiles([]);
           setTimeout(() => onNavigate('dashboard'), 1800);
         },
         onError: (err: any) => setError(err.response?.data?.message || 'Failed to submit assignment'),
@@ -1829,6 +1864,17 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
                   <span className="text-xs text-slate-400">v{latestSubmission.version} · {timeAgo(latestSubmission.submittedAt)}</span>
                 </div>
                 {latestSubmission.content?.text && <p className="text-sm text-slate-700">{latestSubmission.content.text}</p>}
+                {latestSubmission.content?.files && latestSubmission.content.files.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {latestSubmission.content.files.map((f: any, idx: number) => (
+                      <a key={idx} href={f.secure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 hover:border-indigo-300 hover:bg-slate-50">
+                        <File className="h-3.5 w-3.5 text-indigo-500" />
+                        <span className="flex-1 truncate">{f.original_filename}</span>
+                        <Download className="h-3.5 w-3.5 text-slate-400" />
+                      </a>
+                    ))}
+                  </div>
+                )}
                 {latestSubmission.grade !== null && latestSubmission.grade !== undefined && (
                   <p className="mt-2 text-xs font-semibold text-emerald-600">Grade: {latestSubmission.grade}/{assignment.maxPoints}</p>
                 )}
@@ -1852,12 +1898,43 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
                 {assignment.requiresFileUpload && (
                   <div>
                     <Label className="mb-2 block text-sm font-medium text-slate-700">Upload File</Label>
-                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-8 hover:border-indigo-300 hover:bg-slate-50">
-                      <Upload className="mb-2 h-8 w-8 text-slate-400" />
-                      <p className="text-sm text-slate-500">{fileName || 'Click to upload or drag and drop'}</p>
-                      <p className="mt-1 text-xs text-slate-400">{assignment.allowedFileTypes?.join(', ').toUpperCase() ?? 'PDF, DOCX, ZIP'} up to {assignment.maxFileSizeMB}MB</p>
-                      <input type="file" className="hidden" onChange={handleFileUpload} accept={assignment.allowedFileTypes?.map((t: string) => `.${t}`).join(',')} />
+                    <label className={cn('flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed py-8', uploadingFile ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50')}>
+                      {uploadingFile ? (
+                        <>
+                          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+                          <p className="text-sm font-medium text-indigo-600">Uploading to Cloudinary…</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mb-2 h-8 w-8 text-slate-400" />
+                          <p className="text-sm text-slate-500">Click to upload or drag and drop</p>
+                          <p className="mt-1 text-xs text-slate-400">{assignment.allowedFileTypes?.join(', ').toUpperCase() ?? 'PDF, DOCX, ZIP'} up to {assignment.maxFileSizeMB}MB</p>
+                        </>
+                      )}
+                      <input type="file" className="hidden" onChange={handleFileUpload} accept={assignment.allowedFileTypes?.map((t: string) => `.${t}`).join(',')} disabled={uploadingFile} />
                     </label>
+                    {/* Uploaded files list */}
+                    {uploadedFiles.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {uploadedFiles.map((f) => (
+                          <div key={f.public_id} className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                              <File className="h-4 w-4 text-emerald-600" />
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                              <p className="truncate text-sm font-medium text-slate-900">{f.original_filename}</p>
+                              <p className="text-xs text-slate-500">{(f.size / 1024).toFixed(1)} KB · {f.format?.toUpperCase() ?? 'FILE'}</p>
+                            </div>
+                            <a href={f.secure_url} target="_blank" rel="noopener noreferrer" className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600" title="View file">
+                              <Download className="h-4 w-4" />
+                            </a>
+                            <button onClick={() => handleRemoveFile(f.public_id)} className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500" title="Remove file">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {/* Text Submission */}
@@ -1872,7 +1949,7 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
                   />
                 </div>
                 {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-                <Button onClick={handleSubmit} disabled={createSubmission.isPending || (!submissionText.trim() && !fileName)} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                <Button onClick={handleSubmit} disabled={createSubmission.isPending || uploadingFile || (!submissionText.trim() && uploadedFiles.length === 0)} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
                   {createSubmission.isPending ? 'Submitting…' : latestSubmission ? 'Resubmit Assignment' : 'Submit Assignment'}
                 </Button>
               </div>

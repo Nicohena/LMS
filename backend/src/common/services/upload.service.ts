@@ -45,6 +45,16 @@ function configureCloudinary(): void {
 
 configureCloudinary();
 
+/**
+ * Re-run Cloudinary configuration. Call this AFTER dotenv.config() has loaded
+ * env vars (the initial module-load call runs before dotenv, so it sees empty
+ * env vars when the app is started via `node dist/server.js` without an
+ * external env loader).
+ */
+export function reconfigureCloudinary(): void {
+  configureCloudinary();
+}
+
 export function isCloudinaryConfigured(): boolean {
   return cloudinaryConfigured;
 }

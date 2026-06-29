@@ -441,6 +441,28 @@ export function useCreateSubmission() {
   });
 }
 
+// Upload a single file to Cloudinary via the backend's /assignments/upload endpoint.
+// Returns the file metadata (public_id, secure_url, original_filename, size, format)
+// that should be included in the submission's content.files array.
+export function useUploadFile() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/assignments/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data.file as {
+        public_id: string;
+        secure_url: string;
+        original_filename: string;
+        size: number;
+        format?: string;
+      };
+    },
+  });
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────
 
 export function useNotifications(params?: { page?: number; limit?: number; unreadOnly?: boolean }) {

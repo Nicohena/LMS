@@ -10,10 +10,16 @@ import { initGamificationEvents } from './modules/gamification/event-listener.se
 import { seedDefaults as seedXPDefaults } from './modules/gamification/xp.service';
 import { seedDefaultSettings } from './modules/settings/setting.service';
 import { seedDefaultTemplates } from './modules/settings/email-template.service';
+import { reconfigureCloudinary } from './common/services/upload.service';
 
 // Load environment variables from .env (override any pre-set env to ensure
 // the project's .env wins — important in shared/dev environments).
 dotenv.config({ override: true });
+
+// Re-initialize Cloudinary now that env vars are loaded. The initial module-load
+// call in upload.service.ts runs before dotenv.config(), so it would see empty
+// CLOUDINARY_* env vars and leave Cloudinary unconfigured.
+reconfigureCloudinary();
 
 // Register background-job queues (BullMQ if Redis is configured, sync fallback otherwise).
 setupQueues();
