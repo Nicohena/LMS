@@ -13,7 +13,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useCourses, useCourse, useStudentDashboard, usePlatformDashboard, useUsers, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useNotifications, useQuizzes, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignment, useSubmissions, useCreateSubmission, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useCourses, useCourse, useStudentDashboard, usePlatformDashboard, useUsers, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useNotifications, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -620,6 +620,22 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
   const { data: courseData, isLoading } = useCourse(courseId || null);
   // Normalize the API response into our Course shape; fall back to first mock for layout
   const apiCourse = courseData as any;
+  // Collect all content IDs from the course so we can look up quizzes/assignments attached to them
+  const apiModules = (apiCourse?.course?.modules ?? apiCourse?.modules ?? []) as any[];
+  const allContentIds = apiModules.flatMap((m: any) =>
+    ((m.contents ?? m.lessons ?? []) as any[]).map((c: any) => c.id).filter(Boolean) as string[],
+  );
+  // Fetch all quizzes and assignments (single meta-query each, with client-side filter by contentId)
+  const quizzesForContents = useQuizzesForContents(allContentIds);
+  const assignmentsForContents = useAssignmentsForContents(allContentIds);
+  const quizByContent: Record<string, string> = (quizzesForContents?.data?.byContent ?? {}) as any;
+  const assignmentByContent: Record<string, string> = (assignmentsForContents?.data?.byContent ?? {}) as any;
+  // Convert to contentId → quizId/assignmentId maps
+  const quizIdByContent: Record<string, string> = {};
+  for (const [cid, q] of Object.entries(quizByContent)) quizIdByContent[cid] = (q as any).id;
+  const assignmentIdByContent: Record<string, string> = {};
+  for (const [cid, a] of Object.entries(assignmentByContent)) assignmentIdByContent[cid] = (a as any).id;
+
   const course: Course = apiCourse ? {
     id: apiCourse.id ?? apiCourse.course?.id ?? '',
     title: apiCourse.title ?? apiCourse.course?.title ?? 'Course',
@@ -632,12 +648,13 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
     students: 0,
     rating: 0,
     thumbnail: 'bg-gradient-to-br from-indigo-500 to-purple-500',
-    modules: (apiCourse.modules ?? []).map((m: any, mi: number) => ({
+    modules: apiModules.map((m: any, mi: number) => ({
       id: m.id ?? mi,
       title: m.title ?? `Module ${mi + 1}`,
       lessons: (m.contents ?? m.lessons ?? []).map((l: any, li: number) => ({
         id: l.id ?? li,
         title: l.title ?? 'Untitled',
+        // Normalize: API returns 'VIDEO', 'PAGE', 'QUIZ', 'ASSIGNMENT' (uppercase); convert to lowercase for icon lookup
         type: (l.type ?? 'video').toLowerCase(),
         duration: l.duration ?? '—',
         completed: false,
@@ -649,6 +666,18 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
 
   const lessonTypeIcons: Record<string, typeof Video> = {
     video: Video, page: File, quiz: FileQuestion, assignment: FileText,
+  };
+
+  // Helper: handle clicking a lesson — if quiz/assignment type and a corresponding entity exists, navigate
+  const handleLessonClick = (moduleId: number, lessonIdx: number, lesson: { id: number | string; type: string }) => {
+    setActiveModule(moduleId);
+    setActiveLesson(lessonIdx);
+    const contentId = String(lesson.id);
+    if (lesson.type === 'quiz' && onSelectQuiz && quizIdByContent[contentId]) {
+      onSelectQuiz(quizIdByContent[contentId]);
+    } else if (lesson.type === 'assignment' && onSelectAssignment && assignmentIdByContent[contentId]) {
+      onSelectAssignment(assignmentIdByContent[contentId]);
+    }
   };
 
   const completedLessons = course.modules?.reduce((acc, m) => acc + m.lessons.filter(l => l.completed).length, 0) || 0;
@@ -691,7 +720,10 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
             <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" />{course.lessons} lessons</span>
           </div>
           <div className="mt-6 flex items-center gap-3">
-            <Button className="bg-white text-indigo-600 hover:bg-white/90"><PlayCircle className="mr-2 h-4 w-4" />Continue Learning</Button>
+            <Button onClick={() => {
+              const activeLessonObj = course.modules?.[activeModule]?.lessons?.[activeLesson];
+              if (activeLessonObj) handleLessonClick(activeModule, activeLesson, activeLessonObj);
+            }} className="bg-white text-indigo-600 hover:bg-white/90"><PlayCircle className="mr-2 h-4 w-4" />Continue Learning</Button>
             <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">Add to Favorites</Button>
           </div>
           {course.progress !== undefined && (
@@ -717,28 +749,63 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                 <p className="text-xs text-slate-400">{course.modules?.[activeModule]?.title} · {course.modules?.[activeModule]?.lessons[activeLesson]?.duration}</p>
               </div>
             </div>
-            {/* Video placeholder */}
-            <div className="flex aspect-video items-center justify-center rounded-lg bg-slate-900">
-              <div className="text-center">
-                <PlayCircle className="mx-auto h-16 w-16 text-white/30" />
-                <p className="mt-2 text-sm text-white/50">Video content will appear here</p>
-              </div>
-            </div>
-            {/* Content tabs */}
-            <div className="mt-5 flex gap-1 border-b border-slate-200">
-              {['Overview', 'Resources', 'Discussion'].map((tab, i) => (
-                <button key={tab} className={cn('border-b-2 px-3 py-2 text-sm font-medium transition-colors', i === 0 ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700')}>{tab}</button>
-              ))}
-            </div>
-            <div className="mt-4 text-sm text-slate-600">
-              <p>In this lesson, you&apos;ll learn the fundamental concepts and practical applications. The content includes video explanations, interactive examples, and hands-on exercises to reinforce your understanding.</p>
-              <p className="mt-3">By the end of this lesson, you will be able to:</p>
-              <ul className="mt-2 space-y-1.5">
-                {['Understand core design principles', 'Apply usability heuristics to real projects', 'Create effective wireframes', 'Evaluate interface designs for improvements'].map((item) => (
-                  <li key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" />{item}</li>
-                ))}
-              </ul>
-            </div>
+
+            {/* If active lesson is a linked quiz/assignment, show a launch card */}
+            {(() => {
+              const activeLessonObj = course.modules?.[activeModule]?.lessons?.[activeLesson];
+              if (!activeLessonObj) return null;
+              const contentId = String(activeLessonObj.id);
+              if (activeLessonObj.type === 'quiz' && quizIdByContent[contentId]) {
+                return (
+                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-emerald-200 bg-emerald-50/50 p-8 text-center">
+                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100"><FileQuestion className="h-7 w-7 text-emerald-600" /></div>
+                    <p className="text-base font-semibold text-slate-900">Ready to test your knowledge?</p>
+                    <p className="mt-1 text-sm text-slate-500">This lesson is a quiz. Click below to start your attempt.</p>
+                    <Button onClick={() => onSelectQuiz?.(quizIdByContent[contentId])} className="mt-4 bg-emerald-600 text-white hover:bg-emerald-700">
+                      <FileQuestion className="mr-1.5 h-4 w-4" />Start Quiz
+                    </Button>
+                  </div>
+                );
+              }
+              if (activeLessonObj.type === 'assignment' && assignmentIdByContent[contentId]) {
+                return (
+                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-amber-200 bg-amber-50/50 p-8 text-center">
+                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100"><FileText className="h-7 w-7 text-amber-600" /></div>
+                    <p className="text-base font-semibold text-slate-900">Ready to submit your work?</p>
+                    <p className="mt-1 text-sm text-slate-500">This lesson is an assignment. Click below to view instructions and submit.</p>
+                    <Button onClick={() => onSelectAssignment?.(assignmentIdByContent[contentId])} className="mt-4 bg-amber-600 text-white hover:bg-amber-700">
+                      <FileText className="mr-1.5 h-4 w-4" />Open Assignment
+                    </Button>
+                  </div>
+                );
+              }
+              // Default: video placeholder + tabs
+              return (
+                <>
+                  <div className="flex aspect-video items-center justify-center rounded-lg bg-slate-900">
+                    <div className="text-center">
+                      <PlayCircle className="mx-auto h-16 w-16 text-white/30" />
+                      <p className="mt-2 text-sm text-white/50">Video content will appear here</p>
+                    </div>
+                  </div>
+                  {/* Content tabs */}
+                  <div className="mt-5 flex gap-1 border-b border-slate-200">
+                    {['Overview', 'Resources', 'Discussion'].map((tab, i) => (
+                      <button key={tab} className={cn('border-b-2 px-3 py-2 text-sm font-medium transition-colors', i === 0 ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700')}>{tab}</button>
+                    ))}
+                  </div>
+                  <div className="mt-4 text-sm text-slate-600">
+                    <p>In this lesson, you&apos;ll learn the fundamental concepts and practical applications. The content includes video explanations, interactive examples, and hands-on exercises to reinforce your understanding.</p>
+                    <p className="mt-3">By the end of this lesson, you will be able to:</p>
+                    <ul className="mt-2 space-y-1.5">
+                      {['Understand core design principles', 'Apply usability heuristics to real projects', 'Create effective wireframes', 'Evaluate interface designs for improvements'].map((item) => (
+                        <li key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" />{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              );
+            })()}
           </Card>
         </div>
 
@@ -763,12 +830,21 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                     <div className="mt-1 space-y-0.5 pl-2">
                       {module.lessons.map((lesson, lIdx) => {
                         const Icon = lessonTypeIcons[lesson.type] || Video;
+                        const hasLinkedEntity = (lesson.type === 'quiz' && quizIdByContent[String(lesson.id)]) || (lesson.type === 'assignment' && assignmentIdByContent[String(lesson.id)]);
                         return (
-                          <button key={lesson.id} onClick={() => { setActiveModule(mIdx); setActiveLesson(lIdx); }} className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors', mIdx === activeModule && lIdx === activeLesson ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
+                          <button
+                            key={lesson.id}
+                            onClick={() => handleLessonClick(mIdx, lIdx, lesson)}
+                            className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors', mIdx === activeModule && lIdx === activeLesson ? 'bg-indigo-50' : 'hover:bg-slate-50', hasLinkedEntity && 'hover:border-indigo-200')}
+                            title={hasLinkedEntity ? `Open ${lesson.type}` : undefined}
+                          >
                             <div className={cn('flex h-5 w-5 items-center justify-center rounded-full', lesson.completed ? 'bg-emerald-100' : 'bg-slate-100')}>
-                              {lesson.completed ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Icon className="h-3 w-3 text-slate-400" />}
+                              {lesson.completed ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Icon className={cn('h-3 w-3', lesson.type === 'quiz' || lesson.type === 'assignment' ? 'text-indigo-500' : 'text-slate-400')} />}
                             </div>
-                            <div className="flex-1"><p className={cn('text-xs', mIdx === activeModule && lIdx === activeLesson ? 'font-medium text-indigo-600' : 'text-slate-600')}>{lesson.title}</p></div>
+                            <div className="flex-1">
+                              <p className={cn('text-xs', mIdx === activeModule && lIdx === activeLesson ? 'font-medium text-indigo-600' : 'text-slate-600')}>{lesson.title}</p>
+                            </div>
+                            {hasLinkedEntity && <ChevronRight className="h-3 w-3 text-indigo-400" />}
                             <span className="text-[10px] text-slate-400">{lesson.duration}</span>
                           </button>
                         );

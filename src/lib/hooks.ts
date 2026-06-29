@@ -123,7 +123,7 @@ export function useEnrollments(params?: { page?: number; limit?: number; status?
 
 // ─── Quizzes ─────────────────────────────────────────────────────────────
 
-export function useQuizzes(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+export function useQuizzes(params?: { page?: number; limit?: number; search?: string; status?: string; contentId?: string }) {
   return useQuery({
     queryKey: ['quizzes', params],
     queryFn: async () => {
@@ -131,6 +131,26 @@ export function useQuizzes(params?: { page?: number; limit?: number; search?: st
       return res.data;
     },
   });
+}
+
+// Fetch quizzes for multiple contentIds in parallel — returns one query per contentId
+export function useQuizzesForContents(contentIds: string[]) {
+  // Use a single meta-query that fetches all quizzes and filters client-side
+  return useQuery({
+    queryKey: ['quizzes-for-contents', contentIds],
+    queryFn: async () => {
+      if (contentIds.length === 0) return { data: [] as any[], byContent: {} as Record<string, any> };
+      const res = await api.get('/quizzes', { params: { limit: 100 } });
+      const all = (res.data?.data ?? []) as any[];
+      // Build lookup: contentId → quiz
+      const byContent: Record<string, any> = {};
+      for (const q of all) {
+        if (q.contentId) byContent[q.contentId] = q;
+      }
+      return { data: all, byContent };
+    },
+    enabled: contentIds.length > 0,
+  }) as any;
 }
 
 export function useQuiz(quizId: string | null) {
@@ -184,7 +204,7 @@ export function useAttemptResults(attemptId: string | null) {
 
 // ─── Assignments ─────────────────────────────────────────────────────────
 
-export function useAssignments(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+export function useAssignments(params?: { page?: number; limit?: number; search?: string; status?: string; contentId?: string }) {
   return useQuery({
     queryKey: ['assignments', params],
     queryFn: async () => {
@@ -192,6 +212,24 @@ export function useAssignments(params?: { page?: number; limit?: number; search?
       return res.data;
     },
   });
+}
+
+// Fetch assignments for multiple contentIds in parallel — single meta-query with client-side filter
+export function useAssignmentsForContents(contentIds: string[]) {
+  return useQuery({
+    queryKey: ['assignments-for-contents', contentIds],
+    queryFn: async () => {
+      if (contentIds.length === 0) return { data: [] as any[], byContent: {} as Record<string, any> };
+      const res = await api.get('/assignments', { params: { limit: 100 } });
+      const all = (res.data?.data ?? []) as any[];
+      const byContent: Record<string, any> = {};
+      for (const a of all) {
+        if (a.contentId) byContent[a.contentId] = a;
+      }
+      return { data: all, byContent };
+    },
+    enabled: contentIds.length > 0,
+  }) as any;
 }
 
 export function useAssignment(assignmentId: string | null) {
