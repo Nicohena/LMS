@@ -14,6 +14,8 @@ import assignmentRouter from './modules/assignments/assignment.routes';
 import { notificationRouter, discussionRouter, messageRouter, announcementRouter } from './modules/notifications/notification.routes';
 import certificateRouter from './modules/certificates/certificate.routes';
 import gamificationRouter from './modules/gamification/gamification.routes';
+import { dashboardRouter, reportRouter, scheduleRouter } from './modules/reports/report.routes';
+import auditRouter from './modules/audit/audit.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -86,6 +88,12 @@ app.use('/api/v1/announcements', announcementRouter);
 // --- Certificates & Gamification module (Step 10) ---
 app.use('/api/v1/certificates', certificateRouter);
 app.use('/api/v1/gamification', gamificationRouter);
+
+// --- Admin Dashboard & Reporting module (Step 11) ---
+app.use('/api/v1/dashboards', dashboardRouter);
+app.use('/api/v1/reports', reportRouter);
+app.use('/api/v1/schedules', scheduleRouter);
+app.use('/api/v1/audit', auditRouter);
 
 // --- Test routes for RBAC verification (Step 3) ---
 // Kept for quick smoke-testing of the authenticate/authorize middlewares.
