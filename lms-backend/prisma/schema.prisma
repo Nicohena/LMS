@@ -30,6 +30,7 @@ model User {
 
   refreshTokens RefreshToken[] @relation("userRefreshTokens")
   courses       Course[]        @relation("courseCreator")
+  enrollments   Enrollment[]
 }
 
 model RefreshToken {
@@ -84,6 +85,8 @@ model Course {
 
   creator User     @relation("courseCreator", fields: [createdBy], references: [id])
   modules Module[]
+  enrollments Enrollment[]
+  autoEnrollmentRules AutoEnrollmentRule[]
 }
 
 model Module {
@@ -116,10 +119,9 @@ model Content {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  // Quiz / Assignment relations will be added in a future step
-  // (the ContentType enum reserves QUIZ and ASSIGNMENT for forward compat).
-
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  progress Progress[]
 }
 
 model AuditLog {
@@ -132,4 +134,72 @@ model AuditLog {
   ipAddress  String?
   userAgent  String?
   createdAt  DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Enrollment & Progress Tracking (Step 6)
+// ---------------------------------------------------------------------------
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+  PENDING
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Enrollment {
+  id                 String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String           @db.ObjectId
+  courseId           String           @db.ObjectId
+  status             EnrollmentStatus @default(ACTIVE)
+  progressPercentage Float            @default(0)
+  enrolledAt         DateTime         @default(now())
+  completedAt        DateTime?
+  droppedAt          DateTime?
+  lastAccessedAt     DateTime         @default(now())
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  user     User       @relation(fields: [userId], references: [id])
+  course   Course     @relation(fields: [courseId], references: [id])
+  progress Progress[]
+
+  @@unique([userId, courseId])
+}
+
+model Progress {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  enrollmentId    String         @db.ObjectId
+  contentId       String         @db.ObjectId
+  status          ProgressStatus @default(NOT_STARTED)
+  progressPercent Float          @default(0)
+  timeSpent       Int            @default(0)
+  lastAccessedAt  DateTime       @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  content    Content    @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, contentId])
+}
+
+model AutoEnrollmentRule {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  ruleType   String
+  ruleConfig Json
+  courseId   String   @db.ObjectId
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id])
 }
