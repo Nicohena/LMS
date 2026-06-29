@@ -8,6 +8,8 @@ import { closeCache } from './common/services/cache.service';
 import { initSocketIO, closeSocketIO } from './socket';
 import { initGamificationEvents } from './modules/gamification/event-listener.service';
 import { seedDefaults as seedXPDefaults } from './modules/gamification/xp.service';
+import { seedDefaultSettings } from './modules/settings/setting.service';
+import { seedDefaultTemplates } from './modules/settings/email-template.service';
 
 // Load environment variables from .env (override any pre-set env to ensure
 // the project's .env wins — important in shared/dev environments).
@@ -19,6 +21,10 @@ setupQueues();
 // Initialize gamification event listeners + seed default XP rules / level thresholds.
 initGamificationEvents();
 seedXPDefaults().catch((err) => console.error('[xp] Failed to seed defaults:', err));
+
+// Seed default platform settings + email templates.
+seedDefaultSettings().catch((err) => console.error('[settings] Failed to seed settings:', err));
+seedDefaultTemplates().catch((err) => console.error('[settings] Failed to seed email templates:', err));
 
 const PORT = Number(process.env.PORT) || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
