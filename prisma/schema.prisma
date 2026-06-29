@@ -47,6 +47,11 @@ model User {
   receivedMessages     Message[]         @relation("messageReceiver")
   messageGroupMemberships MessageGroupMember[]
   announcements        Announcement[]
+  certificates         Certificate[]
+  badges               UserBadge[]
+  xpTransactions       XPTransaction[]
+  userLevel            UserLevel?
+  learningStreak       LearningStreak?
 }
 
 model RefreshToken {
@@ -105,6 +110,8 @@ model Course {
   autoEnrollmentRules AutoEnrollmentRule[]
   discussions  Discussion[]
   announcements Announcement[]
+  certificates Certificate[]
+  leaderboardSnapshots LeaderboardSnapshot[]
 }
 
 model Module {
@@ -283,6 +290,7 @@ model Quiz {
   content   Content?     @relation(fields: [contentId], references: [id])
   questions Question[]
   attempts  QuizAttempt[]
+  certificates Certificate[]
 }
 
 model Question {
@@ -671,4 +679,180 @@ model Announcement {
 
   course  Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
   creator User    @relation(fields: [createdBy], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Certificates & Gamification (Step 10)
+// ---------------------------------------------------------------------------
+
+enum CertificateStatus {
+  DRAFT
+  ISSUED
+  EXPIRED
+  REVOKED
+}
+
+enum XPSource {
+  COURSE_COMPLETION
+  QUIZ_PASSED
+  QUIZ_PERFECT_SCORE
+  ASSIGNMENT_GRADED
+  DISCUSSION_CREATED
+  DISCUSSION_REPLY
+  PEER_REVIEW_COMPLETED
+  DAILY_LOGIN
+  PROFILE_COMPLETION
+  CERTIFICATE_ISSUED
+  ADMIN_AWARD
+}
+
+enum LeaderboardScope {
+  GLOBAL
+  COURSE
+  COHORT
+}
+
+model CertificateTemplate {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  description     String?
+  htmlTemplate    String
+  cssStyle        String?
+  signatureImage  String?
+  signatureName   String?
+  signatureTitle  String?
+  backgroundImage String?
+  fontFamily      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  certificates Certificate[]
+}
+
+model Certificate {
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
+  templateId        String            @db.ObjectId
+  userId            String            @db.ObjectId
+  courseId          String?           @db.ObjectId
+  quizId            String?           @db.ObjectId
+  referenceNumber   String            @unique
+  issuedAt          DateTime          @default(now())
+  expiryDate        DateTime?
+  status            CertificateStatus @default(ISSUED)
+  certificateUrl    String
+  metadata          Json?
+  revokedAt         DateTime?
+  revokedReason     String?
+  verificationToken String            @unique
+  qrCodeUrl         String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  template CertificateTemplate @relation(fields: [templateId], references: [id])
+  user     User                @relation(fields: [userId], references: [id])
+  course   Course?             @relation(fields: [courseId], references: [id])
+  quiz     Quiz?               @relation(fields: [quizId], references: [id])
+}
+
+model BadgeTemplate {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  description      String
+  imageUrl         String
+  criteria         String
+  points           Int?
+  isActive         Boolean  @default(true)
+  expiresAfterDays Int?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  awarded        UserBadge[]
+  levelThreshold LevelThreshold[]
+}
+
+model UserBadge {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  badgeTemplateId String   @db.ObjectId
+  awardedAt       DateTime @default(now())
+  expiresAt       DateTime?
+  evidence        String?
+  isDisplayed     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeTemplate BadgeTemplate @relation(fields: [badgeTemplateId], references: [id])
+
+  @@unique([userId, badgeTemplateId])
+}
+
+model XPRule {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  source      XPSource
+  points      Int
+  isActive    Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model XPTransaction {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  source    XPSource
+  points    Int
+  sourceId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LevelThreshold {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  level           Int      @unique
+  xpRequired      Int
+  badgeTemplateId String?  @db.ObjectId
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  badgeTemplate BadgeTemplate? @relation(fields: [badgeTemplateId], references: [id])
+}
+
+model UserLevel {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @unique @db.ObjectId
+  level          Int      @default(1)
+  totalXP        Int      @default(0)
+  currentLevelXP Int      @default(0)
+  nextLevelXP    Int?
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LeaderboardSnapshot {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  scope        LeaderboardScope
+  scopeId      String?          @db.ObjectId
+  period       String
+  snapshotDate DateTime         @default(now())
+  rankings     Json
+  createdAt    DateTime         @default(now())
+
+  course Course? @relation(fields: [scopeId], references: [id])
+}
+
+model LearningStreak {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @unique @db.ObjectId
+  currentStreak     Int      @default(0)
+  longestStreak     Int      @default(0)
+  lastActivityDate  DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

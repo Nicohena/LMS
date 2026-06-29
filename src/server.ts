@@ -6,6 +6,8 @@ import { setupQueues } from './common/services/queue-setup';
 import { closeQueues } from './common/services/queue.service';
 import { closeCache } from './common/services/cache.service';
 import { initSocketIO, closeSocketIO } from './socket';
+import { initGamificationEvents } from './modules/gamification/event-listener.service';
+import { seedDefaults as seedXPDefaults } from './modules/gamification/xp.service';
 
 // Load environment variables from .env (override any pre-set env to ensure
 // the project's .env wins — important in shared/dev environments).
@@ -13,6 +15,10 @@ dotenv.config({ override: true });
 
 // Register background-job queues (BullMQ if Redis is configured, sync fallback otherwise).
 setupQueues();
+
+// Initialize gamification event listeners + seed default XP rules / level thresholds.
+initGamificationEvents();
+seedXPDefaults().catch((err) => console.error('[xp] Failed to seed defaults:', err));
 
 const PORT = Number(process.env.PORT) || 5000;
 const HOST = process.env.HOST || '0.0.0.0';

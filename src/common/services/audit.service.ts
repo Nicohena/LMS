@@ -63,9 +63,16 @@ export type AuditAction =
   | 'MESSAGE_SEND'
   | 'ANNOUNCEMENT_CREATE'
   | 'ANNOUNCEMENT_UPDATE'
-  | 'ANNOUNCEMENT_DELETE';
+  | 'ANNOUNCEMENT_DELETE'
+  | 'CERTIFICATE_ISSUE'
+  | 'CERTIFICATE_REVOKE'
+  | 'CERTIFICATE_TEMPLATE_CREATE'
+  | 'BADGE_AWARD'
+  | 'BADGE_TEMPLATE_CREATE'
+  | 'XP_AWARD'
+  | 'XP_RULE_UPDATE';
 
-export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt' | 'Assignment' | 'Rubric' | 'Submission' | 'PeerReview' | 'Notification' | 'Discussion' | 'DiscussionReply' | 'Message' | 'Announcement';
+export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt' | 'Assignment' | 'Rubric' | 'Submission' | 'PeerReview' | 'Notification' | 'Discussion' | 'DiscussionReply' | 'Message' | 'Announcement' | 'Certificate' | 'CertificateTemplate' | 'BadgeTemplate' | 'UserBadge' | 'XPTransaction';
 
 export interface AuditContext {
   /** Caller IP (best-effort). */
