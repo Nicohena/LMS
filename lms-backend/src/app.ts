@@ -4,8 +4,10 @@ import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { prisma } from './lib/prisma';
+import { isHttpError } from './common/errors';
 import authRouter from './modules/auth/auth.routes';
 import userRouter from './modules/users/user.routes';
+import courseRouter from './modules/courses/course.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -54,6 +56,9 @@ app.use('/api/v1/auth', authRouter);
 // --- Users module ---
 app.use('/api/v1/users', userRouter);
 
+// --- Courses module ---
+app.use('/api/v1/courses', courseRouter);
+
 // --- Test routes for RBAC verification (Step 3) ---
 // Kept for quick smoke-testing of the authenticate/authorize middlewares.
 app.get(
@@ -83,6 +88,23 @@ app.use((_req: Request, res: Response) => {
 // --- Global error handler ---
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  // Custom HTTP errors (NotFoundError, ForbiddenError, etc.) — use their status + message
+  if (isHttpError(err)) {
+    res.status(err.statusCode).json({
+      status: 'error',
+      message: err.message,
+      ...(err.code ? { code: err.code } : {}),
+    });
+    return;
+  }
+
+  // Multer file-validation errors come back with a `.code` of LIMIT_* or as
+  // a generic Error with a message starting "Unsupported file type" etc.
+  if (err.name === 'MulterError' || /file|upload/i.test(err.message)) {
+    res.status(400).json({ status: 'error', message: err.message });
+    return;
+  }
+
   const statusCode = (err as Error & { status?: number }).status ?? 500;
 
   if (process.env.NODE_ENV === 'development') {
