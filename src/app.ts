@@ -11,6 +11,7 @@ import courseRouter from './modules/courses/course.routes';
 import enrollmentRouter, { autoEnrollmentRouter } from './modules/enrollments/enrollment.routes';
 import quizRouter from './modules/quizzes/quiz.routes';
 import assignmentRouter from './modules/assignments/assignment.routes';
+import { notificationRouter, discussionRouter, messageRouter, announcementRouter } from './modules/notifications/notification.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -73,6 +74,12 @@ app.use('/api/v1/quizzes', quizRouter);
 
 // --- Assignments module ---
 app.use('/api/v1/assignments', assignmentRouter);
+
+// --- Notifications & Communication module (Step 9) ---
+app.use('/api/v1/notifications', notificationRouter);
+app.use('/api/v1/discussions', discussionRouter);
+app.use('/api/v1/messages', messageRouter);
+app.use('/api/v1/announcements', announcementRouter);
 
 // --- Test routes for RBAC verification (Step 3) ---
 // Kept for quick smoke-testing of the authenticate/authorize middlewares.
