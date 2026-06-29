@@ -6,26 +6,38 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "db:generate": "dotenv -o -e .env -- prisma generate",
+    "db:push": "dotenv -o -e .env -- prisma db push",
+    "db:seed": "dotenv -o -e .env -- ts-node prisma/seed.ts",
+    "db:studio": "dotenv -o -e .env -- prisma studio"
+  },
+  "prisma": {
+    "seed": "dotenv -o -e .env -- ts-node prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "morgan": "^1.11.0",
+    "prisma": "^6.19.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
     "@types/node": "^26.0.1",
+    "dotenv-cli": "^11.0.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "~5.7.0"

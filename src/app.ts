@@ -2,6 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
+import { prisma } from './lib/prisma';
 
 const app = express();
 
@@ -12,12 +13,24 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 // --- Routes ---
-app.get('/api/v1/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'LMS Backend is running',
-    timestamp: new Date().toISOString(),
-  });
+app.get('/api/v1/health', async (_req: Request, res: Response) => {
+  try {
+    await prisma.$runCommandRaw({ ping: 1 });
+    res.status(200).json({
+      status: 'ok',
+      message: 'LMS Backend is running',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('DB health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      database: 'disconnected',
+    });
+  }
 });
 
 app.get('/api/v1/ping', (_req: Request, res: Response) => {
