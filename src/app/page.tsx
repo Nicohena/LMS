@@ -8,9 +8,9 @@ import {
   Plus, Filter, PlayCircle, Sparkles, Clock, Users, CheckCircle2,
   AlertCircle, Lock, Mail, Eye, EyeOff, ArrowLeft, BookMarked,
   Video, File, Link2, ChevronDown, MoreHorizontal, Zap, CircleDot,
-  Upload, Pin, BarChart3, Users, Crown, Trash2, Edit, UserPlus,
-  Download, Search, Trophy, Target, Flame, Medal, BadgeCheck,
-  Check, GripVertical, Image, Type, ListOrdered,
+  Upload, Pin, BarChart3, Trash2, UserPlus,
+  Download, Trophy, Target, Flame, Medal, BadgeCheck,
+  Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -1163,6 +1163,680 @@ function DiscussionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   );
 }
 
+// ─── Admin Dashboard View ─────────────────────────────────────────────────
+function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const platformStats = [
+    { label: 'Total Users', value: '2,847', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+128' },
+    { label: 'Active Courses', value: '86', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+4' },
+    { label: 'Enrollments', value: '12,304', icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+342' },
+    { label: 'Certificates Issued', value: '1,256', icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+56' },
+    { label: 'Revenue (MTD)', value: '$48.2K', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+12%' },
+    { label: 'Avg Completion', value: '74%', icon: Target, color: 'text-cyan-600', bg: 'bg-cyan-50', trend: '+3%' },
+  ];
+
+  const enrollmentTrend = [
+    { month: 'Jan', enrollments: 420, revenue: 18 },
+    { month: 'Feb', enrollments: 510, revenue: 22 },
+    { month: 'Mar', enrollments: 680, revenue: 28 },
+    { month: 'Apr', enrollments: 590, revenue: 25 },
+    { month: 'May', enrollments: 720, revenue: 32 },
+    { month: 'Jun', enrollments: 890, revenue: 38 },
+    { month: 'Jul', enrollments: 950, revenue: 42 },
+    { month: 'Aug', enrollments: 1120, revenue: 48 },
+  ];
+
+  const topCourses = [
+    { id: 1, title: 'UI Design Fundamentals', students: 1248, revenue: '$12,480', completion: 78 },
+    { id: 2, title: 'Advanced TypeScript', students: 892, revenue: '$8,920', completion: 65 },
+    { id: 3, title: 'Project Management', students: 634, revenue: '$6,340', completion: 82 },
+    { id: 4, title: 'Data Science with Python', students: 521, revenue: '$5,210', completion: 45 },
+    { id: 5, title: 'Digital Marketing', students: 387, revenue: '$3,870', completion: 71 },
+  ];
+
+  const userDistribution = [
+    { name: 'Students', value: 2412, color: '#4F46E5' },
+    { name: 'Teachers', value: 385, color: '#10B981' },
+    { name: 'Admins', value: 50, color: '#F59E0B' },
+  ];
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+          <p className="mt-1 text-sm text-slate-500">Platform overview · Last updated just now</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export</Button>
+          <Button onClick={() => onNavigate('users')} className="bg-indigo-600 text-white hover:bg-indigo-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {platformStats.map((stat) => (
+          <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm">
+            <div className={cn('mb-2 flex h-9 w-9 items-center justify-center rounded-lg', stat.bg)}>
+              <stat.icon className={cn('h-4 w-4', stat.color)} />
+            </div>
+            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-lg font-bold text-slate-900">{stat.value}</p>
+              <span className="text-[10px] font-semibold text-emerald-600">{stat.trend}</span>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Left: Enrollment Chart + Top Courses */}
+        <div className="space-y-6 lg:col-span-2">
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Enrollment & Revenue Trend</h2>
+                <p className="text-sm text-slate-500">Monthly enrollment count and revenue</p>
+              </div>
+              <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">+18% YoY</Badge>
+            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={enrollmentTrend}>
+                <defs>
+                  <linearGradient id="colorEnroll" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis dataKey="month" stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '13px' }} />
+                <Area type="monotone" dataKey="enrollments" stroke="#4F46E5" strokeWidth={2} fill="url(#colorEnroll)" name="Enrollments" />
+                <Area type="monotone" dataKey="revenue" stroke="#10B981" strokeWidth={2} fill="url(#colorRev)" name="Revenue ($K)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+
+          {/* Top Courses Table */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-900">Top Performing Courses</h2>
+              <Button variant="ghost" size="sm" className="text-indigo-600 hover:bg-indigo-50">View all</Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs text-slate-500">
+                    <th className="pb-2 pr-4 text-left font-medium">Course</th>
+                    <th className="pb-2 pr-4 text-right font-medium">Students</th>
+                    <th className="pb-2 pr-4 text-right font-medium">Revenue</th>
+                    <th className="pb-2 text-right font-medium">Completion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topCourses.map((course) => (
+                    <tr key={course.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-3 pr-4 font-medium text-slate-900">{course.title}</td>
+                      <td className="py-3 pr-4 text-right text-slate-600">{course.students.toLocaleString()}</td>
+                      <td className="py-3 pr-4 text-right font-semibold text-emerald-600">{course.revenue}</td>
+                      <td className="py-3 text-right">
+                        <div className="ml-auto flex w-20 items-center gap-2">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                            <div className="h-full rounded-full bg-indigo-600" style={{ width: `${course.completion}%` }} />
+                          </div>
+                          <span className="text-xs text-slate-500">{course.completion}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+
+        {/* Right: User Distribution + Quick Actions */}
+        <div className="space-y-6">
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">User Distribution</h2>
+            <div className="relative h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={userDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value">
+                    {userDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-xl font-bold text-slate-900">2,847</p>
+                <p className="text-[10px] text-slate-400">Total Users</p>
+              </div>
+            </div>
+            <div className="mt-3 space-y-1.5">
+              {userDistribution.map((item) => (
+                <div key={item.name} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-slate-600">{item.name}</span>
+                  </div>
+                  <span className="font-semibold text-slate-900">{item.value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-slate-900">Quick Actions</h2>
+            <div className="space-y-2">
+              {[
+                { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-indigo-600 bg-indigo-50' },
+                { label: 'Create Course', icon: Plus, view: 'course-create' as View, color: 'text-emerald-600 bg-emerald-50' },
+                { label: 'View Reports', icon: BarChart3, view: 'admin' as View, color: 'text-amber-600 bg-amber-50' },
+                { label: 'Gamification', icon: Trophy, view: 'gamification' as View, color: 'text-purple-600 bg-purple-50' },
+              ].map((action) => (
+                <button key={action.label} onClick={() => onNavigate(action.view)} className="flex w-full items-center gap-3 rounded-lg border border-slate-100 p-3 text-sm font-medium text-slate-700 transition-all hover:border-indigo-200 hover:bg-slate-50">
+                  <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', action.color)}>
+                    <action.icon className="h-4 w-4" />
+                  </div>
+                  {action.label}
+                  <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
+                </button>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ─── User Management View ─────────────────────────────────────────────────
+function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All');
+  const [showCreate, setShowCreate] = useState(false);
+
+  const users = [
+    { id: 1, name: 'Ricky Fajrin', email: 'ricky@trenning.com', role: 'STUDENT', status: 'Active', courses: 4, joined: 'Jan 2024', avatar: 'RF' },
+    { id: 2, name: 'Sarah Chen', email: 'sarah@trenning.com', role: 'TEACHER', status: 'Active', courses: 12, joined: 'Dec 2023', avatar: 'SC' },
+    { id: 3, name: 'Mike Rodriguez', email: 'mike@trenning.com', role: 'TEACHER', status: 'Active', courses: 8, joined: 'Nov 2023', avatar: 'MR' },
+    { id: 4, name: 'Emily Davis', email: 'emily@trenning.com', role: 'STUDENT', status: 'Active', courses: 7, joined: 'Jan 2024', avatar: 'ED' },
+    { id: 5, name: 'James Park', email: 'james@trenning.com', role: 'STUDENT', status: 'Inactive', courses: 5, joined: 'Feb 2024', avatar: 'JP' },
+    { id: 6, name: 'Lisa Wang', email: 'lisa@trenning.com', role: 'STUDENT', status: 'Active', courses: 4, joined: 'Mar 2024', avatar: 'LW' },
+    { id: 7, name: 'David Kim', email: 'david@trenning.com', role: 'ADMIN', status: 'Active', courses: 0, joined: 'Oct 2023', avatar: 'DK' },
+    { id: 8, name: 'Anna Smith', email: 'anna@trenning.com', role: 'STUDENT', status: 'Active', courses: 3, joined: 'Mar 2024', avatar: 'AS' },
+  ];
+
+  const filtered = users.filter(u => {
+    const searchMatch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
+    const roleMatch = roleFilter === 'All' || u.role === roleFilter;
+    return searchMatch && roleMatch;
+  });
+
+  const roleColors: Record<string, string> = {
+    ADMIN: 'bg-red-50 text-red-600',
+    TEACHER: 'bg-indigo-50 text-indigo-600',
+    STUDENT: 'bg-emerald-50 text-emerald-600',
+  };
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('admin')} className="hover:text-slate-700">Admin</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">User Management</span>
+      </div>
+
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
+          <p className="mt-1 text-sm text-slate-500">{filtered.length} users · {users.filter(u => u.status === 'Active').length} active</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export CSV</Button>
+          <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <Card className="mb-4 border border-slate-200 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input placeholder="Search by name or email..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          </div>
+          <div className="flex gap-1">
+            {['All', 'ADMIN', 'TEACHER', 'STUDENT'].map((role) => (
+              <button key={role} onClick={() => setRoleFilter(role)} className={cn('rounded-lg px-3 py-2 text-xs font-medium transition-colors', roleFilter === role ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
+                {role === 'All' ? 'All Roles' : role}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* Users Table */}
+      <Card className="border border-slate-200 shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
+                <th className="px-4 py-3 text-left font-medium">User</th>
+                <th className="px-4 py-3 text-left font-medium">Role</th>
+                <th className="px-4 py-3 text-left font-medium">Status</th>
+                <th className="px-4 py-3 text-center font-medium">Courses</th>
+                <th className="px-4 py-3 text-left font-medium">Joined</th>
+                <th className="px-4 py-3 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((user) => (
+                <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">{user.avatar}</div>
+                      <div>
+                        <p className="font-medium text-slate-900">{user.name}</p>
+                        <p className="text-xs text-slate-400">{user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge className={cn('rounded-full hover:opacity-90', roleColors[user.role])}>{user.role}</Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className={cn('h-2 w-2 rounded-full', user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300')} />
+                      <span className="text-xs text-slate-600">{user.status}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-600">{user.courses}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{user.joined}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1">
+                      <button className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
+                      <button className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Create User Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md border-0 p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Create New User</h2>
+              <button onClick={() => setShowCreate(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">First Name</Label><Input placeholder="John" /></div>
+                <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Last Name</Label><Input placeholder="Doe" /></div>
+              </div>
+              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Email</Label><Input type="email" placeholder="john@trenning.com" /></div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Role</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['STUDENT', 'TEACHER', 'ADMIN'].map((role) => (
+                    <button key={role} className={cn('rounded-lg border py-2 text-xs font-medium transition-colors', role === 'STUDENT' ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{role}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+                <Button onClick={() => setShowCreate(false)} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700">Create User</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ─── Gamification & Certificates View ─────────────────────────────────────
+function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const badges = [
+    { id: 1, name: 'Quick Learner', icon: Zap, color: 'bg-amber-100 text-amber-600', earned: true, date: '2 days ago' },
+    { id: 2, name: 'Quiz Master', icon: FileQuestion, color: 'bg-indigo-100 text-indigo-600', earned: true, date: '1 week ago' },
+    { id: 3, name: 'Perfect Score', icon: Star, color: 'bg-purple-100 text-purple-600', earned: true, date: '3 days ago' },
+    { id: 4, name: 'Course Completer', icon: CheckCircle2, color: 'bg-emerald-100 text-emerald-600', earned: true, date: '2 weeks ago' },
+    { id: 5, name: 'Discussion Pro', icon: MessageSquare, color: 'bg-blue-100 text-blue-600', earned: false, date: '' },
+    { id: 6, name: '7-Day Streak', icon: Flame, color: 'bg-orange-100 text-orange-600', earned: true, date: 'Today' },
+    { id: 7, name: 'Design Master', icon: Award, color: 'bg-pink-100 text-pink-600', earned: false, date: '' },
+    { id: 8, name: 'Top 10', icon: Trophy, color: 'bg-yellow-100 text-yellow-600', earned: false, date: '' },
+  ];
+
+  const certificates = [
+    { id: 1, title: 'UI Design Fundamentals', issueDate: 'Jun 15, 2024', ref: 'CERT-2024-0042', instructor: 'Sarah Chen' },
+    { id: 2, title: 'Project Management Essentials', issueDate: 'May 28, 2024', ref: 'CERT-2024-0031', instructor: 'Emily Davis' },
+  ];
+
+  const leaderboard = [
+    { rank: 1, name: 'Sarah Chen', avatar: 'SC', xp: 4850, level: 12, courses: 8 },
+    { rank: 2, name: 'Mike Rodriguez', avatar: 'MR', xp: 4120, level: 11, courses: 6 },
+    { rank: 3, name: 'Emily Davis', avatar: 'ED', xp: 3890, level: 10, courses: 7 },
+    { rank: 4, name: 'Ricky Fajrin', avatar: 'RF', xp: 3240, level: 9, courses: 4 },
+    { rank: 5, name: 'Lisa Wang', avatar: 'LW', xp: 2980, level: 8, courses: 4 },
+  ];
+
+  const earnedCount = badges.filter(b => b.earned).length;
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Certificates & Achievements</span>
+      </div>
+
+      {/* XP + Level Card */}
+      <Card className="mb-6 overflow-hidden border border-indigo-100 bg-gradient-to-br from-indigo-600 to-indigo-500 p-6 shadow-sm">
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
+              <Trophy className="h-8 w-8 text-amber-300" />
+            </div>
+            <div>
+              <p className="text-sm text-indigo-100">Your Level</p>
+              <p className="text-3xl font-bold text-white">Level 9</p>
+              <p className="text-xs text-indigo-200">3,240 XP · 760 XP to Level 10</p>
+            </div>
+          </div>
+          <div className="sm:w-64">
+            <div className="mb-1.5 flex items-center justify-between text-xs text-indigo-100">
+              <span>Level 9</span>
+              <span>81% to Level 10</span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-white/20">
+              <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-white" style={{ width: '81%' }} />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Left: Badges + Certificates */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Badges */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Badge Collection</h2>
+                <p className="text-sm text-slate-500">{earnedCount} of {badges.length} badges earned</p>
+              </div>
+              <Medal className="h-5 w-5 text-amber-500" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {badges.map((badge) => (
+                <div key={badge.id} className={cn('flex flex-col items-center rounded-lg border p-4 text-center transition-all', badge.earned ? 'border-slate-200 bg-white hover:shadow-md' : 'border-dashed border-slate-200 bg-slate-50 opacity-60')}>
+                  <div className={cn('mb-2 flex h-12 w-12 items-center justify-center rounded-full', badge.earned ? badge.color : 'bg-slate-200 text-slate-400')}>
+                    <badge.icon className="h-6 w-6" />
+                  </div>
+                  <p className="text-xs font-medium text-slate-900">{badge.name}</p>
+                  {badge.earned ? (
+                    <p className="mt-0.5 text-[10px] text-slate-400">{badge.date}</p>
+                  ) : (
+                    <p className="mt-0.5 text-[10px] text-slate-400">Not earned</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Certificates */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Certificates</h2>
+                <p className="text-sm text-slate-500">{certificates.length} certificates earned</p>
+              </div>
+              <Award className="h-5 w-5 text-indigo-500" />
+            </div>
+            <div className="space-y-3">
+              {certificates.map((cert) => (
+                <div key={cert.id} className="flex items-center gap-4 rounded-lg border border-slate-200 p-4 hover:border-indigo-200 hover:shadow-sm">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500">
+                    <BadgeCheck className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-slate-900">{cert.title}</p>
+                    <p className="text-xs text-slate-500">Issued {cert.issueDate} · {cert.instructor}</p>
+                    <p className="mt-0.5 text-[10px] font-mono text-slate-400">{cert.ref}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" className="border-slate-200 text-slate-600"><Download className="mr-1 h-3.5 w-3.5" />PDF</Button>
+                    <Button variant="ghost" size="sm" className="text-indigo-600 hover:bg-indigo-50">Verify</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Right: Leaderboard + Streaks */}
+        <div className="space-y-6">
+          {/* Learning Streak */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <Flame className="h-5 w-5 text-orange-500" />
+              <h2 className="text-base font-semibold text-slate-900">Learning Streak</h2>
+            </div>
+            <div className="flex items-center justify-center py-2">
+              <div className="text-center">
+                <p className="text-4xl font-bold text-orange-500">12</p>
+                <p className="text-xs text-slate-500">days streak</p>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-center gap-1">
+              {Array.from({ length: 14 }).map((_, i) => (
+                <div key={i} className={cn('h-6 w-3 rounded', i < 12 ? 'bg-orange-400' : 'bg-slate-100')} />
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+              <span>Longest: 21 days</span>
+              <span className="flex items-center gap-1"><Target className="h-3 w-3" />Goal: 30 days</span>
+            </div>
+          </Card>
+
+          {/* Leaderboard */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-900">Leaderboard</h2>
+              <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">This Week</Badge>
+            </div>
+            <div className="space-y-1">
+              {leaderboard.map((learner) => (
+                <div key={learner.rank} className={cn('flex items-center gap-3 rounded-lg px-2 py-2', learner.name === 'Ricky Fajrin' ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
+                  <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-amber-100 text-amber-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>
+                    {learner.rank}
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">{learner.avatar}</div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-900">{learner.name}</p>
+                    <p className="text-[10px] text-slate-400">Level {learner.level} · {learner.courses} courses</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-indigo-600">{learner.xp.toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400">XP</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ─── Course Creation Wizard View ──────────────────────────────────────────
+function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [step, setStep] = useState(1);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Design');
+  const [difficulty, setDifficulty] = useState('Beginner');
+
+  const steps = [
+    { num: 1, label: 'General Info' },
+    { num: 2, label: 'Add Content' },
+    { num: 3, label: 'Assign Learners' },
+  ];
+
+  const contentTypes = [
+    { type: 'Page', icon: File, color: 'bg-blue-50 text-blue-600', desc: 'Rich text content with images, videos, and embeds' },
+    { type: 'Video', icon: Video, color: 'bg-indigo-50 text-indigo-600', desc: 'Upload or embed video content' },
+    { type: 'Quiz', icon: FileQuestion, color: 'bg-emerald-50 text-emerald-600', desc: 'Create quizzes with multiple question types' },
+    { type: 'Assignment', icon: FileText, color: 'bg-amber-50 text-amber-600', desc: 'File upload or text-based assignments' },
+    { type: 'Document', icon: File, color: 'bg-purple-50 text-purple-600', desc: 'Upload PDF, DOCX, or other documents' },
+    { type: 'External Link', icon: Link2, color: 'bg-cyan-50 text-cyan-600', desc: 'Link to external resources' },
+  ];
+
+  return (
+    <main className="mx-auto max-w-4xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Create Course</span>
+      </div>
+
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">Create New Course</h1>
+
+      {/* Step Indicator */}
+      <div className="mb-8 flex items-center justify-center gap-2 sm:gap-4">
+        {steps.map((s, idx) => (
+          <div key={s.num} className="flex items-center">
+            <div className="flex flex-col items-center">
+              <div className={cn('flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors', step >= s.num ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400')}>
+                {step > s.num ? <Check className="h-4 w-4" /> : s.num}
+              </div>
+              <span className={cn('mt-1.5 text-xs font-medium', step >= s.num ? 'text-slate-900' : 'text-slate-400')}>{s.label}</span>
+            </div>
+            {idx < steps.length - 1 && <div className={cn('mx-2 h-0.5 w-12 sm:w-24', step > s.num ? 'bg-indigo-600' : 'bg-slate-200')} />}
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: General Info */}
+      {step === 1 && (
+        <Card className="border border-slate-200 p-6 shadow-sm">
+          <h2 className="mb-4 text-base font-semibold text-slate-900">Course Information</h2>
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Course Title *</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Introduction to UI Design" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description *</Label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Brief description of what students will learn..." className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Category</Label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
+                  <option>Design</option><option>Programming</option><option>Business</option><option>Data Science</option><option>Marketing</option>
+                </select>
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Difficulty</Label>
+                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
+                  <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Thumbnail</Label>
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-6 hover:border-indigo-300 hover:bg-slate-50">
+                <Image className="mb-2 h-8 w-8 text-slate-400" />
+                <p className="text-sm text-slate-500">Upload thumbnail image</p>
+                <p className="mt-1 text-xs text-slate-400">PNG, JPG up to 5MB · 16:9 recommended</p>
+                <input type="file" className="hidden" accept="image/*" />
+              </label>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => onNavigate('dashboard')} className="border-slate-200 text-slate-600">Cancel</Button>
+            <Button onClick={() => setStep(2)} disabled={!title || !description} className="bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">Next: Add Content<ChevronRight className="ml-1.5 h-4 w-4" /></Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Step 2: Add Content */}
+      {step === 2 && (
+        <Card className="border border-slate-200 p-6 shadow-sm">
+          <h2 className="mb-1 text-base font-semibold text-slate-900">Add Content</h2>
+          <p className="mb-4 text-sm text-slate-500">Choose what type of content you want to add to this course</p>
+
+          <div className="mb-4 flex items-center gap-2 rounded-lg bg-slate-50 p-3">
+            <GripVertical className="h-4 w-4 text-slate-300" />
+            <span className="text-sm font-medium text-slate-700">Module 1: Introduction</span>
+            <button className="ml-auto text-xs text-indigo-600 hover:text-indigo-700">Rename</button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {contentTypes.map((ct) => (
+              <button key={ct.type} className="flex flex-col items-center rounded-lg border border-slate-200 p-4 text-center transition-all hover:border-indigo-200 hover:shadow-sm">
+                <div className={cn('mb-2 flex h-10 w-10 items-center justify-center rounded-lg', ct.color)}>
+                  <ct.icon className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-medium text-slate-900">{ct.type}</p>
+                <p className="mt-1 text-[10px] text-slate-400">{ct.desc}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 flex justify-between gap-3">
+            <Button variant="outline" onClick={() => setStep(1)} className="border-slate-200 text-slate-600"><ArrowLeft className="mr-1.5 h-4 w-4" />Back</Button>
+            <Button onClick={() => setStep(3)} className="bg-indigo-600 text-white hover:bg-indigo-700">Next: Assign Learners<ChevronRight className="ml-1.5 h-4 w-4" /></Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Step 3: Assign Learners */}
+      {step === 3 && (
+        <Card className="border border-slate-200 p-6 shadow-sm">
+          <h2 className="mb-1 text-base font-semibold text-slate-900">Assign Learners</h2>
+          <p className="mb-4 text-sm text-slate-500">Select who should be enrolled in this course</p>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+              <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+              <div className="flex-1"><p className="text-sm font-medium text-slate-900">All Students</p><p className="text-xs text-slate-400">2,412 students enrolled</p></div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+              <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+              <div className="flex-1"><p className="text-sm font-medium text-slate-900">Design Department</p><p className="text-xs text-slate-400">186 students</p></div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+              <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+              <div className="flex-1"><p className="text-sm font-medium text-slate-900">New Hires (2024)</p><p className="text-xs text-slate-400">42 students</p></div>
+            </div>
+            <button className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-3 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600">
+              <UserPlus className="h-4 w-4" />Select Individual Learners
+            </button>
+          </div>
+
+          <div className="mt-6 flex justify-between gap-3">
+            <Button variant="outline" onClick={() => setStep(2)} className="border-slate-200 text-slate-600"><ArrowLeft className="mr-1.5 h-4 w-4" />Back</Button>
+            <Button onClick={() => onNavigate('dashboard')} className="bg-emerald-600 text-white hover:bg-emerald-700"><CheckCircle2 className="mr-1.5 h-4 w-4" />Publish Course</Button>
+          </div>
+        </Card>
+      )}
+    </main>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState<View>('login');
@@ -1199,6 +1873,10 @@ export default function App() {
         {view === 'quiz-results' && <QuizResultsView onNavigate={handleNavigate} />}
         {view === 'assignment' && <AssignmentView onNavigate={handleNavigate} />}
         {view === 'discussions' && <DiscussionsView onNavigate={handleNavigate} />}
+        {view === 'admin' && <AdminView onNavigate={handleNavigate} />}
+        {view === 'users' && <UsersView onNavigate={handleNavigate} />}
+        {view === 'gamification' && <GamificationView onNavigate={handleNavigate} />}
+        {view === 'course-create' && <CourseCreateView onNavigate={handleNavigate} />}
       </div>
     </div>
   );
