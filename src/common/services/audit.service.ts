@@ -38,9 +38,22 @@ export type AuditAction =
   | 'QUESTION_DELETE'
   | 'QUIZ_ATTEMPT_START'
   | 'QUIZ_ATTEMPT_SUBMIT'
-  | 'QUIZ_MANUAL_GRADE';
+  | 'QUIZ_MANUAL_GRADE'
+  | 'ASSIGNMENT_CREATE'
+  | 'ASSIGNMENT_UPDATE'
+  | 'ASSIGNMENT_ARCHIVE'
+  | 'RUBRIC_CREATE'
+  | 'RUBRIC_UPDATE'
+  | 'RUBRIC_DELETE'
+  | 'SUBMISSION_CREATE'
+  | 'SUBMISSION_UPDATE'
+  | 'SUBMISSION_GRADE'
+  | 'SUBMISSION_REVISION_REQUEST'
+  | 'SUBMISSION_RESUBMIT'
+  | 'PEER_REVIEW_ASSIGN'
+  | 'PEER_REVIEW_SUBMIT';
 
-export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt';
+export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt' | 'Assignment' | 'Rubric' | 'Submission' | 'PeerReview';
 
 export interface AuditContext {
   /** Caller IP (best-effort). */

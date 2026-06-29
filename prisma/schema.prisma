@@ -34,6 +34,11 @@ model User {
   quizzes       Quiz[]          @relation("quizCreator")
   quizAttempts  QuizAttempt[]
   manualGrading ManualGrading[]
+  assignments          Assignment[]      @relation("assignmentCreator")
+  submissions          Submission[]      @relation("submissionUser")
+  gradedSubmissions    Submission[]      @relation("submissionGrader")
+  peerReviewsGiven     PeerReview[]      @relation("peerReviewReviewer")
+  gradeChanges         GradeHistory[]    @relation("gradeChanger")
 }
 
 model RefreshToken {
@@ -129,6 +134,7 @@ model Content {
 
   progress Progress[]
   quiz     Quiz?
+  assignment Assignment?
 }
 
 model AuditLog {
@@ -177,6 +183,7 @@ model Enrollment {
   course   Course     @relation(fields: [courseId], references: [id])
   progress Progress[]
   attempts QuizAttempt[]
+  submissions Submission[]
 
   @@unique([userId, courseId])
 }
@@ -349,4 +356,139 @@ model Answer {
   question Question    @relation(fields: [questionId], references: [id])
 
   @@unique([attemptId, questionId])
+}
+
+// ---------------------------------------------------------------------------
+// Assignments & Submissions (Step 8)
+// ---------------------------------------------------------------------------
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  LATE
+  REVISION_REQUESTED
+  RESUBMITTED
+  GRADED
+  RETURNED
+}
+
+enum GradingStatus {
+  NOT_GRADED
+  IN_PROGRESS
+  GRADED
+}
+
+enum PeerReviewStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Assignment {
+  id                     String           @id @default(auto()) @map("_id") @db.ObjectId
+  contentId              String?          @unique @db.ObjectId
+  title                  String
+  description            String?
+  instructions           String?
+  dueDate                DateTime?
+  lateSubmissionDeadline DateTime?
+  latePenaltyPercentage  Float            @default(0)
+  maxPoints              Float            @default(100)
+  allowResubmissions     Boolean          @default(true)
+  maxResubmissions       Int              @default(3)
+  allowPeerReview        Boolean          @default(false)
+  peerReviewDeadline     DateTime?
+  peerReviewCount        Int              @default(2)
+  requiresFileUpload     Boolean          @default(true)
+  allowedFileTypes       String[]
+  maxFileSizeMB          Int              @default(10)
+  status                 AssignmentStatus @default(DRAFT)
+  createdBy              String           @db.ObjectId
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  creator     User         @relation("assignmentCreator", fields: [createdBy], references: [id])
+  content     Content?     @relation(fields: [contentId], references: [id])
+  rubric      Rubric?
+  submissions Submission[]
+  peerReviews PeerReview[]
+}
+
+model Rubric {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId String  @unique @db.ObjectId
+  name        String
+  description String?
+  criteria    Json
+  totalPoints Float    @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+model Submission {
+  id                String           @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId      String           @db.ObjectId
+  userId            String           @db.ObjectId
+  enrollmentId      String           @db.ObjectId
+  status            SubmissionStatus @default(NOT_SUBMITTED)
+  submittedAt       DateTime?
+  version           Int              @default(1)
+  content           Json
+  feedback          String?
+  grade             Float?
+  gradedAt          DateTime?
+  gradedBy          String?          @db.ObjectId
+  gradingStatus     GradingStatus    @default(NOT_GRADED)
+  revisionRequested Boolean          @default(false)
+  revisionComments  String?
+  plagiarismScore   Float?
+  plagiarismReport  String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  assignment          Assignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user                User         @relation("submissionUser", fields: [userId], references: [id])
+  enrollment          Enrollment   @relation(fields: [enrollmentId], references: [id])
+  grader              User?         @relation("submissionGrader", fields: [gradedBy], references: [id])
+  peerReviewsReceived PeerReview[]  @relation("peerReviewSubmission")
+  gradeHistory        GradeHistory[]
+}
+
+model PeerReview {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId String           @db.ObjectId
+  reviewerId   String           @db.ObjectId
+  submissionId String           @db.ObjectId
+  status       PeerReviewStatus @default(NOT_STARTED)
+  score        Float?
+  feedback     String?
+  comments     Json?
+  submittedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  reviewer   User       @relation("peerReviewReviewer", fields: [reviewerId], references: [id])
+  submission Submission @relation("peerReviewSubmission", fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model GradeHistory {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId  String   @db.ObjectId
+  previousGrade Float?
+  newGrade      Float
+  changedBy     String   @db.ObjectId
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  changer    User       @relation("gradeChanger", fields: [changedBy], references: [id])
 }
