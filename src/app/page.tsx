@@ -13,6 +13,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLogin } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -192,14 +193,24 @@ function Header({ onMenuClick, onNavigate, currentView }: { onMenuClick: () => v
 // ─── Login Page ──────────────────────────────────────────────────────────
 function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('admin@lms.com');
+  const [password, setPassword] = useState('Admin123!');
+  const [error, setError] = useState('');
+  const loginMutation = useLogin();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(); }, 800);
+    setError('');
+    loginMutation.mutate(
+      { email, password },
+      {
+        onSuccess: () => onLogin(),
+        onError: (err: unknown) => {
+          const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+          setError(axiosErr.response?.data?.message || axiosErr.message || 'Login failed. Make sure the backend is running on port 5000.');
+        },
+      },
+    );
   };
 
   return (
@@ -236,9 +247,15 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
               <input type="checkbox" id="remember" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
               <Label htmlFor="remember" className="text-sm text-slate-600">Remember me for 30 days</Label>
             </div>
-            <Button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
-              {loading ? 'Signing in...' : 'Sign In'}
+            <Button type="submit" disabled={loginMutation.isPending} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+              {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
             </Button>
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+            )}
           </form>
           <div className="mt-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-slate-200" />

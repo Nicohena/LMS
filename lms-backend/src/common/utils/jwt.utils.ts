@@ -2,12 +2,13 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { TokenPayload } from '../../modules/auth/auth.types';
 
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '15m';
 const REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
 
-function requireSecret(secret: string | undefined, name: string): string {
+function requireSecret(name: string): string {
+  const secret = process.env.JWT_ACCESS_SECRET && name === 'JWT_ACCESS_SECRET'
+    ? process.env.JWT_ACCESS_SECRET
+    : process.env.JWT_REFRESH_SECRET;
   if (!secret) {
     throw new Error(
       `Missing ${name}. Set it in .env (see .env.example).`,
@@ -17,13 +18,13 @@ function requireSecret(secret: string | undefined, name: string): string {
 }
 
 export function signAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, requireSecret(ACCESS_SECRET, 'JWT_ACCESS_SECRET'), {
+  return jwt.sign(payload, requireSecret('JWT_ACCESS_SECRET'), {
     expiresIn: ACCESS_EXPIRY,
   } as SignOptions);
 }
 
 export function signRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, requireSecret(REFRESH_SECRET, 'JWT_REFRESH_SECRET'), {
+  return jwt.sign(payload, requireSecret('JWT_REFRESH_SECRET'), {
     expiresIn: REFRESH_EXPIRY,
   } as SignOptions);
 }
@@ -31,7 +32,7 @@ export function signRefreshToken(payload: TokenPayload): string {
 export function verifyAccessToken(token: string): TokenPayload {
   const decoded = jwt.verify(
     token,
-    requireSecret(ACCESS_SECRET, 'JWT_ACCESS_SECRET'),
+    requireSecret('JWT_ACCESS_SECRET'),
   );
   return decoded as TokenPayload;
 }
@@ -39,7 +40,7 @@ export function verifyAccessToken(token: string): TokenPayload {
 export function verifyRefreshToken(token: string): TokenPayload {
   const decoded = jwt.verify(
     token,
-    requireSecret(REFRESH_SECRET, 'JWT_REFRESH_SECRET'),
+    requireSecret('JWT_REFRESH_SECRET'),
   );
   return decoded as TokenPayload;
 }
