@@ -8,6 +8,7 @@ import { isHttpError } from './common/errors';
 import authRouter from './modules/auth/auth.routes';
 import userRouter from './modules/users/user.routes';
 import courseRouter from './modules/courses/course.routes';
+import enrollmentRouter, { autoEnrollmentRouter } from './modules/enrollments/enrollment.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -58,6 +59,12 @@ app.use('/api/v1/users', userRouter);
 
 // --- Courses module ---
 app.use('/api/v1/courses', courseRouter);
+
+// --- Enrollments module ---
+app.use('/api/v1/enrollments', enrollmentRouter);
+
+// --- Auto-enrollment admin routes ---
+app.use('/api/v1/admin/auto-enrollment', autoEnrollmentRouter);
 
 // --- Test routes for RBAC verification (Step 3) ---
 // Kept for quick smoke-testing of the authenticate/authorize middlewares.
