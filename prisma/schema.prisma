@@ -1,32 +1,1029 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+model User {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  email              String         @unique
+  passwordHash       String
+  firstName          String
+  lastName           String
+  role               Role           @default(STUDENT)
+  isActive           Boolean        @default(true)
+  mustChangePassword Boolean        @default(false)
+  profilePicture     String?
+  bio                String?
+  lastLogin          DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  refreshTokens RefreshToken[] @relation("userRefreshTokens")
+  courses       Course[]        @relation("courseCreator")
+  enrollments   Enrollment[]
+  quizzes       Quiz[]          @relation("quizCreator")
+  quizAttempts  QuizAttempt[]
+  manualGrading ManualGrading[]
+  assignments          Assignment[]      @relation("assignmentCreator")
+  submissions          Submission[]      @relation("submissionUser")
+  gradedSubmissions    Submission[]      @relation("submissionGrader")
+  peerReviewsGiven     PeerReview[]      @relation("peerReviewReviewer")
+  gradeChanges         GradeHistory[]    @relation("gradeChanger")
+  notifications        Notification[]
+  notificationPrefs    NotificationPreference[]
+  discussions          Discussion[]      @relation("discussionAuthor")
+  discussionReplies    DiscussionReply[] @relation("replyAuthor")
+  sentMessages         Message[]         @relation("messageSender")
+  receivedMessages     Message[]         @relation("messageReceiver")
+  messageGroupMemberships MessageGroupMember[]
+  announcements        Announcement[]
+  certificates         Certificate[]
+  badges               UserBadge[]
+  xpTransactions       XPTransaction[]
+  userLevel            UserLevel?
+  learningStreak       LearningStreak?
+  auditLogs            AuditLog[]
+  reportTemplates      ReportTemplate[]
+  platformSettings     PlatformSetting[]
+  emailTemplates       EmailTemplate[]
+  gradingScales        GradingScale[]
+}
+
+model RefreshToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  token     String   @unique
+  userId    String   @db.ObjectId
+  user      User     @relation("userRefreshTokens", fields: [userId], references: [id])
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Course management (Step 5)
+// ---------------------------------------------------------------------------
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum ContentType {
+  PAGE
+  VIDEO
+  DOCUMENT
+  QUIZ
+  ASSIGNMENT
+  EXTERNAL_LINK
+}
+
+model Course {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  thumbnail   String?
+  category    String?
+  tags        String[]
+  duration    Int?
+  difficulty  DifficultyLevel @default(BEGINNER)
+  language    String         @default("English")
+  status      CourseStatus   @default(DRAFT)
+  createdBy   String         @db.ObjectId
+  academicYearId String?     @db.ObjectId
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  creator User     @relation("courseCreator", fields: [createdBy], references: [id])
+  modules Module[]
+  enrollments Enrollment[]
+  autoEnrollmentRules AutoEnrollmentRule[]
+  discussions  Discussion[]
+  announcements Announcement[]
+  certificates Certificate[]
+  leaderboardSnapshots LeaderboardSnapshot[]
+  academicYear AcademicYear? @relation(fields: [academicYearId], references: [id])
+}
+
+model Module {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  courseId    String   @db.ObjectId
+  title       String
+  description String?
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contents Content[]
+  discussions Discussion[] @relation("moduleDiscussions")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Content {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  moduleId    String      @db.ObjectId
+  type        ContentType
+  title       String
+  description String?
+  contentJson Json?
+  videoUrl    String?
+  fileUrl     String?
+  externalUrl String?
+  duration    Int?
+  order       Int
+  isPublished Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Quiz / Assignment relations will be added in a future step
+  // (the ContentType enum reserves QUIZ and ASSIGNMENT for forward compat).
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  progress Progress[]
+  quiz     Quiz?
+  assignment Assignment?
+}
+
+model AuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String?  @db.ObjectId
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Enrollment & Progress Tracking (Step 6)
+// ---------------------------------------------------------------------------
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+  PENDING
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Enrollment {
+  id                 String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String           @db.ObjectId
+  courseId           String           @db.ObjectId
+  status             EnrollmentStatus @default(ACTIVE)
+  progressPercentage Float            @default(0)
+  enrolledAt         DateTime         @default(now())
+  completedAt        DateTime?
+  droppedAt          DateTime?
+  lastAccessedAt     DateTime         @default(now())
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  user     User       @relation(fields: [userId], references: [id])
+  course   Course     @relation(fields: [courseId], references: [id])
+  progress Progress[]
+  attempts QuizAttempt[]
+  submissions Submission[]
+
+  @@unique([userId, courseId])
+}
+
+model Progress {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  enrollmentId    String         @db.ObjectId
+  contentId       String         @db.ObjectId
+  status          ProgressStatus @default(NOT_STARTED)
+  progressPercent Float          @default(0)
+  timeSpent       Int            @default(0)
+  lastAccessedAt  DateTime       @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  content    Content    @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, contentId])
+}
+
+model AutoEnrollmentRule {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  ruleType   String
+  ruleConfig Json
+  courseId   String   @db.ObjectId
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Quiz & Assessment Engine (Step 7)
+// ---------------------------------------------------------------------------
+
+enum QuestionType {
+  MULTIPLE_CHOICE_SINGLE
+  MULTIPLE_CHOICE_MULTIPLE
+  TRUE_FALSE
+  FILL_IN_BLANK
+  MATCHING
+  SORTING
+  SHORT_ANSWER
+  ESSAY
+  FILE_UPLOAD
+  HOTSPOT
+}
+
+enum QuizStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  TIMED_OUT
+  ABANDONED
+}
+
+model Quiz {
+  id                 String      @id @default(auto()) @map("_id") @db.ObjectId
+  contentId          String?     @unique @db.ObjectId
+  title              String
+  description        String?
+  instructions       String?
+  timeLimit          Int?
+  passingScore       Float       @default(70)
+  maxAttempts        Int         @default(1)
+  shuffleQuestions   Boolean     @default(false)
+  shuffleAnswers     Boolean     @default(false)
+  showFeedback       Boolean     @default(true)
+  showCorrectAnswers Boolean     @default(false)
+  status             QuizStatus  @default(DRAFT)
+  createdBy          String      @db.ObjectId
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  creator   User         @relation("quizCreator", fields: [createdBy], references: [id])
+  content   Content?     @relation(fields: [contentId], references: [id])
+  questions Question[]
+  attempts  QuizAttempt[]
+  certificates Certificate[]
+}
+
+model Question {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  quizId        String       @db.ObjectId
+  type          QuestionType
+  questionText  String
+  questionImage String?
+  explanation   String?
+  options       Json?
+  correctAnswer Json?
+  points        Int          @default(1)
+  order         Int          @default(0)
+  isRequired    Boolean      @default(true)
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  quiz    Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers Answer[]
+  manualGrading ManualGrading[]
+}
+
+model QuizAttempt {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  quizId           String        @db.ObjectId
+  userId           String        @db.ObjectId
+  enrollmentId     String        @db.ObjectId
+  attemptNumber    Int           @default(1)
+  status           AttemptStatus @default(NOT_STARTED)
+  startTime        DateTime?
+  endTime          DateTime?
+  timeSpent        Int           @default(0)
+  score            Float?
+  maxPossibleScore Float?
+  scorePercentage  Float?
+  passed           Boolean?
+  answers          Json?
+  gradedAt         DateTime?
+  gradedBy         String?       @db.ObjectId
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  quiz        Quiz           @relation(fields: [quizId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
+  enrollment  Enrollment     @relation(fields: [enrollmentId], references: [id])
+  answers_rel Answer[]
+  grading     ManualGrading[]
+}
+
+model ManualGrading {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  attemptId      String   @db.ObjectId
+  questionId     String   @db.ObjectId
+  pointsAwarded  Float
+  pointsPossible Float
+  feedback       String?
+  gradedBy       String   @db.ObjectId
+  gradedAt       DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+  grader   User        @relation(fields: [gradedBy], references: [id])
+
+  @@unique([attemptId, questionId])
+}
+
+model Answer {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  attemptId     String   @db.ObjectId
+  questionId    String   @db.ObjectId
+  answer        Json
+  isCorrect     Boolean?
+  pointsAwarded Float?
+  feedback      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+}
+
+// ---------------------------------------------------------------------------
+// Assignments & Submissions (Step 8)
+// ---------------------------------------------------------------------------
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  LATE
+  REVISION_REQUESTED
+  RESUBMITTED
+  GRADED
+  RETURNED
+}
+
+enum GradingStatus {
+  NOT_GRADED
+  IN_PROGRESS
+  GRADED
+}
+
+enum PeerReviewStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Assignment {
+  id                     String           @id @default(auto()) @map("_id") @db.ObjectId
+  contentId              String?          @unique @db.ObjectId
+  title                  String
+  description            String?
+  instructions           String?
+  dueDate                DateTime?
+  lateSubmissionDeadline DateTime?
+  latePenaltyPercentage  Float            @default(0)
+  maxPoints              Float            @default(100)
+  allowResubmissions     Boolean          @default(true)
+  maxResubmissions       Int              @default(3)
+  allowPeerReview        Boolean          @default(false)
+  peerReviewDeadline     DateTime?
+  peerReviewCount        Int              @default(2)
+  requiresFileUpload     Boolean          @default(true)
+  allowedFileTypes       String[]
+  maxFileSizeMB          Int              @default(10)
+  status                 AssignmentStatus @default(DRAFT)
+  createdBy              String           @db.ObjectId
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  creator     User         @relation("assignmentCreator", fields: [createdBy], references: [id])
+  content     Content?     @relation(fields: [contentId], references: [id])
+  rubric      Rubric?
+  submissions Submission[]
+  peerReviews PeerReview[]
+}
+
+model Rubric {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId String  @unique @db.ObjectId
+  name        String
+  description String?
+  criteria    Json
+  totalPoints Float    @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+model Submission {
+  id                String           @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId      String           @db.ObjectId
+  userId            String           @db.ObjectId
+  enrollmentId      String           @db.ObjectId
+  status            SubmissionStatus @default(NOT_SUBMITTED)
+  submittedAt       DateTime?
+  version           Int              @default(1)
+  content           Json
+  feedback          String?
+  grade             Float?
+  gradedAt          DateTime?
+  gradedBy          String?          @db.ObjectId
+  gradingStatus     GradingStatus    @default(NOT_GRADED)
+  revisionRequested Boolean          @default(false)
+  revisionComments  String?
+  plagiarismScore   Float?
+  plagiarismReport  String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  assignment          Assignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user                User         @relation("submissionUser", fields: [userId], references: [id])
+  enrollment          Enrollment   @relation(fields: [enrollmentId], references: [id])
+  grader              User?         @relation("submissionGrader", fields: [gradedBy], references: [id])
+  peerReviewsReceived PeerReview[]  @relation("peerReviewSubmission")
+  gradeHistory        GradeHistory[]
+}
+
+model PeerReview {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId String           @db.ObjectId
+  reviewerId   String           @db.ObjectId
+  submissionId String           @db.ObjectId
+  status       PeerReviewStatus @default(NOT_STARTED)
+  score        Float?
+  feedback     String?
+  comments     Json?
+  submittedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  reviewer   User       @relation("peerReviewReviewer", fields: [reviewerId], references: [id])
+  submission Submission @relation("peerReviewSubmission", fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model GradeHistory {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId  String   @db.ObjectId
+  previousGrade Float?
+  newGrade      Float
+  changedBy     String   @db.ObjectId
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  changer    User       @relation("gradeChanger", fields: [changedBy], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications & Communication (Step 9)
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  ENROLLMENT
+  ASSIGNMENT_POSTED
+  ASSIGNMENT_DUE
+  ASSIGNMENT_GRADED
+  QUIZ_GRADED
+  COURSE_COMPLETED
+  DISCUSSION_REPLY
+  MENTION
+  ANNOUNCEMENT
+  PEER_REVIEW_ASSIGNED
+  PEER_REVIEW_COMPLETED
+  REVISION_REQUESTED
+  SYSTEM
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+  SMS
+}
+
+model Notification {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String               @db.ObjectId
+  type        NotificationType
+  title       String
+  content     String
+  priority    NotificationPriority @default(NORMAL)
+  link        String?
+  isRead      Boolean              @default(false)
+  readAt      DateTime?
+  deliveredAt DateTime?
+  channels    NotificationChannel[]
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationPreference {
+  id              String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String               @db.ObjectId
+  type            NotificationType
+  channel         NotificationChannel
+  enabled         Boolean              @default(true)
+  quietHoursStart String?
+  quietHoursEnd   String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, channel])
+}
+
+model Discussion {
+  id           String             @id @default(auto()) @map("_id") @db.ObjectId
+  courseId     String?            @db.ObjectId
+  sectionId    String?            @db.ObjectId
+  title        String
+  content      String
+  authorId     String             @db.ObjectId
+  pinned       Boolean            @default(false)
+  locked       Boolean            @default(false)
+  bestAnswerId String?            @unique @db.ObjectId
+  views        Int                @default(0)
+  upvotes      Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  course      Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  section     Module?           @relation("moduleDiscussions", fields: [sectionId], references: [id])
+  author      User              @relation("discussionAuthor", fields: [authorId], references: [id])
+  replies     DiscussionReply[]
+  bestAnswer  DiscussionReply?  @relation("BestAnswer", fields: [bestAnswerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model DiscussionReply {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  discussionId String           @db.ObjectId
+  authorId     String           @db.ObjectId
+  content      String
+  parentId     String?          @db.ObjectId
+  upvotes      Int              @default(0)
+  isBestAnswer Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  discussion Discussion        @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  author     User              @relation("replyAuthor", fields: [authorId], references: [id])
+  parent     DiscussionReply?  @relation("ParentReply", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children   DiscussionReply[] @relation("ParentReply")
+  bestAnswerOf Discussion?     @relation("BestAnswer")
+}
+
+model Message {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId   String   @db.ObjectId
+  receiverId String?  @db.ObjectId
+  groupId    String?  @db.ObjectId
+  content    String
+  attachments Json?
+  isRead     Boolean  @default(false)
+  readAt     DateTime?
+  deliveredAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sender   User           @relation("messageSender", fields: [senderId], references: [id])
+  receiver User?          @relation("messageReceiver", fields: [receiverId], references: [id])
+  group    MessageGroup?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model MessageGroup {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String?
+  isDirect  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  members  MessageGroupMember[]
+  messages Message[]
+}
+
+model MessageGroupMember {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  groupId    String   @db.ObjectId
+  userId     String   @db.ObjectId
+  joinedAt   DateTime @default(now())
+  lastReadAt DateTime @default(now())
+
+  group MessageGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model Announcement {
+  id           String               @id @default(auto()) @map("_id") @db.ObjectId
+  courseId     String?              @db.ObjectId
+  title        String
+  content      String
+  priority     NotificationPriority @default(NORMAL)
+  createdBy    String               @db.ObjectId
+  scheduledAt  DateTime?
+  expiresAt    DateTime?
+  isActive     Boolean              @default(true)
+  readReceipts Json?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  course  Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator User    @relation(fields: [createdBy], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Certificates & Gamification (Step 10)
+// ---------------------------------------------------------------------------
+
+enum CertificateStatus {
+  DRAFT
+  ISSUED
+  EXPIRED
+  REVOKED
+}
+
+enum XPSource {
+  COURSE_COMPLETION
+  QUIZ_PASSED
+  QUIZ_PERFECT_SCORE
+  ASSIGNMENT_GRADED
+  DISCUSSION_CREATED
+  DISCUSSION_REPLY
+  PEER_REVIEW_COMPLETED
+  DAILY_LOGIN
+  PROFILE_COMPLETION
+  CERTIFICATE_ISSUED
+  ADMIN_AWARD
+}
+
+enum LeaderboardScope {
+  GLOBAL
+  COURSE
+  COHORT
+}
+
+model CertificateTemplate {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  description     String?
+  htmlTemplate    String
+  cssStyle        String?
+  signatureImage  String?
+  signatureName   String?
+  signatureTitle  String?
+  backgroundImage String?
+  fontFamily      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  certificates Certificate[]
+}
+
+model Certificate {
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
+  templateId        String            @db.ObjectId
+  userId            String            @db.ObjectId
+  courseId          String?           @db.ObjectId
+  quizId            String?           @db.ObjectId
+  referenceNumber   String            @unique
+  issuedAt          DateTime          @default(now())
+  expiryDate        DateTime?
+  status            CertificateStatus @default(ISSUED)
+  certificateUrl    String
+  metadata          Json?
+  revokedAt         DateTime?
+  revokedReason     String?
+  verificationToken String            @unique
+  qrCodeUrl         String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  template CertificateTemplate @relation(fields: [templateId], references: [id])
+  user     User                @relation(fields: [userId], references: [id])
+  course   Course?             @relation(fields: [courseId], references: [id])
+  quiz     Quiz?               @relation(fields: [quizId], references: [id])
+}
+
+model BadgeTemplate {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  description      String
+  imageUrl         String
+  criteria         String
+  points           Int?
+  isActive         Boolean  @default(true)
+  expiresAfterDays Int?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  awarded        UserBadge[]
+  levelThreshold LevelThreshold[]
+}
+
+model UserBadge {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  badgeTemplateId String   @db.ObjectId
+  awardedAt       DateTime @default(now())
+  expiresAt       DateTime?
+  evidence        String?
+  isDisplayed     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeTemplate BadgeTemplate @relation(fields: [badgeTemplateId], references: [id])
+
+  @@unique([userId, badgeTemplateId])
+}
+
+model XPRule {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  source      XPSource
+  points      Int
+  isActive    Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model XPTransaction {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  source    XPSource
+  points    Int
+  sourceId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LevelThreshold {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  level           Int      @unique
+  xpRequired      Int
+  badgeTemplateId String?  @db.ObjectId
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  badgeTemplate BadgeTemplate? @relation(fields: [badgeTemplateId], references: [id])
+}
+
+model UserLevel {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @unique @db.ObjectId
+  level          Int      @default(1)
+  totalXP        Int      @default(0)
+  currentLevelXP Int      @default(0)
+  nextLevelXP    Int?
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LeaderboardSnapshot {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  scope        LeaderboardScope
+  scopeId      String?          @db.ObjectId
+  period       String
+  snapshotDate DateTime         @default(now())
+  rankings     Json
+  createdAt    DateTime         @default(now())
+
+  course Course? @relation(fields: [scopeId], references: [id])
+}
+
+model LearningStreak {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @unique @db.ObjectId
+  currentStreak     Int      @default(0)
+  longestStreak     Int      @default(0)
+  lastActivityDate  DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Admin Dashboard & Reporting (Step 11)
+// ---------------------------------------------------------------------------
+
+enum ReportStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ReportFormat {
+  PDF
+  EXCEL
+  CSV
+  JSON
+}
+
+enum ReportFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
+model ReportTemplate {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  description      String?
+  dataSource       String
+  metrics          Json
+  dimensions       Json
+  filters          Json?
+  chartType        String?
+  isPublic         Boolean  @default(false)
+  createdBy        String   @db.ObjectId
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  creator          User             @relation(fields: [createdBy], references: [id])
+  scheduledReports ScheduledReport[]
+}
+
+model ScheduledReport {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  templateId   String           @db.ObjectId
+  name         String
+  frequency    ReportFrequency
+  dayOfWeek    Int?
+  dayOfMonth   Int?
+  time         String
+  recipients   Json
+  format       ReportFormat     @default(PDF)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  isActive     Boolean          @default(true)
+  status       ReportStatus     @default(DRAFT)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  template      ReportTemplate   @relation(fields: [templateId], references: [id])
+  reportHistory ReportHistory[]
+}
+
+model ReportHistory {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  scheduleId   String       @db.ObjectId
+  executedAt   DateTime     @default(now())
+  status       ReportStatus
+  fileUrl      String?
+  errorMessage String?
+  recipients   Json
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+
+  schedule ScheduledReport @relation(fields: [scheduleId], references: [id])
+}
+
+model PlatformSetting {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  value       Json
+  category    String
+  description String?
+  updatedBy   String?  @db.ObjectId
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  updater User? @relation(fields: [updatedBy], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// System Settings & Configuration (Step 12)
+// ---------------------------------------------------------------------------
+
+enum EmailTemplateType {
+  WELCOME
+  PASSWORD_RESET
+  ENROLLMENT_CONFIRMATION
+  ASSIGNMENT_GRADED
+  QUIZ_GRADED
+  COURSE_COMPLETED
+  ANNOUNCEMENT
+  PEER_REVIEW_ASSIGNED
+  REVISION_REQUESTED
+  CERTIFICATE_ISSUED
+  REPORT_READY
+}
+
+enum AcademicYearStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+model EmailTemplate {
+  id           String            @id @default(auto()) @map("_id") @db.ObjectId
+  type         EmailTemplateType @unique
+  name         String
+  subject      String
+  htmlContent  String
+  textContent  String?
+  placeholders Json
+  isActive     Boolean           @default(true)
+  version      Int               @default(1)
+  updatedBy    String?           @db.ObjectId
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  updater User? @relation(fields: [updatedBy], references: [id])
+}
+
+model GradingScale {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  type        String
+  grades      Json
+  isDefault   Boolean  @default(false)
+  createdBy   String   @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator User @relation(fields: [createdBy], references: [id])
+}
+
+model AcademicYear {
+  id        String             @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    AcademicYearStatus @default(ACTIVE)
+  isCurrent Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  courses Course[]
 }
