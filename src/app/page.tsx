@@ -12,8 +12,9 @@ import {
   Download, Trophy, Target, Flame, Medal, BadgeCheck,
   Check, GripVertical, Image,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useLogin } from '@/lib/hooks';
+import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
+import { useLogin, useLogout, useMyProfile, useCourses, useCourse, useStudentDashboard, usePlatformDashboard, useUsers, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useNotifications } from '@/lib/hooks';
+import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,10 +30,10 @@ import {
 type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'admin' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
 
 interface Course {
-  id: number; title: string; description: string; instructor: string;
+  id: string; title: string; description: string; instructor: string;
   category: string; difficulty: string; duration: string; lessons: number;
   students: number; rating: number; progress?: number; thumbnail: string;
-  modules: Module[];
+  modules?: Module[];
 }
 
 interface Module {
@@ -103,7 +104,7 @@ const quizGrading = [
 ];
 
 const catalogCourses: Course[] = [
-  { id: 1, title: 'UI Design Fundamentals', description: 'Master the principles of user interface design from wireframing to prototyping.', instructor: 'Sarah Chen', category: 'Design', difficulty: 'Beginner', duration: '12h 30m', lessons: 48, students: 1248, rating: 4.8, thumbnail: 'bg-gradient-to-br from-indigo-500 to-purple-500', progress: 75, modules: [
+  { id: 'mock-1', title: 'UI Design Fundamentals', description: 'Master the principles of user interface design from wireframing to prototyping.', instructor: 'Sarah Chen', category: 'Design', difficulty: 'Beginner', duration: '12h 30m', lessons: 48, students: 1248, rating: 4.8, thumbnail: 'bg-gradient-to-br from-indigo-500 to-purple-500', progress: 75, modules: [
     { id: 1, title: 'Introduction', lessons: [
       { id: 1, title: 'Welcome to UI Design', type: 'video', duration: '5:30', completed: true },
       { id: 2, title: 'Course Overview', type: 'page', duration: '3:00', completed: true },
@@ -118,11 +119,11 @@ const catalogCourses: Course[] = [
       { id: 7, title: 'Assignment: Wireframe', type: 'assignment', duration: '2:00:00', completed: false },
     ]},
   ]},
-  { id: 2, title: 'Advanced TypeScript', description: 'Deep dive into TypeScript generics, conditional types, and utility types.', instructor: 'Mike Rodriguez', category: 'Programming', difficulty: 'Advanced', duration: '18h 45m', lessons: 62, students: 892, rating: 4.9, thumbnail: 'bg-gradient-to-br from-blue-500 to-cyan-500', progress: 40 },
-  { id: 3, title: 'Project Management Essentials', description: 'Learn Agile, Scrum, and Kanban methodologies for effective project delivery.', instructor: 'Emily Davis', category: 'Business', difficulty: 'Intermediate', duration: '8h 15m', lessons: 32, students: 634, rating: 4.7, thumbnail: 'bg-gradient-to-br from-amber-500 to-orange-500', progress: 90 },
-  { id: 4, title: 'Data Science with Python', description: 'From Pandas to Machine Learning — master data science fundamentals.', instructor: 'James Park', category: 'Data Science', difficulty: 'Intermediate', duration: '24h 00m', lessons: 85, students: 521, rating: 4.6, thumbnail: 'bg-gradient-to-br from-emerald-500 to-teal-500', progress: 15 },
-  { id: 5, title: 'Digital Marketing Mastery', description: 'SEO, content marketing, social media strategy, and paid advertising.', instructor: 'Lisa Wang', category: 'Marketing', difficulty: 'Beginner', duration: '10h 30m', lessons: 40, students: 387, rating: 4.5, thumbnail: 'bg-gradient-to-br from-pink-500 to-rose-500' },
-  { id: 6, title: 'Cloud Architecture', description: 'AWS, Azure, GCP — design scalable cloud-native applications.', instructor: 'David Kim', category: 'Programming', difficulty: 'Advanced', duration: '20h 00m', lessons: 55, students: 445, rating: 4.8, thumbnail: 'bg-gradient-to-br from-slate-600 to-slate-800' },
+  { id: 'mock-2', title: 'Advanced TypeScript', description: 'Deep dive into TypeScript generics, conditional types, and utility types.', instructor: 'Mike Rodriguez', category: 'Programming', difficulty: 'Advanced', duration: '18h 45m', lessons: 62, students: 892, rating: 4.9, thumbnail: 'bg-gradient-to-br from-blue-500 to-cyan-500', progress: 40 },
+  { id: 'mock-3', title: 'Project Management Essentials', description: 'Learn Agile, Scrum, and Kanban methodologies for effective project delivery.', instructor: 'Emily Davis', category: 'Business', difficulty: 'Intermediate', duration: '8h 15m', lessons: 32, students: 634, rating: 4.7, thumbnail: 'bg-gradient-to-br from-amber-500 to-orange-500', progress: 90 },
+  { id: 'mock-4', title: 'Data Science with Python', description: 'From Pandas to Machine Learning — master data science fundamentals.', instructor: 'James Park', category: 'Data Science', difficulty: 'Intermediate', duration: '24h 00m', lessons: 85, students: 521, rating: 4.6, thumbnail: 'bg-gradient-to-br from-emerald-500 to-teal-500', progress: 15 },
+  { id: 'mock-5', title: 'Digital Marketing Mastery', description: 'SEO, content marketing, social media strategy, and paid advertising.', instructor: 'Lisa Wang', category: 'Marketing', difficulty: 'Beginner', duration: '10h 30m', lessons: 40, students: 387, rating: 4.5, thumbnail: 'bg-gradient-to-br from-pink-500 to-rose-500' },
+  { id: 'mock-6', title: 'Cloud Architecture', description: 'AWS, Azure, GCP — design scalable cloud-native applications.', instructor: 'David Kim', category: 'Programming', difficulty: 'Advanced', duration: '20h 00m', lessons: 55, students: 445, rating: 4.8, thumbnail: 'bg-gradient-to-br from-slate-600 to-slate-800' },
 ];
 
 const categories = ['All', 'Design', 'Programming', 'Business', 'Data Science', 'Marketing'];
@@ -130,6 +131,15 @@ const difficulties = ['All Levels', 'Beginner', 'Intermediate', 'Advanced'];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────
 function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; onClose: () => void; currentView: View; onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const role = user?.role ?? 'STUDENT';
+  // Filter nav items by role — admin/teacher see admin entries, students don't
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.label === 'Admin Panel' || item.label === 'User Management' || item.label === 'Create Course') {
+      return role === 'ADMIN' || role === 'TEACHER';
+    }
+    return true;
+  });
   return (
     <>
       {open && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={onClose} />}
@@ -140,7 +150,7 @@ function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; on
           <button onClick={onClose} className="ml-auto rounded-lg p-1 text-slate-400 hover:bg-slate-200 lg:hidden"><X className="h-5 w-5" /></button>
         </div>
         <nav className="flex flex-col gap-1 p-4">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <button key={item.label} onClick={() => item.view && onNavigate(item.view)} className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
               (item.view === currentView) ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900')}>
               <item.icon className="h-4 w-4" />
@@ -161,12 +171,19 @@ function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; on
 
 // ─── Header ───────────────────────────────────────────────────────────────
 function Header({ onMenuClick, onNavigate, currentView }: { onMenuClick: () => void; onNavigate: (v: View) => void; currentView: View }) {
+  const user = useAuthStore((s) => s.user);
+  const logoutMutation = useLogout();
+  const { data: notifData } = useNotifications({ limit: 5, unreadOnly: true });
+  const unreadCount = (notifData?.data ?? []).length;
   const headerLinks = [
     { label: 'Home', view: 'dashboard' as View },
     { label: 'My Learning', view: 'dashboard' as View },
     { label: 'Catalog', view: 'catalog' as View },
     { label: 'Favorites', view: 'dashboard' as View },
   ];
+  const displayName = user ? `${user.firstName} ${user.lastName}` : 'Guest';
+  const initials = user ? getInitials(displayName) : 'G';
+  const roleLabel = user?.role.toLowerCase() ?? 'visitor';
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-4 lg:px-6">
       <button onClick={onMenuClick} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"><Menu className="h-5 w-5" /></button>
@@ -180,10 +197,11 @@ function Header({ onMenuClick, onNavigate, currentView }: { onMenuClick: () => v
         <input type="text" placeholder="Search..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500" />
       </div>
       <div className="ml-auto flex items-center gap-3">
-        <button className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"><Bell className="h-5 w-5" /><span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" /></button>
+        <button className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"><Bell className="h-5 w-5" />{unreadCount > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />}</button>
         <div className="flex items-center gap-3 border-l border-slate-200 pl-3">
-          <div className="hidden text-right md:block"><p className="text-sm font-semibold text-slate-900">Ricky Fajrin</p><p className="text-xs text-slate-500">Student</p></div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">RF</div>
+          <div className="hidden text-right md:block"><p className="text-sm font-semibold text-slate-900">{displayName}</p><p className="text-xs capitalize text-slate-500">{roleLabel}</p></div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{initials}</div>
+          <button onClick={() => logoutMutation.mutate()} title="Logout" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><LogOut className="h-4 w-4" /></button>
         </div>
       </div>
     </header>
@@ -283,18 +301,71 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
 
 // ─── Dashboard View ──────────────────────────────────────────────────────
 function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const isStudent = user?.role === 'STUDENT';
+  const { data: studentData, isLoading: studentLoading } = useStudentDashboard();
+  const { data: platformData, isLoading: platformLoading } = usePlatformDashboard();
+  const { data: leaderboardData } = useLeaderboard({ limit: 5 });
   const SectionHeader = ({ title, action }: { title: string; action?: string }) => (
     <div className="mb-4 flex items-center justify-between">
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
       {action && <button className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">{action}<ChevronRight className="h-3.5 w-3.5" /></button>}
     </div>
   );
+
+  const firstName = user?.firstName ?? 'Learner';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  // Derive stats from real data
+  const liveStats = isStudent
+    ? [
+        { label: 'Enrolled', value: String(studentData?.stats?.totalEnrollments ?? 0), icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '' },
+        { label: 'Active', value: String(studentData?.stats?.active ?? 0), icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', trend: '' },
+        { label: 'Completed', value: String(studentData?.stats?.completed ?? 0), icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '' },
+        { label: 'Avg Progress', value: `${Math.round(studentData?.stats?.averageProgress ?? 0)}%`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
+        { label: 'Dropped', value: String(studentData?.stats?.dropped ?? 0), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', trend: '' },
+      ]
+    : [
+        { label: 'Users', value: String(platformData?.stats?.users?.total ?? 0), icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: `+${platformData?.stats?.users?.newThisWeek ?? 0}` },
+        { label: 'Courses', value: String(platformData?.stats?.courses?.total ?? 0), icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: '' },
+        { label: 'Enrollments', value: String(platformData?.stats?.enrollments?.total ?? 0), icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `+${platformData?.stats?.enrollments?.newThisWeek ?? 0}` },
+        { label: 'Modules', value: String(platformData?.stats?.content?.totalModules ?? 0), icon: Layers, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
+        { label: 'Submissions', value: String(platformData?.stats?.engagement?.assignmentSubmissions ?? 0), icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50', trend: '' },
+      ];
+
+  // Use student recentActivity as "most issued content" for students, otherwise use quiz grading list
+  const liveMostIssued = (studentData?.recentActivity ?? []).map((a: any, i: number) => ({
+    id: a.contentId ?? i,
+    title: a.contentTitle ?? 'Untitled',
+    type: a.status === 'COMPLETED' ? 'Page' : 'Assignment',
+    views: Math.round(a.progressPercent ?? 0),
+    trend: a.progressPercent && a.progressPercent > 50 ? 5 : -2,
+  }));
+
+  const liveTopLearners = (leaderboardData?.entries ?? []).map((e: any) => ({
+    id: e.userId,
+    name: e.displayName,
+    points: e.totalXP,
+    rank: e.rank,
+    avatar: getInitials(e.displayName),
+    courses: e.level,
+  }));
+
+  const loading = isStudent ? studentLoading : platformLoading;
+  if (loading) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading dashboard…</div></main>;
+  }
+
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Good morning, Ricky Fajrin 👋</h1>
-          <p className="mt-1 text-sm text-slate-500">You have <span className="font-semibold text-indigo-600">3 assignments</span> and <span className="font-semibold text-indigo-600">2 quizzes</span> due this week.</p>
+          <h1 className="text-2xl font-bold text-slate-900">{greeting}, {firstName} 👋</h1>
+          <p className="mt-1 text-sm text-slate-500">{isStudent
+            ? <>You have <span className="font-semibold text-indigo-600">{studentData?.stats?.active ?? 0} active courses</span> and your average progress is <span className="font-semibold text-indigo-600">{Math.round(studentData?.stats?.averageProgress ?? 0)}%</span>.</>
+            : <>Your platform has <span className="font-semibold text-indigo-600">{platformData?.stats?.users?.total ?? 0} users</span> and <span className="font-semibold text-indigo-600">{platformData?.stats?.courses?.total ?? 0} courses</span>.</>
+          }</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {[{ label: 'Browse Courses', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' }, { label: 'My Assignments', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' }, { label: 'Take a Quiz', icon: FileQuestion, color: 'text-emerald-600', bg: 'bg-emerald-50' }, { label: 'Certificates', icon: Award, color: 'text-purple-600', bg: 'bg-purple-50' }].map((a) => (
@@ -305,7 +376,7 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
         </div>
       </div>
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {stats.map((stat) => (
+        {liveStats.map((stat) => (
           <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center gap-3">
               <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', stat.bg)}><stat.icon className={cn('h-5 w-5', stat.color)} /></div>
@@ -317,9 +388,9 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <SectionHeader title="Most issued content" action="View all" />
+            <SectionHeader title={isStudent ? "Continue learning" : "Most issued content"} action="View all" />
             <div className="space-y-1">
-              {mostIssuedContent.map((item, idx) => (
+              {(liveMostIssued.length > 0 ? liveMostIssued : mostIssuedContent).map((item, idx) => (
                 <div key={item.id} className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-slate-50">
                   <span className="w-5 text-sm font-bold text-slate-300">{idx + 1}</span>
                   <div className="flex-1">
@@ -355,7 +426,7 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
                       <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '12px' }} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center"><p className="text-2xl font-bold text-slate-900">105</p><p className="text-[10px] text-slate-400">Total</p></div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center"><p className="text-2xl font-bold text-slate-900">{learningContentStatus.reduce((a, b) => a + b.value, 0)}</p><p className="text-[10px] text-slate-400">Total</p></div>
                 </div>
                 <div className="flex-1 space-y-2">
                   {learningContentStatus.map((item) => (
@@ -370,12 +441,12 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <Card className="border border-slate-200 p-5 shadow-sm">
             <SectionHeader title="Top Learner" action="See all" />
             <div className="space-y-1">
-              {topLearners.map((learner) => (
+              {(liveTopLearners.length > 0 ? liveTopLearners : topLearners).map((learner) => (
                 <div key={learner.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
                   <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-amber-100 text-amber-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>{learner.rank}</div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">{learner.avatar}</div>
-                  <div className="flex-1"><p className="text-sm font-medium text-slate-900">{learner.name}</p><p className="text-xs text-slate-400">{learner.courses} courses</p></div>
-                  <div className="text-right"><p className="text-sm font-bold text-indigo-600">{learner.points.toLocaleString()}</p><p className="text-[10px] text-slate-400">points</p></div>
+                  <div className="flex-1"><p className="text-sm font-medium text-slate-900">{learner.name}</p><p className="text-xs text-slate-400">Level {learner.courses}</p></div>
+                  <div className="text-right"><p className="text-sm font-bold text-indigo-600">{learner.points.toLocaleString()}</p><p className="text-[10px] text-slate-400">XP</p></div>
                 </div>
               ))}
             </div>
@@ -414,17 +485,32 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
 }
 
 // ─── Catalog View ────────────────────────────────────────────────────────
-function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: number) => void; onNavigate: (v: View) => void }) {
+function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: string) => void; onNavigate: (v: View) => void }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All Levels');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('Popular');
+  const { data, isLoading, isError } = useCourses({ limit: 50, search: searchQuery || undefined });
 
-  const filtered = catalogCourses.filter(c => {
+  // Normalize API courses into the shape expected by the UI
+  const apiCourses: Course[] = (data?.data ?? []).map((c: any) => ({
+    id: c.id,
+    title: c.title,
+    description: c.description ?? 'No description available.',
+    instructor: c.createdBy ? `${c.createdBy.firstName} ${c.createdBy.lastName}` : 'Unknown',
+    category: c.category ?? 'General',
+    difficulty: c.difficulty ? c.difficulty.charAt(0) + c.difficulty.slice(1).toLowerCase() : 'Beginner',
+    duration: c.duration ?? '—',
+    lessons: c.moduleCount ?? 0,
+    students: 0,
+    rating: 0,
+    thumbnail: 'bg-gradient-to-br from-indigo-500 to-purple-500',
+  }));
+
+  const filtered = apiCourses.filter(c => {
     const catMatch = selectedCategory === 'All' || c.category === selectedCategory;
     const diffMatch = selectedDifficulty === 'All Levels' || c.difficulty === selectedDifficulty;
-    const searchMatch = c.title.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return catMatch && diffMatch && searchMatch;
+    return catMatch && diffMatch;
   });
 
   return (
@@ -437,7 +523,7 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: numb
       </div>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div><h1 className="text-2xl font-bold text-slate-900">Course Catalog</h1><p className="mt-1 text-sm text-slate-500">Discover {catalogCourses.length} courses across {categories.length - 1} categories</p></div>
+        <div><h1 className="text-2xl font-bold text-slate-900">Course Catalog</h1><p className="mt-1 text-sm text-slate-500">Discover {apiCourses.length} courses across {categories.length - 1} categories</p></div>
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"><Filter className="h-4 w-4" />Filters</button>
           <div className="relative">
@@ -485,6 +571,8 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: numb
         {/* Course Grid */}
         <div className="lg:col-span-3">
           <div className="mb-3 text-sm text-slate-500">{filtered.length} courses found</div>
+          {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading courses…</div>}
+          {isError && <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load courses. Is the backend running on port 5000?</div>}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((course) => (
               <Card key={course.id} className="group cursor-pointer overflow-hidden border border-slate-200 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectCourse(course.id)}>
@@ -528,8 +616,34 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: numb
 }
 
 // ─── Course Detail View ──────────────────────────────────────────────────
-function CourseDetailView({ courseId, onNavigate }: { courseId: number; onNavigate: (v: View) => void }) {
-  const course = catalogCourses.find(c => c.id === courseId) || catalogCourses[0];
+function CourseDetailView({ courseId, onNavigate }: { courseId: string; onNavigate: (v: View) => void }) {
+  const { data: courseData, isLoading } = useCourse(courseId || null);
+  // Normalize the API response into our Course shape; fall back to first mock for layout
+  const apiCourse = courseData as any;
+  const course: Course = apiCourse ? {
+    id: apiCourse.id ?? apiCourse.course?.id ?? '',
+    title: apiCourse.title ?? apiCourse.course?.title ?? 'Course',
+    description: apiCourse.description ?? apiCourse.course?.description ?? 'No description available.',
+    instructor: apiCourse.createdBy ? `${apiCourse.createdBy.firstName} ${apiCourse.createdBy.lastName}` : (apiCourse.course?.createdBy ? `${apiCourse.course.createdBy.firstName} ${apiCourse.course.createdBy.lastName}` : 'Unknown'),
+    category: apiCourse.category ?? 'General',
+    difficulty: apiCourse.difficulty ? apiCourse.difficulty.charAt(0) + apiCourse.difficulty.slice(1).toLowerCase() : 'Beginner',
+    duration: apiCourse.duration ?? '—',
+    lessons: apiCourse.moduleCount ?? 0,
+    students: 0,
+    rating: 0,
+    thumbnail: 'bg-gradient-to-br from-indigo-500 to-purple-500',
+    modules: (apiCourse.modules ?? []).map((m: any, mi: number) => ({
+      id: m.id ?? mi,
+      title: m.title ?? `Module ${mi + 1}`,
+      lessons: (m.contents ?? m.lessons ?? []).map((l: any, li: number) => ({
+        id: l.id ?? li,
+        title: l.title ?? 'Untitled',
+        type: (l.type ?? 'video').toLowerCase(),
+        duration: l.duration ?? '—',
+        completed: false,
+      })),
+    })),
+  } : catalogCourses[0];
   const [activeLesson, setActiveLesson] = useState(0);
   const [activeModule, setActiveModule] = useState(0);
 
@@ -539,6 +653,10 @@ function CourseDetailView({ courseId, onNavigate }: { courseId: number; onNaviga
 
   const completedLessons = course.modules?.reduce((acc, m) => acc + m.lessons.filter(l => l.completed).length, 0) || 0;
   const totalLessons = course.modules?.reduce((acc, m) => acc + m.lessons.length, 0) || 0;
+
+  if (isLoading) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading course…</div></main>;
+  }
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
@@ -1093,17 +1211,32 @@ function DiscussionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
-  const [threads, setThreads] = useState([
-    { id: 1, title: 'How do I approach wireframing for complex apps?', author: 'Sarah Chen', avatar: 'SC', replies: 12, likes: 8, pinned: true, time: '2 hours ago', lastReply: 'Mike Rodriguez' },
-    { id: 2, title: 'Best practices for color accessibility?', author: 'James Park', avatar: 'JP', replies: 7, likes: 15, pinned: false, time: '5 hours ago', lastReply: 'Emily Davis' },
-    { id: 3, title: 'Sharing my final wireframe for feedback', author: 'Lisa Wang', avatar: 'LW', replies: 23, likes: 19, pinned: false, time: '1 day ago', lastReply: 'Sarah Chen' },
-    { id: 4, title: 'Question about the rubric — what counts as "consistency"?', author: 'David Kim', avatar: 'DK', replies: 4, likes: 3, pinned: false, time: '2 days ago', lastReply: 'Ricky Fajrin' },
-  ]);
+  const user = useAuthStore((s) => s.user);
+  const { data, isLoading } = useDiscussions({ limit: 50 });
+  const createMutation = useCreateDiscussion();
+
+  const threads = (data?.data ?? []).map((t: any) => ({
+    id: t.id,
+    title: t.title,
+    author: t.author ? `${t.author.firstName} ${t.author.lastName}` : 'Anonymous',
+    avatar: t.author ? getInitials(`${t.author.firstName} ${t.author.lastName}`) : 'A',
+    replies: t.replyCount ?? 0,
+    likes: t.upvotes ?? 0,
+    pinned: !!t.pinned,
+    time: timeAgo(t.createdAt),
+    lastReply: t.updatedAt && t.updatedAt !== t.createdAt ? `${timeAgo(t.updatedAt)}` : '',
+  }));
 
   const handleCreate = () => {
     if (!newTitle.trim()) return;
-    setThreads([{ id: Date.now(), title: newTitle, author: 'Ricky Fajrin', avatar: 'RF', replies: 0, likes: 0, pinned: false, time: 'just now', lastReply: '' }, ...threads]);
-    setNewTitle(''); setNewContent(''); setShowCreate(false);
+    createMutation.mutate(
+      { title: newTitle, content: newContent },
+      {
+        onSuccess: () => {
+          setNewTitle(''); setNewContent(''); setShowCreate(false);
+        },
+      },
+    );
   };
 
   return (
@@ -1185,15 +1318,26 @@ function DiscussionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
 // ─── Admin Dashboard View ─────────────────────────────────────────────────
 function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const { data: platformData, isLoading } = usePlatformDashboard();
+  const stats = platformData?.stats;
+
   const platformStats = [
-    { label: 'Total Users', value: '2,847', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+128' },
-    { label: 'Active Courses', value: '86', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+4' },
-    { label: 'Enrollments', value: '12,304', icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+342' },
-    { label: 'Certificates Issued', value: '1,256', icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+56' },
-    { label: 'Revenue (MTD)', value: '$48.2K', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+12%' },
-    { label: 'Avg Completion', value: '74%', icon: Target, color: 'text-cyan-600', bg: 'bg-cyan-50', trend: '+3%' },
+    { label: 'Total Users', value: String(stats?.users?.total ?? 0), icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: `+${stats?.users?.newThisWeek ?? 0}` },
+    { label: 'Active Courses', value: String(stats?.courses?.total ?? 0), icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: `+${stats?.courses?.published ?? 0}` },
+    { label: 'Enrollments', value: String(stats?.enrollments?.total ?? 0), icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `+${stats?.enrollments?.newThisWeek ?? 0}` },
+    { label: 'Certificates', value: String(stats?.engagement?.certificatesIssued ?? 0), icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
+    { label: 'Quiz Attempts', value: String(stats?.engagement?.quizAttempts ?? 0), icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', trend: '' },
+    { label: 'Submissions', value: String(stats?.engagement?.assignmentSubmissions ?? 0), icon: Target, color: 'text-cyan-600', bg: 'bg-cyan-50', trend: '' },
   ];
 
+  const userDistribution = [
+    { name: 'Students', value: stats?.users?.students ?? 0, color: '#4F46E5' },
+    { name: 'Teachers', value: stats?.users?.teachers ?? 0, color: '#10B981' },
+    { name: 'Admins', value: stats?.users?.admins ?? 0, color: '#F59E0B' },
+  ];
+  const totalUsers = stats?.users?.total ?? 0;
+
+  // Charts with mock fallback — the API doesn't expose these yet
   const enrollmentTrend = [
     { month: 'Jan', enrollments: 420, revenue: 18 },
     { month: 'Feb', enrollments: 510, revenue: 22 },
@@ -1204,7 +1348,6 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
     { month: 'Jul', enrollments: 950, revenue: 42 },
     { month: 'Aug', enrollments: 1120, revenue: 48 },
   ];
-
   const topCourses = [
     { id: 1, title: 'UI Design Fundamentals', students: 1248, revenue: '$12,480', completion: 78 },
     { id: 2, title: 'Advanced TypeScript', students: 892, revenue: '$8,920', completion: 65 },
@@ -1213,11 +1356,9 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
     { id: 5, title: 'Digital Marketing', students: 387, revenue: '$3,870', completion: 71 },
   ];
 
-  const userDistribution = [
-    { name: 'Students', value: 2412, color: '#4F46E5' },
-    { name: 'Teachers', value: 385, color: '#10B981' },
-    { name: 'Admins', value: 50, color: '#F59E0B' },
-  ];
+  if (isLoading) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading admin dashboard…</div></main>;
+  }
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
@@ -1333,7 +1474,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-xl font-bold text-slate-900">2,847</p>
+                <p className="text-xl font-bold text-slate-900">{totalUsers.toLocaleString()}</p>
                 <p className="text-[10px] text-slate-400">Total Users</p>
               </div>
             </div>
@@ -1381,21 +1522,21 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [roleFilter, setRoleFilter] = useState('All');
   const [showCreate, setShowCreate] = useState(false);
 
-  const users = [
-    { id: 1, name: 'Ricky Fajrin', email: 'ricky@trenning.com', role: 'STUDENT', status: 'Active', courses: 4, joined: 'Jan 2024', avatar: 'RF' },
-    { id: 2, name: 'Sarah Chen', email: 'sarah@trenning.com', role: 'TEACHER', status: 'Active', courses: 12, joined: 'Dec 2023', avatar: 'SC' },
-    { id: 3, name: 'Mike Rodriguez', email: 'mike@trenning.com', role: 'TEACHER', status: 'Active', courses: 8, joined: 'Nov 2023', avatar: 'MR' },
-    { id: 4, name: 'Emily Davis', email: 'emily@trenning.com', role: 'STUDENT', status: 'Active', courses: 7, joined: 'Jan 2024', avatar: 'ED' },
-    { id: 5, name: 'James Park', email: 'james@trenning.com', role: 'STUDENT', status: 'Inactive', courses: 5, joined: 'Feb 2024', avatar: 'JP' },
-    { id: 6, name: 'Lisa Wang', email: 'lisa@trenning.com', role: 'STUDENT', status: 'Active', courses: 4, joined: 'Mar 2024', avatar: 'LW' },
-    { id: 7, name: 'David Kim', email: 'david@trenning.com', role: 'ADMIN', status: 'Active', courses: 0, joined: 'Oct 2023', avatar: 'DK' },
-    { id: 8, name: 'Anna Smith', email: 'anna@trenning.com', role: 'STUDENT', status: 'Active', courses: 3, joined: 'Mar 2024', avatar: 'AS' },
-  ];
+  const { data, isLoading } = useUsers({ page: 1, limit: 50, search: search || undefined });
+  const apiUsers = (data?.data ?? []).map((u: any) => ({
+    id: u.id,
+    name: `${u.firstName} ${u.lastName}`,
+    email: u.email,
+    role: u.role,
+    status: u.isActive ? 'Active' : 'Inactive',
+    courses: 0,
+    joined: u.createdAt ? formatDate(u.createdAt) : '—',
+    avatar: getInitials(`${u.firstName} ${u.lastName}`),
+  }));
 
-  const filtered = users.filter(u => {
-    const searchMatch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
+  const filtered = apiUsers.filter(u => {
     const roleMatch = roleFilter === 'All' || u.role === roleFilter;
-    return searchMatch && roleMatch;
+    return roleMatch;
   });
 
   const roleColors: Record<string, string> = {
@@ -1415,7 +1556,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
-          <p className="mt-1 text-sm text-slate-500">{filtered.length} users · {users.filter(u => u.status === 'Active').length} active</p>
+          <p className="mt-1 text-sm text-slate-500">{isLoading ? 'Loading…' : `${filtered.length} users · ${apiUsers.filter(u => u.status === 'Active').length} active`}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export CSV</Button>
@@ -1526,6 +1667,19 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
 // ─── Gamification & Certificates View ─────────────────────────────────────
 function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const { data: levelData } = useUserLevel();
+  const { data: badgesData } = useUserBadges();
+  const { data: leaderboardData } = useLeaderboard({ limit: 10 });
+  const { data: certData } = useMyCertificates();
+
+  const level = (levelData as any)?.level;
+  const totalXP = level?.totalXP ?? 0;
+  const currentLevel = level?.level ?? 1;
+  const progressPct = level?.progressToNextLevel ?? 0;
+
+  // Combine earned badges with mock badge catalog
+  const earnedBadges = (badgesData?.badges ?? []) as any[];
   const badges = [
     { id: 1, name: 'Quick Learner', icon: Zap, color: 'bg-amber-100 text-amber-600', earned: true, date: '2 days ago' },
     { id: 2, name: 'Quiz Master', icon: FileQuestion, color: 'bg-indigo-100 text-indigo-600', earned: true, date: '1 week ago' },
@@ -1535,18 +1689,36 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
     { id: 6, name: '7-Day Streak', icon: Flame, color: 'bg-orange-100 text-orange-600', earned: true, date: 'Today' },
     { id: 7, name: 'Design Master', icon: Award, color: 'bg-pink-100 text-pink-600', earned: false, date: '' },
     { id: 8, name: 'Top 10', icon: Trophy, color: 'bg-yellow-100 text-yellow-600', earned: false, date: '' },
-  ];
+  ].map((b, i) => {
+    const earned = i < earnedBadges.length;
+    return { ...b, earned, date: earned ? (earnedBadges[i]?.awardedAt ? timeAgo(earnedBadges[i].awardedAt) : b.date) : '' };
+  });
 
-  const certificates = [
+  const certificates = (certData?.data ?? certData?.certificates ?? []) as any[];
+  const certList = certificates.length > 0 ? certificates.map((c: any) => ({
+    id: c.id,
+    title: c.course?.title ?? c.courseTitle ?? 'Course Certificate',
+    issueDate: c.issuedAt ? formatDate(c.issuedAt) : '—',
+    ref: c.certificateNumber ?? c.id,
+    instructor: c.issuedBy?.firstName ? `${c.issuedBy.firstName} ${c.issuedBy.lastName}` : '—',
+  })) : [
     { id: 1, title: 'UI Design Fundamentals', issueDate: 'Jun 15, 2024', ref: 'CERT-2024-0042', instructor: 'Sarah Chen' },
     { id: 2, title: 'Project Management Essentials', issueDate: 'May 28, 2024', ref: 'CERT-2024-0031', instructor: 'Emily Davis' },
   ];
 
-  const leaderboard = [
+  const leaderboard = (leaderboardData?.entries ?? []).map((e: any) => ({
+    rank: e.rank,
+    name: e.displayName,
+    avatar: getInitials(e.displayName),
+    xp: e.totalXP,
+    level: e.level,
+    courses: 0,
+  }));
+  const liveLeaderboard = leaderboard.length > 0 ? leaderboard : [
     { rank: 1, name: 'Sarah Chen', avatar: 'SC', xp: 4850, level: 12, courses: 8 },
     { rank: 2, name: 'Mike Rodriguez', avatar: 'MR', xp: 4120, level: 11, courses: 6 },
     { rank: 3, name: 'Emily Davis', avatar: 'ED', xp: 3890, level: 10, courses: 7 },
-    { rank: 4, name: 'Ricky Fajrin', avatar: 'RF', xp: 3240, level: 9, courses: 4 },
+    { rank: 4, name: user ? `${user.firstName} ${user.lastName}` : 'You', avatar: user ? getInitials(`${user.firstName} ${user.lastName}`) : 'Y', xp: totalXP, level: currentLevel, courses: 0 },
     { rank: 5, name: 'Lisa Wang', avatar: 'LW', xp: 2980, level: 8, courses: 4 },
   ];
 
@@ -1569,17 +1741,17 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
             </div>
             <div>
               <p className="text-sm text-indigo-100">Your Level</p>
-              <p className="text-3xl font-bold text-white">Level 9</p>
-              <p className="text-xs text-indigo-200">3,240 XP · 760 XP to Level 10</p>
+              <p className="text-3xl font-bold text-white">Level {currentLevel}</p>
+              <p className="text-xs text-indigo-200">{totalXP.toLocaleString()} XP · {level?.nextLevelXP ? `${level.nextLevelXP - level.currentLevelXP} XP to Level ${currentLevel + 1}` : ''}</p>
             </div>
           </div>
           <div className="sm:w-64">
             <div className="mb-1.5 flex items-center justify-between text-xs text-indigo-100">
-              <span>Level 9</span>
-              <span>81% to Level 10</span>
+              <span>Level {currentLevel}</span>
+              <span>{Math.round(progressPct)}% to Level {currentLevel + 1}</span>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full bg-white/20">
-              <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-white" style={{ width: '81%' }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-white" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
         </div>
@@ -1624,7 +1796,7 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
               <Award className="h-5 w-5 text-indigo-500" />
             </div>
             <div className="space-y-3">
-              {certificates.map((cert) => (
+              {certList.map((cert) => (
                 <div key={cert.id} className="flex items-center gap-4 rounded-lg border border-slate-200 p-4 hover:border-indigo-200 hover:shadow-sm">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500">
                     <BadgeCheck className="h-6 w-6 text-white" />
@@ -1676,7 +1848,7 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
               <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">This Week</Badge>
             </div>
             <div className="space-y-1">
-              {leaderboard.map((learner) => (
+              {liveLeaderboard.map((learner) => (
                 <div key={learner.rank} className={cn('flex items-center gap-3 rounded-lg px-2 py-2', learner.name === 'Ricky Fajrin' ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
                   <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-amber-100 text-amber-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>
                     {learner.rank}
@@ -1860,11 +2032,22 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
 // ─── Settings View ───────────────────────────────────────────────────────
 function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [activeTab, setActiveTab] = useState('general');
-  const [siteName, setSiteName] = useState('Trenning LMS');
-  const [supportEmail, setSupportEmail] = useState('support@trenning.com');
-  const [allowReg, setAllowReg] = useState(true);
+  const { data: settingsData } = useSettings();
+  const settings = (settingsData?.settings ?? []) as any[];
+  const getSetting = (key: string) => settings.find((s: any) => s.key === key)?.value ?? '';
+  const [siteName, setSiteName] = useState(getSetting('siteName') || 'Trenning LMS');
+  const [supportEmail, setSupportEmail] = useState(getSetting('supportEmail') || 'support@trenning.com');
+  const [allowReg, setAllowReg] = useState(getSetting('allowRegistration') ?? true);
   const [maintMode, setMaintMode] = useState(false);
   const [maintMsg, setMaintMsg] = useState('Platform under maintenance.');
+
+  // Keep form state in sync once settings load
+  useEffect(() => {
+    setSiteName(getSetting('siteName') || 'Trenning LMS');
+    setSupportEmail(getSetting('supportEmail') || 'support@trenning.com');
+    setAllowReg(getSetting('allowRegistration') ?? true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsData]);
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -2050,32 +2233,53 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
 // ─── Messages View ───────────────────────────────────────────────────────
 function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const [activeChat, setActiveChat] = useState(1);
+  const [activeChat, setActiveChat] = useState<string>('');
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const { data: convData } = useConversations();
+  const { data: msgData } = useMessages(activeChat || null);
+  const sendMutation = useSendMessage();
 
-  const conversations = [
-    { id: 1, name: 'Sarah Chen', avatar: 'SC', role: 'Teacher', lastMsg: 'Sure, I can help with that assignment', time: '2m ago', unread: 2, online: true },
-    { id: 2, name: 'Mike Rodriguez', avatar: 'MR', role: 'Teacher', lastMsg: 'The quiz is due tomorrow', time: '1h ago', unread: 0, online: true },
-    { id: 3, name: 'Emily Davis', avatar: 'ED', role: 'Student', lastMsg: 'Did you finish the wireframe?', time: '3h ago', unread: 1, online: false },
-    { id: 4, name: 'Design Team', avatar: 'DT', role: 'Group', lastMsg: 'James: Great work everyone!', time: '1d ago', unread: 0, online: false },
-    { id: 5, name: 'Lisa Wang', avatar: 'LW', role: 'Student', lastMsg: 'Thanks for the feedback!', time: '2d ago', unread: 0, online: false },
+  const conversations = (convData?.conversations ?? []).map((c: any) => ({
+    id: c.id ?? c.groupId ?? c.userId,
+    name: c.displayName ?? c.name ?? (c.otherUser ? `${c.otherUser.firstName} ${c.otherUser.lastName}` : 'Conversation'),
+    avatar: c.displayName ? getInitials(c.displayName) : (c.otherUser ? getInitials(`${c.otherUser.firstName} ${c.otherUser.lastName}`) : 'C'),
+    role: c.type ?? 'Direct',
+    lastMsg: c.lastMessage?.content ?? c.lastMessage ?? '',
+    time: c.lastMessage?.createdAt ? timeAgo(c.lastMessage.createdAt) : (c.updatedAt ? timeAgo(c.updatedAt) : ''),
+    unread: c.unreadCount ?? 0,
+    online: false,
+  }));
+  // Fallback mock conversations if API returns none
+  const allConversations = conversations.length > 0 ? conversations : [
+    { id: 'mock-1', name: 'Sarah Chen', avatar: 'SC', role: 'Teacher', lastMsg: 'Sure, I can help with that assignment', time: '2m ago', unread: 2, online: true },
+    { id: 'mock-2', name: 'Mike Rodriguez', avatar: 'MR', role: 'Teacher', lastMsg: 'The quiz is due tomorrow', time: '1h ago', unread: 0, online: true },
+    { id: 'mock-3', name: 'Emily Davis', avatar: 'ED', role: 'Student', lastMsg: 'Did you finish the wireframe?', time: '3h ago', unread: 1, online: false },
+    { id: 'mock-4', name: 'Design Team', avatar: 'DT', role: 'Group', lastMsg: 'James: Great work everyone!', time: '1d ago', unread: 0, online: false },
+    { id: 'mock-5', name: 'Lisa Wang', avatar: 'LW', role: 'Student', lastMsg: 'Thanks for the feedback!', time: '2d ago', unread: 0, online: false },
   ];
+  const activeChatId = activeChat || (allConversations[0]?.id ?? '');
+  const activeConv = allConversations.find(c => c.id === activeChatId);
 
-  const messages = [
-    { id: 1, sender: 'Sarah Chen', text: "Hi Ricky! How's the wireframing assignment going?", time: '10:30 AM', isMe: false },
-    { id: 2, sender: 'Me', text: "Hi Sarah! I'm working on it now. I have a question about the checkout screen.", time: '10:32 AM', isMe: true },
-    { id: 3, sender: 'Sarah Chen', text: 'Sure, what do you need help with?', time: '10:33 AM', isMe: false },
-    { id: 4, sender: 'Me', text: 'Should I include payment method selection or just the order summary?', time: '10:35 AM', isMe: true },
-    { id: 5, sender: 'Sarah Chen', text: "Great question! Include payment method selection — it's part of the checkout flow. Make it a simple radio button list.", time: '10:37 AM', isMe: false },
-    { id: 6, sender: 'Me', text: 'Got it, thanks! I\'ll add that now.', time: '10:38 AM', isMe: true },
-    { id: 7, sender: 'Sarah Chen', text: 'Sure, I can help with that assignment. Just let me know if you need more clarification!', time: '10:40 AM', isMe: false },
+  const apiMessages = (msgData?.messages ?? msgData?.data ?? []) as any[];
+  const messages = apiMessages.map((m: any) => ({
+    id: m.id,
+    sender: m.sender?.firstName ? `${m.sender.firstName} ${m.sender.lastName}` : 'Them',
+    text: m.content,
+    time: m.createdAt ? timeAgo(m.createdAt) : '',
+    isMe: m.isMine ?? false,
+  }));
+  // Fallback mock messages
+  const allMessages = messages.length > 0 ? messages : [
+    { id: 1, sender: activeConv?.name ?? 'Sarah Chen', text: "Hi! How's the assignment going?", time: '10:30 AM', isMe: false },
+    { id: 2, sender: 'Me', text: "I'm working on it now. I have a question.", time: '10:32 AM', isMe: true },
+    { id: 3, sender: activeConv?.name ?? 'Sarah Chen', text: 'Sure, what do you need help with?', time: '10:33 AM', isMe: false },
   ];
 
   const handleSend = () => {
     if (!message.trim()) return;
+    sendMutation.mutate({ content: message, receiverId: activeConv?.id?.startsWith('mock') ? undefined : activeConv?.id });
     setMessage('');
-    // Simulate typing response
     setIsTyping(true);
     setTimeout(() => setIsTyping(false), 2000);
   };
@@ -2092,8 +2296,8 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {conversations.map((conv) => (
-            <button key={conv.id} onClick={() => setActiveChat(conv.id)} className={cn('flex w-full items-start gap-3 border-b border-slate-100 p-4 text-left transition-colors', activeChat === conv.id ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
+          {allConversations.map((conv) => (
+            <button key={conv.id} onClick={() => setActiveChat(conv.id)} className={cn('flex w-full items-start gap-3 border-b border-slate-100 p-4 text-left transition-colors', activeChatId === conv.id ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
               <div className="relative">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{conv.avatar}</div>
                 {conv.online && <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}
@@ -2120,12 +2324,12 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <button onClick={() => onNavigate('dashboard')} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 md:hidden"><ArrowLeft className="h-5 w-5" /></button>
           <div className="relative">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{conversations.find(c => c.id === activeChat)?.avatar}</div>
-            {conversations.find(c => c.id === activeChat)?.online && <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{activeConv?.avatar}</div>
+            {activeConv?.online && <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-900">{conversations.find(c => c.id === activeChat)?.name}</p>
-            <p className="text-xs text-emerald-600">{conversations.find(c => c.id === activeChat)?.online ? 'Online' : 'Offline'}</p>
+            <p className="text-sm font-semibold text-slate-900">{activeConv?.name}</p>
+            <p className="text-xs text-emerald-600">{activeConv?.online ? 'Online' : 'Offline'}</p>
           </div>
           <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><MoreHorizontal className="h-5 w-5" /></button>
         </div>
@@ -2133,7 +2337,7 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="mx-auto max-w-2xl space-y-3">
-            {messages.map((msg) => (
+            {allMessages.map((msg) => (
               <div key={msg.id} className={cn('flex', msg.isMe ? 'justify-end' : 'justify-start')}>
                 <div className={cn('max-w-[75%] rounded-2xl px-4 py-2.5 text-sm', msg.isMe ? 'rounded-br-md bg-indigo-600 text-white' : 'rounded-bl-md bg-white text-slate-700 border border-slate-200')}>
                   <p>{msg.text}</p>
@@ -2178,19 +2382,39 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
 // ─── Profile View ─────────────────────────────────────────────────────────
 function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [activeTab, setActiveTab] = useState('overview');
+  const authUser = useAuthStore((s) => s.user);
+  const { data: profile } = useMyProfile();
+  const { data: levelData } = useUserLevel();
+  const { data: studentData } = useStudentDashboard();
 
-  const achievements = [
-    { icon: Trophy, label: 'Level 9', sublabel: '3,240 XP', color: 'bg-amber-50 text-amber-600' },
-    { icon: Flame, label: '12-day streak', sublabel: 'Longest: 21 days', color: 'bg-orange-50 text-orange-600' },
-    { icon: BookOpen, label: '4 courses', sublabel: '2 in progress', color: 'bg-indigo-50 text-indigo-600' },
-    { icon: Award, label: '2 certificates', sublabel: 'This year', color: 'bg-emerald-50 text-emerald-600' },
-  ];
+  const me = profile ?? authUser;
+  const level = (levelData as any)?.level;
+  const totalXP = level?.totalXP ?? 0;
+  const currentLevel = level?.level ?? 1;
 
-  const courses = [
+  const fullName = me ? `${me.firstName} ${me.lastName}` : 'Guest';
+  const initials = me ? getInitials(fullName) : 'G';
+  const joinedDate = me?.createdAt ? formatDate(me.createdAt) : (me?.lastLogin ? formatDate(me.lastLogin) : '—');
+  const roleLabel = me?.role ? me.role.toLowerCase() : 'member';
+
+  const myCourses = (studentData?.courses ?? []).map((c: any) => ({
+    title: c.course?.title ?? 'Untitled',
+    progress: c.progressPercentage ?? 0,
+    instructor: '—',
+    difficulty: c.course?.difficulty ?? 'Beginner',
+  }));
+  const courses = myCourses.length > 0 ? myCourses : [
     { title: 'UI Design Fundamentals', progress: 75, instructor: 'Sarah Chen', difficulty: 'Beginner' },
     { title: 'Advanced TypeScript', progress: 40, instructor: 'Mike Rodriguez', difficulty: 'Advanced' },
     { title: 'Project Management', progress: 90, instructor: 'Emily Davis', difficulty: 'Intermediate' },
     { title: 'Data Science with Python', progress: 15, instructor: 'James Park', difficulty: 'Intermediate' },
+  ];
+
+  const achievements = [
+    { icon: Trophy, label: `Level ${currentLevel}`, sublabel: `${totalXP.toLocaleString()} XP`, color: 'bg-amber-50 text-amber-600' },
+    { icon: Flame, label: '12-day streak', sublabel: 'Longest: 21 days', color: 'bg-orange-50 text-orange-600' },
+    { icon: BookOpen, label: `${studentData?.stats?.totalEnrollments ?? 0} courses`, sublabel: `${studentData?.stats?.active ?? 0} in progress`, color: 'bg-indigo-50 text-indigo-600' },
+    { icon: Award, label: '2 certificates', sublabel: 'This year', color: 'bg-emerald-50 text-emerald-600' },
   ];
 
   const activity = [
@@ -2222,12 +2446,12 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="px-6 pb-6">
           <div className="-mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end gap-4">
-              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-indigo-100 text-2xl font-bold text-indigo-600 shadow-lg">RF</div>
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-indigo-100 text-2xl font-bold text-indigo-600 shadow-lg">{initials}</div>
               <div className="pb-2">
-                <h1 className="text-xl font-bold text-slate-900">Ricky Fajrin</h1>
-                <p className="text-sm text-slate-500">Student · Joined Jan 2024</p>
+                <h1 className="text-xl font-bold text-slate-900">{fullName}</h1>
+                <p className="text-sm capitalize text-slate-500">{roleLabel} · Joined {joinedDate}</p>
                 <div className="mt-1 flex items-center gap-2">
-                  <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50"><Trophy className="mr-1 h-3 w-3" />Level 9</Badge>
+                  <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50"><Trophy className="mr-1 h-3 w-3" />Level {currentLevel}</Badge>
                   <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50"><Flame className="mr-1 h-3 w-3" />12-day streak</Badge>
                 </div>
               </div>
@@ -2353,9 +2577,10 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function App() {
-  const [view, setView] = useState<View>('login');
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const [view, setView] = useState<View>(isAuthenticated ? 'dashboard' : 'login');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedCourseId, setSelectedCourseId] = useState<number>(1);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
 
   const handleNavigate = (v: View) => {
     setView(v);
@@ -2363,14 +2588,14 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  const handleSelectCourse = (id: number) => {
+  const handleSelectCourse = (id: string) => {
     setSelectedCourseId(id);
     setView('course-detail');
     window.scrollTo(0, 0);
   };
 
   // Login view — no sidebar/header
-  if (view === 'login') {
+  if (view === 'login' || !isAuthenticated) {
     return <LoginPage onLogin={() => handleNavigate('dashboard')} />;
   }
 

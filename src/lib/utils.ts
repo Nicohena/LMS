@@ -5,7 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function getInitials(firstName: string, lastName: string): string {
+export function getInitials(firstName: string, lastName?: string): string {
+  // If only one argument is passed, treat it as a full name and split
+  if (lastName === undefined) {
+    const parts = firstName.trim().split(/\s+/);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+  }
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
