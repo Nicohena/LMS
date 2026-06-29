@@ -13,7 +13,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useCourses, useCourse, useStudentDashboard, usePlatformDashboard, useUsers, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useNotifications } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useCourses, useCourse, useStudentDashboard, usePlatformDashboard, useUsers, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useNotifications, useQuizzes, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignment, useSubmissions, useCreateSubmission, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -616,7 +616,7 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
 }
 
 // ─── Course Detail View ──────────────────────────────────────────────────
-function CourseDetailView({ courseId, onNavigate }: { courseId: string; onNavigate: (v: View) => void }) {
+function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignment }: { courseId: string; onNavigate: (v: View) => void; onSelectQuiz?: (id: string) => void; onSelectAssignment?: (id: string) => void }) {
   const { data: courseData, isLoading } = useCourse(courseId || null);
   // Normalize the API response into our Course shape; fall back to first mock for layout
   const apiCourse = courseData as any;
@@ -807,42 +807,214 @@ function CourseDetailView({ courseId, onNavigate }: { courseId: string; onNaviga
 }
 
 // ─── Quiz View ───────────────────────────────────────────────────────────
-function QuizView({ onNavigate }: { onNavigate: (v: View) => void }) {
+function QuizView({ quizId, onNavigate, onSelectQuiz, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSelectQuiz: (id: string) => void; onSubmitted: (attemptId: string) => void }) {
+  // If no quizId is provided, show a listing of available quizzes
+  if (!quizId) {
+    return <QuizListView onNavigate={onNavigate} onSelectQuiz={onSelectQuiz} />;
+  }
+  return <QuizRunner quizId={quizId} onNavigate={onNavigate} onSubmitted={onSubmitted} />;
+}
+
+// ─── Quiz List View ──────────────────────────────────────────────────────
+function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => void; onSelectQuiz: (id: string) => void }) {
+  const { data, isLoading } = useQuizzes({ limit: 50, status: 'PUBLISHED' });
+  const quizzes = (data?.data ?? []) as any[];
+
+  return (
+    <main className="mx-auto max-w-5xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Quizzes</span>
+      </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Available Quizzes</h1>
+        <p className="mt-1 text-sm text-slate-500">{quizzes.length} published quizzes · Test your knowledge</p>
+      </div>
+      {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quizzes…</div>}
+      {!isLoading && quizzes.length === 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No quizzes available yet.</div>
+      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {quizzes.map((q: any) => (
+          <Card key={q.id} className="cursor-pointer border border-slate-200 p-5 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectQuiz(q.id)}>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50"><FileQuestion className="h-5 w-5 text-emerald-600" /></div>
+              <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">{q.questionCount ?? 0} Q</Badge>
+            </div>
+            <h3 className="text-sm font-semibold text-slate-900">{q.title}</h3>
+            {q.description && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{q.description}</p>}
+            <div className="mt-3 flex items-center gap-3 text-xs text-slate-400">
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{q.timeLimit ?? 15} min</span>
+              <span className="flex items-center gap-1"><Target className="h-3 w-3" />Pass: {q.passingScore}%</span>
+              <span className="flex items-center gap-1"><Route className="h-3 w-3" />{q.maxAttempts} tries</span>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </main>
+  );
+}
+
+// ─── Quiz Runner (single quiz attempt) ───────────────────────────────────
+function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSubmitted: (attemptId: string) => void }) {
+  const { data: quizData, isLoading } = useQuiz(quizId || null);
+  const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
+  const startAttempt = useStartQuizAttempt();
+  const submitAttempt = useSubmitQuizAttempt();
+
+  const quiz = (quizData as any)?.quiz;
+  const questions = ((quizData as any)?.questions ?? []) as any[];
+
   const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [showSubmit, setShowSubmit] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(1800); // 30 min
+  const [attemptId, setAttemptId] = useState<string>('');
+  const [startTime] = useState<number>(Date.now());
+  const [timeLeft, setTimeLeft] = useState<number>((quiz?.timeLimit ?? 15) * 60);
+  const [error, setError] = useState('');
 
+  // Reset timer when quiz loads
   useEffect(() => {
-    if (timeLeft <= 0) return;
-    const t = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-    return () => clearTimeout(t);
-  }, [timeLeft]);
+    if (quiz?.timeLimit) setTimeLeft(quiz.timeLimit * 60);
+  }, [quiz?.timeLimit]);
 
-  const questions = [
-    { id: 1, type: 'MCQ', text: 'What is the primary purpose of a wireframe in UI design?', options: ['To showcase the final visual design', 'To outline structure and layout', 'To test user interactions', 'To finalize color schemes'], correct: 1 },
-    { id: 2, type: 'True/False', text: 'Usability heuristics were developed by Jakob Nielsen.', options: ['True', 'False'], correct: 0 },
-    { id: 3, type: 'MCQ', text: 'Which color contrast ratio meets WCAG AA standards for normal text?', options: ['3:1', '4.5:1', '7:1', '2:1'], correct: 1 },
-    { id: 4, type: 'MCQ', text: 'What does "affordance" mean in design?', options: ['The cost of a design tool', 'A clue about how to use an object', 'The aesthetic appeal', 'The loading speed'], correct: 1 },
-    { id: 5, type: 'True/False', text: 'A design system should only include color palettes.', options: ['True', 'False'], correct: 1 },
-  ];
+  // Tick down timer only while attempt is active
+  useEffect(() => {
+    if (!attemptId || timeLeft <= 0) return;
+    const t = setTimeout(() => setTimeLeft((v) => v - 1), 1000);
+    return () => clearTimeout(t);
+  }, [attemptId, timeLeft]);
+
+  // Auto-submit on time-out
+  useEffect(() => {
+    if (attemptId && timeLeft === 0 && !showSubmit) {
+      handleSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, attemptId]);
+
+  // Reset to first question when a new attempt starts
+  useEffect(() => {
+    if (attemptId) {
+      setCurrentQ(0);
+      setAnswers({});
+    }
+  }, [attemptId]);
+
+  const enrollments = (enrollmentsData?.data ?? []) as any[];
+  // Pick the first active enrollment that matches the quiz's contentId's course, else first active
+  const matchingEnrollment = enrollments[0];
+
+  const handleStart = () => {
+    if (!matchingEnrollment) {
+      setError('No active enrollment found. Enroll in a course first.');
+      return;
+    }
+    setError('');
+    startAttempt.mutate(
+      { quizId, enrollmentId: matchingEnrollment.id },
+      {
+        onSuccess: (data) => {
+          setAttemptId(data.attempt.id);
+        },
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to start attempt'),
+      },
+    );
+  };
+
+  const handleSubmit = () => {
+    if (!attemptId) return;
+    const timeSpent = Math.round((Date.now() - startTime) / 1000);
+    submitAttempt.mutate(
+      { attemptId, answers, timeSpent },
+      {
+        onSuccess: () => {
+          setShowSubmit(false);
+          onSubmitted(attemptId);
+        },
+        onError: (err: any) => {
+          setError(err.response?.data?.message || 'Failed to submit quiz');
+          setShowSubmit(false);
+        },
+      },
+    );
+  };
 
   const answered = Object.keys(answers).length;
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
 
-  const handleSubmit = () => {
-    setShowSubmit(false);
-    onNavigate('quiz-results');
-  };
+  if (isLoading) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quiz…</div></main>;
+  }
+
+  if (!quiz) {
+    return (
+      <main className="mx-auto max-w-7xl p-4 lg:p-6">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center">
+          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-amber-500" />
+          <p className="text-sm font-medium text-amber-700">Quiz not found.</p>
+          <Button variant="outline" onClick={() => onNavigate('dashboard')} className="mt-4 border-amber-200 text-amber-700">Back to Dashboard</Button>
+        </div>
+      </main>
+    );
+  }
+
+  // Pre-attempt screen
+  if (!attemptId) {
+    return (
+      <main className="mx-auto max-w-3xl p-4 lg:p-6">
+        <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+          <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="font-medium text-slate-700">{quiz.title}</span>
+        </div>
+        <Card className="border border-slate-200 p-8 shadow-sm">
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50"><FileQuestion className="h-7 w-7 text-indigo-600" /></div>
+            <h1 className="text-2xl font-bold text-slate-900">{quiz.title}</h1>
+            {quiz.description && <p className="mt-2 max-w-md text-sm text-slate-500">{quiz.description}</p>}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
+              <span className="flex items-center gap-1"><FileQuestion className="h-3.5 w-3.5" />{quiz.questionCount ?? questions.length} questions</span>
+              <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{quiz.timeLimit ?? 15} min</span>
+              <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" />Pass: {quiz.passingScore}%</span>
+              <span className="flex items-center gap-1"><Route className="h-3.5 w-3.5" />Max attempts: {quiz.maxAttempts}</span>
+            </div>
+            {quiz.instructions && (
+              <div className="mt-6 w-full rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-600">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Instructions</p>
+                {quiz.instructions}
+              </div>
+            )}
+            {error && <div className="mt-4 w-full rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+            <Button onClick={handleStart} disabled={startAttempt.isPending || !matchingEnrollment} className="mt-6 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+              {startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}
+            </Button>
+            {!matchingEnrollment && <p className="mt-2 text-xs text-amber-600">You need an active enrollment to take this quiz.</p>}
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
+  // In-progress quiz screen
+  if (questions.length === 0) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center text-sm text-amber-700">This quiz has no questions yet.</div></main>;
+  }
+
+  const currentQuestion = questions[currentQ];
+  const isTrueFalse = currentQuestion.type === 'TRUE_FALSE';
+  const isMCQSingle = currentQuestion.type === 'MULTIPLE_CHOICE_SINGLE';
+  const options: any[] = currentQuestion.options ?? [];
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
       {/* Breadcrumb */}
       <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-        <button onClick={() => onNavigate('course-detail')} className="hover:text-slate-700">Course</button>
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
         <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-medium text-slate-700">UI Design Principles Quiz</span>
+        <span className="font-medium text-slate-700">{quiz.title}</span>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
@@ -852,8 +1024,8 @@ function QuizView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <Card className="mb-4 border border-slate-200 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">UI Design Principles Quiz</h1>
-                <p className="mt-0.5 text-sm text-slate-500">{questions.length} questions · 30 min · Passing score: 70%</p>
+                <h1 className="text-xl font-bold text-slate-900">{quiz.title}</h1>
+                <p className="mt-0.5 text-sm text-slate-500">{questions.length} questions · Passing score: {quiz.passingScore}%</p>
               </div>
               <div className={cn('flex items-center gap-2 rounded-lg px-3 py-2', timeLeft < 300 ? 'bg-red-50' : 'bg-slate-50')}>
                 <Clock className={cn('h-4 w-4', timeLeft < 300 ? 'text-red-500' : 'text-slate-500')} />
@@ -870,32 +1042,38 @@ function QuizView({ onNavigate }: { onNavigate: (v: View) => void }) {
           {/* Question Card */}
           <Card className="border border-slate-200 p-6 shadow-sm">
             <div className="mb-4">
-              <Badge className="mb-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-50">{questions[currentQ].type}</Badge>
-              <h2 className="text-lg font-semibold text-slate-900">{questions[currentQ].text}</h2>
+              <Badge className="mb-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-50">{currentQuestion.type.replace(/_/g, ' ')}</Badge>
+              <h2 className="text-lg font-semibold text-slate-900">{currentQuestion.questionText}</h2>
             </div>
             <div className="space-y-2">
-              {questions[currentQ].options.map((opt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setAnswers({ ...answers, [questions[currentQ].id]: String(idx) })}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-lg border p-3.5 text-left text-sm transition-all',
-                    answers[questions[currentQ].id] === String(idx)
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
-                      : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50',
-                  )}
-                >
-                  <div className={cn(
-                    'flex h-5 w-5 items-center justify-center rounded-full border-2 text-xs font-bold',
-                    answers[questions[currentQ].id] === String(idx)
-                      ? 'border-indigo-600 bg-indigo-600 text-white'
-                      : 'border-slate-300 text-slate-400',
-                  )}>
-                    {String.fromCharCode(65 + idx)}
-                  </div>
-                  {opt}
-                </button>
-              ))}
+              {options.map((opt, idx) => {
+                const optValue = isTrueFalse ? opt.text === 'True' : opt.text;
+                const selected = isTrueFalse
+                  ? answers[currentQuestion.id] === (opt.text === 'True')
+                  : answers[currentQuestion.id] === opt.text;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setAnswers({ ...answers, [currentQuestion.id]: optValue })}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg border p-3.5 text-left text-sm transition-all',
+                      selected
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
+                        : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50',
+                    )}
+                  >
+                    <div className={cn(
+                      'flex h-5 w-5 items-center justify-center rounded-full border-2 text-xs font-bold',
+                      selected
+                        ? 'border-indigo-600 bg-indigo-600 text-white'
+                        : 'border-slate-300 text-slate-400',
+                    )}>
+                      {String.fromCharCode(65 + idx)}
+                    </div>
+                    {opt.text}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Navigation */}
@@ -939,7 +1117,7 @@ function QuizView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     'flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors',
                     idx === currentQ
                       ? 'bg-indigo-600 text-white'
-                      : answers[q.id]
+                      : answers[q.id] !== undefined
                         ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
                   )}
@@ -973,10 +1151,13 @@ function QuizView({ onNavigate }: { onNavigate: (v: View) => void }) {
               {answered < questions.length && (
                 <p className="mt-2 text-xs font-medium text-amber-600">{questions.length - answered} questions are still unanswered.</p>
               )}
+              {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowSubmit(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-              <Button onClick={handleSubmit} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700">Finish!</Button>
+              <Button onClick={handleSubmit} disabled={submitAttempt.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                {submitAttempt.isPending ? 'Submitting…' : 'Finish!'}
+              </Button>
             </div>
           </Card>
         </div>
@@ -986,24 +1167,36 @@ function QuizView({ onNavigate }: { onNavigate: (v: View) => void }) {
 }
 
 // ─── Quiz Results View ────────────────────────────────────────────────────
-function QuizResultsView({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const score = 80;
-  const correct = 4;
-  const total = 5;
-  const accuracy = Math.round((correct / total) * 100);
+function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavigate: (v: View) => void }) {
+  const { data: resultsData, isLoading } = useAttemptResults(attemptId || null);
+  const results = (resultsData as any)?.results;
 
-  const questionResults = [
-    { id: 1, text: 'What is the primary purpose of a wireframe?', yourAnswer: 'To outline structure and layout', correct: true },
-    { id: 2, text: 'Usability heuristics were developed by Jakob Nielsen.', yourAnswer: 'True', correct: true },
-    { id: 3, text: 'Which color contrast ratio meets WCAG AA?', yourAnswer: '3:1', correct: false, correctAnswer: '4.5:1' },
-    { id: 4, text: 'What does "affordance" mean in design?', yourAnswer: 'A clue about how to use an object', correct: true },
-    { id: 5, text: 'A design system should only include color palettes.', yourAnswer: 'False', correct: true },
-  ];
+  if (isLoading) {
+    return <main className="mx-auto max-w-4xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading results…</div></main>;
+  }
+
+  if (!results) {
+    return (
+      <main className="mx-auto max-w-4xl p-4 lg:p-6">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center">
+          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-amber-500" />
+          <p className="text-sm font-medium text-amber-700">Results not available.</p>
+          <Button variant="outline" onClick={() => onNavigate('dashboard')} className="mt-4 border-amber-200 text-amber-700">Back to Dashboard</Button>
+        </div>
+      </main>
+    );
+  }
+
+  const score = Math.round(results.scorePercentage ?? 0);
+  const correct = (results.questions ?? []).filter((q: any) => q.isCorrect).length;
+  const total = results.maxPossibleScore ?? (results.questions ?? []).length;
+  const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const passed = results.passed;
 
   return (
     <main className="mx-auto max-w-4xl p-4 lg:p-6">
       <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-        <button onClick={() => onNavigate('quiz')} className="hover:text-slate-700">Quiz</button>
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="font-medium text-slate-700">Results</span>
       </div>
@@ -1014,16 +1207,18 @@ function QuizResultsView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <div className="relative mb-4 flex h-32 w-32 items-center justify-center">
             <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="42" fill="none" stroke="#E2E8F0" strokeWidth="8" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke="#4F46E5" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
+              <circle cx="50" cy="50" r="42" fill="none" stroke={passed ? '#10B981' : '#EF4444'} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
             </svg>
             <div>
               <p className="text-3xl font-bold text-slate-900">{score}%</p>
               <p className="text-xs text-slate-400">Score</p>
             </div>
           </div>
-          <Badge className="mb-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-50"><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</Badge>
+          <Badge className={cn('mb-2 hover:opacity-90', passed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
+            {passed ? <><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</> : <><X className="mr-1 h-3 w-3" />Failed</>}
+          </Badge>
           <h1 className="text-xl font-bold text-slate-900">Quiz Completed!</h1>
-          <p className="mt-1 text-sm text-slate-500">UI Design Principles Quiz · {correct}/{total} correct</p>
+          <p className="mt-1 text-sm text-slate-500">{results.quizTitle} · {correct}/{total} correct</p>
         </div>
 
         {/* Stats Row */}
@@ -1047,18 +1242,19 @@ function QuizResultsView({ onNavigate }: { onNavigate: (v: View) => void }) {
       <Card className="border border-slate-200 p-5 shadow-sm">
         <h2 className="mb-4 text-base font-semibold text-slate-900">Answer Review</h2>
         <div className="space-y-3">
-          {questionResults.map((q, idx) => (
-            <div key={q.id} className={cn('rounded-lg border p-4', q.correct ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/50')}>
+          {(results.questions ?? []).map((q: any, idx: number) => (
+            <div key={q.questionId ?? idx} className={cn('rounded-lg border p-4', q.isCorrect ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/50')}>
               <div className="flex items-start gap-3">
-                <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', q.correct ? 'bg-emerald-100' : 'bg-red-100')}>
-                  {q.correct ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-red-500" />}
+                <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', q.isCorrect ? 'bg-emerald-100' : 'bg-red-100')}>
+                  {q.isCorrect ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-red-500" />}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-900">Q{idx + 1}: {q.text}</p>
-                  <p className="mt-1 text-xs text-slate-500">Your answer: <span className={q.correct ? 'font-medium text-emerald-600' : 'font-medium text-red-500'}>{q.yourAnswer}</span></p>
-                  {!q.correct && q.correctAnswer && (
-                    <p className="mt-0.5 text-xs text-slate-500">Correct answer: <span className="font-medium text-emerald-600">{q.correctAnswer}</span></p>
+                  <p className="text-sm font-medium text-slate-900">Q{idx + 1}: {q.questionText}</p>
+                  <p className="mt-1 text-xs text-slate-500">Your answer: <span className={q.isCorrect ? 'font-medium text-emerald-600' : 'font-medium text-red-500'}>{String(q.studentAnswer)}</span></p>
+                  {!q.isCorrect && q.correctAnswer !== undefined && (
+                    <p className="mt-0.5 text-xs text-slate-500">Correct answer: <span className="font-medium text-emerald-600">{String(q.correctAnswer)}</span></p>
                   )}
+                  {q.feedback && <p className="mt-1 text-xs italic text-slate-500">{q.feedback}</p>}
                 </div>
               </div>
             </div>
@@ -1068,33 +1264,90 @@ function QuizResultsView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {/* Actions */}
       <div className="mt-6 flex gap-3">
-        <Button variant="outline" onClick={() => onNavigate('course-detail')} className="border-slate-200 text-slate-600">Back to Course</Button>
-        <Button onClick={() => onNavigate('dashboard')} className="bg-indigo-600 text-white hover:bg-indigo-700">Back to Dashboard</Button>
+        <Button variant="outline" onClick={() => onNavigate('dashboard')} className="border-slate-200 text-slate-600">Back to Dashboard</Button>
+        <Button onClick={() => onNavigate('catalog')} className="bg-indigo-600 text-white hover:bg-indigo-700">Browse More Courses</Button>
       </div>
     </main>
   );
 }
 
 // ─── Assignment View ──────────────────────────────────────────────────────
-function AssignmentView({ onNavigate }: { onNavigate: (v: View) => void }) {
+function AssignmentView({ assignmentId, onNavigate, onSelectAssignment }: { assignmentId: string; onNavigate: (v: View) => void; onSelectAssignment: (id: string) => void }) {
+  // If no assignmentId is provided, show a listing of available assignments
+  if (!assignmentId) {
+    return <AssignmentListView onNavigate={onNavigate} onSelectAssignment={onSelectAssignment} />;
+  }
+  return <AssignmentRunner assignmentId={assignmentId} onNavigate={onNavigate} />;
+}
+
+// ─── Assignment List View ────────────────────────────────────────────────
+function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v: View) => void; onSelectAssignment: (id: string) => void }) {
+  const { data, isLoading } = useAssignments({ limit: 50, status: 'PUBLISHED' });
+  const assignments = (data?.data ?? []) as any[];
+
+  return (
+    <main className="mx-auto max-w-5xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Assignments</span>
+      </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Available Assignments</h1>
+        <p className="mt-1 text-sm text-slate-500">{assignments.length} published assignments · Submit your work</p>
+      </div>
+      {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading assignments…</div>}
+      {!isLoading && assignments.length === 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No assignments available yet.</div>
+      )}
+      <div className="space-y-3">
+        {assignments.map((a: any) => {
+          const due = a.dueDate ? new Date(a.dueDate) : null;
+          const isOverdue = due && due < new Date();
+          return (
+            <Card key={a.id} className="cursor-pointer border border-slate-200 p-5 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectAssignment(a.id)}>
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50"><FileText className="h-5 w-5 text-amber-600" /></div>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between">
+                    <h3 className="text-sm font-semibold text-slate-900">{a.title}</h3>
+                    <Badge className={cn('hover:opacity-90', isOverdue ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600')}>{isOverdue ? 'Overdue' : 'Open'}</Badge>
+                  </div>
+                  {a.description && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{a.description}</p>}
+                  <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Due: {due ? formatDate(due) : 'No deadline'}</span>
+                    <span className="flex items-center gap-1"><Award className="h-3 w-3" />{a.maxPoints} pts</span>
+                    {a.requiresFileUpload && <span className="flex items-center gap-1"><Upload className="h-3 w-3" />File upload</span>}
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300" />
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </main>
+  );
+}
+
+// ─── Assignment Runner (single assignment view) ──────────────────────────
+function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; onNavigate: (v: View) => void }) {
+  const { data: assignData, isLoading } = useAssignment(assignmentId || null);
+  const { data: submissionsData } = useSubmissions(assignmentId || null);
+  const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
+  const createSubmission = useCreateSubmission();
+
   const [submissionText, setSubmissionText] = useState('');
   const [fileName, setFileName] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
-  const assignment = {
-    title: 'Wireframing Assignment',
-    course: 'UI Design Fundamentals',
-    dueDate: 'Tomorrow at 11:59 PM',
-    points: 100,
-    status: 'Pending',
-    instructions: 'Create low-fidelity wireframes for a mobile e-commerce app. Include at least 5 screens: Home, Product List, Product Detail, Cart, and Checkout. Use any wireframing tool of your choice (Figma, Balsamiq, or pen & paper). Submit your wireframes as a PDF.',
-    rubric: [
-      { criterion: 'Completeness', maxPoints: 25, description: 'All 5 screens are included' },
-      { criterion: 'Usability', maxPoints: 30, description: 'Navigation flow is logical and intuitive' },
-      { criterion: 'Consistency', maxPoints: 25, description: 'Design patterns are consistent across screens' },
-      { criterion: 'Documentation', maxPoints: 20, description: 'Annotations explain key design decisions' },
-    ],
-  };
+  const assignment = (assignData as any)?.assignment;
+  const submissions = ((submissionsData as any)?.data ?? []) as any[];
+  const enrollments = ((enrollmentsData?.data ?? [])) as any[];
+  // Find enrollment matching the assignment's content course; fall back to first active
+  const matchingEnrollment = enrollments[0];
+  const latestSubmission = submissions[0]; // submissions are sorted newest-first
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1102,9 +1355,52 @@ function AssignmentView({ onNavigate }: { onNavigate: (v: View) => void }) {
   };
 
   const handleSubmit = () => {
-    setSubmitted(true);
-    setTimeout(() => onNavigate('dashboard'), 2000);
+    if (!matchingEnrollment) {
+      setError('No active enrollment. Enroll in the course first.');
+      return;
+    }
+    if (!submissionText.trim()) {
+      setError('Please add a comment or upload a file.');
+      return;
+    }
+    setError('');
+    createSubmission.mutate(
+      {
+        assignmentId,
+        enrollmentId: matchingEnrollment.id,
+        content: { text: submissionText, links: [] },
+      },
+      {
+        onSuccess: () => {
+          setSubmitted(true);
+          setSubmissionText('');
+          setFileName('');
+          setTimeout(() => onNavigate('dashboard'), 1800);
+        },
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to submit assignment'),
+      },
+    );
   };
+
+  if (isLoading) {
+    return <main className="mx-auto max-w-5xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading assignment…</div></main>;
+  }
+
+  if (!assignment) {
+    return (
+      <main className="mx-auto max-w-5xl p-4 lg:p-6">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center">
+          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-amber-500" />
+          <p className="text-sm font-medium text-amber-700">Assignment not found.</p>
+          <Button variant="outline" onClick={() => onNavigate('dashboard')} className="mt-4 border-amber-200 text-amber-700">Back to Dashboard</Button>
+        </div>
+      </main>
+    );
+  }
+
+  const dueDate = assignment.dueDate ? formatDate(assignment.dueDate) : 'No deadline';
+  const isLate = assignment.dueDate && new Date(assignment.dueDate) < new Date();
+  const statusLabel = latestSubmission ? latestSubmission.status : (isLate ? 'Overdue' : 'Pending');
 
   return (
     <main className="mx-auto max-w-5xl p-4 lg:p-6">
@@ -1119,13 +1415,14 @@ function AssignmentView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="mb-2 flex items-center gap-2">
-              <Badge className="bg-amber-50 text-amber-600 hover:bg-amber-50">{assignment.status}</Badge>
-              <span className="text-xs text-slate-400">{assignment.course}</span>
+              <Badge className={cn('hover:opacity-90', statusLabel === 'SUBMITTED' || statusLabel === 'GRADED' ? 'bg-emerald-50 text-emerald-600' : statusLabel === 'Overdue' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600')}>{statusLabel}</Badge>
+              <span className="text-xs text-slate-400">Max points: {assignment.maxPoints}</span>
             </div>
             <h1 className="text-xl font-bold text-slate-900">{assignment.title}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
-              <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />Due: {assignment.dueDate}</span>
-              <span className="flex items-center gap-1"><Award className="h-3.5 w-3.5" />{assignment.points} points</span>
+              <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />Due: {dueDate}</span>
+              <span className="flex items-center gap-1"><Award className="h-3.5 w-3.5" />{assignment.maxPoints} points</span>
+              {assignment.allowResubmissions && <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" />Resubmissions allowed ({assignment.maxResubmissions})</span>}
             </div>
           </div>
         </div>
@@ -1137,66 +1434,116 @@ function AssignmentView({ onNavigate }: { onNavigate: (v: View) => void }) {
           {/* Instructions */}
           <Card className="border border-slate-200 p-5 shadow-sm">
             <h2 className="mb-3 text-base font-semibold text-slate-900">Instructions</h2>
-            <p className="text-sm leading-relaxed text-slate-600">{assignment.instructions}</p>
+            {assignment.description && <p className="mb-3 text-sm leading-relaxed text-slate-600">{assignment.description}</p>}
+            {assignment.instructions && (
+              <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">{assignment.instructions}</div>
+            )}
+            {assignment.allowedFileTypes && assignment.allowedFileTypes.length > 0 && (
+              <p className="mt-3 text-xs text-slate-500">Allowed file types: {assignment.allowedFileTypes.join(', ')} · Max size: {assignment.maxFileSizeMB}MB</p>
+            )}
           </Card>
+
+          {/* Previous Submission */}
+          {latestSubmission && (
+            <Card className="border border-slate-200 p-5 shadow-sm">
+              <h2 className="mb-3 text-base font-semibold text-slate-900">Your Latest Submission</h2>
+              <div className="rounded-lg border border-slate-100 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <Badge className={cn('hover:opacity-90', latestSubmission.status === 'GRADED' ? 'bg-emerald-50 text-emerald-600' : latestSubmission.status === 'RESUBMITTED' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600')}>{latestSubmission.status}</Badge>
+                  <span className="text-xs text-slate-400">v{latestSubmission.version} · {timeAgo(latestSubmission.submittedAt)}</span>
+                </div>
+                {latestSubmission.content?.text && <p className="text-sm text-slate-700">{latestSubmission.content.text}</p>}
+                {latestSubmission.grade !== null && latestSubmission.grade !== undefined && (
+                  <p className="mt-2 text-xs font-semibold text-emerald-600">Grade: {latestSubmission.grade}/{assignment.maxPoints}</p>
+                )}
+                {latestSubmission.feedback && <p className="mt-1 text-xs italic text-slate-500">Feedback: {latestSubmission.feedback}</p>}
+              </div>
+            </Card>
+          )}
 
           {/* Submission Form */}
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <h2 className="mb-4 text-base font-semibold text-slate-900">Submit Your Work</h2>
+            <h2 className="mb-4 text-base font-semibold text-slate-900">{latestSubmission ? 'Resubmit Your Work' : 'Submit Your Work'}</h2>
             {submitted ? (
               <div className="flex flex-col items-center py-8 text-center">
                 <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50"><CheckCircle2 className="h-7 w-7 text-emerald-600" /></div>
                 <p className="text-base font-semibold text-slate-900">Submission Successful!</p>
-                <p className="mt-1 text-sm text-slate-500">Your assignment has been submitted. Redirecting...</p>
+                <p className="mt-1 text-sm text-slate-500">Your assignment has been submitted. Redirecting…</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* File Upload */}
-                <div>
-                  <Label className="mb-2 block text-sm font-medium text-slate-700">Upload File</Label>
-                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-8 hover:border-indigo-300 hover:bg-slate-50">
-                    <Upload className="mb-2 h-8 w-8 text-slate-400" />
-                    <p className="text-sm text-slate-500">{fileName || 'Click to upload or drag and drop'}</p>
-                    <p className="mt-1 text-xs text-slate-400">PDF, DOCX, ZIP up to 25MB</p>
-                    <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.docx,.zip" />
-                  </label>
-                </div>
+                {assignment.requiresFileUpload && (
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-slate-700">Upload File</Label>
+                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-8 hover:border-indigo-300 hover:bg-slate-50">
+                      <Upload className="mb-2 h-8 w-8 text-slate-400" />
+                      <p className="text-sm text-slate-500">{fileName || 'Click to upload or drag and drop'}</p>
+                      <p className="mt-1 text-xs text-slate-400">{assignment.allowedFileTypes?.join(', ').toUpperCase() ?? 'PDF, DOCX, ZIP'} up to {assignment.maxFileSizeMB}MB</p>
+                      <input type="file" className="hidden" onChange={handleFileUpload} accept={assignment.allowedFileTypes?.map((t: string) => `.${t}`).join(',')} />
+                    </label>
+                  </div>
+                )}
                 {/* Text Submission */}
                 <div>
-                  <Label className="mb-2 block text-sm font-medium text-slate-700">Comments (optional)</Label>
+                  <Label className="mb-2 block text-sm font-medium text-slate-700">{assignment.requiresFileUpload ? 'Comments (optional)' : 'Your Submission'}</Label>
                   <textarea
                     value={submissionText}
                     onChange={(e) => setSubmissionText(e.target.value)}
-                    rows={4}
-                    placeholder="Add any comments for your instructor..."
+                    rows={6}
+                    placeholder="Type your submission or add comments for your instructor..."
                     className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
-                <Button onClick={handleSubmit} disabled={!fileName} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
-                  Submit Assignment
+                {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+                <Button onClick={handleSubmit} disabled={createSubmission.isPending || (!submissionText.trim() && !fileName)} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  {createSubmission.isPending ? 'Submitting…' : latestSubmission ? 'Resubmit Assignment' : 'Submit Assignment'}
                 </Button>
               </div>
             )}
           </Card>
         </div>
 
-        {/* Sidebar — Rubric */}
+        {/* Sidebar — Rubric info */}
         <div>
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-900">Grading Rubric</h3>
-            <div className="space-y-3">
-              {assignment.rubric.map((item) => (
-                <div key={item.criterion} className="rounded-lg border border-slate-100 p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-slate-900">{item.criterion}</p>
-                    <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">{item.maxPoints} pts</Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-500">{item.description}</p>
+            <h3 className="mb-3 text-sm font-semibold text-slate-900">Assignment Details</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Status</span>
+                <span className="font-medium text-slate-900">{statusLabel}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Max Points</span>
+                <span className="font-medium text-slate-900">{assignment.maxPoints}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Due Date</span>
+                <span className="font-medium text-slate-900">{dueDate}</span>
+              </div>
+              {assignment.latePenaltyPercentage > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Late Penalty</span>
+                  <span className="font-medium text-red-600">{assignment.latePenaltyPercentage}%</span>
                 </div>
-              ))}
+              )}
+              <div className="flex justify-between">
+                <span className="text-slate-500">Resubmissions</span>
+                <span className="font-medium text-slate-900">{assignment.allowResubmissions ? `Up to ${assignment.maxResubmissions}` : 'Not allowed'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Peer Review</span>
+                <span className="font-medium text-slate-900">{assignment.allowPeerReview ? `Yes (${assignment.peerReviewCount} reviewers)` : 'No'}</span>
+              </div>
+              {assignment.submissionCount !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Total Submissions</span>
+                  <span className="font-medium text-slate-900">{assignment.submissionCount}</span>
+                </div>
+              )}
             </div>
             <div className="mt-4 border-t border-slate-100 pt-3 text-center">
-              <p className="text-2xl font-bold text-slate-900">{assignment.points}</p>
+              <p className="text-2xl font-bold text-slate-900">{assignment.maxPoints}</p>
               <p className="text-xs text-slate-400">Total Points</p>
             </div>
           </Card>
@@ -2581,6 +2928,9 @@ export default function App() {
   const [view, setView] = useState<View>(isAuthenticated ? 'dashboard' : 'login');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedQuizId, setSelectedQuizId] = useState<string>('');
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
+  const [lastAttemptId, setLastAttemptId] = useState<string>('');
 
   const handleNavigate = (v: View) => {
     setView(v);
@@ -2591,6 +2941,24 @@ export default function App() {
   const handleSelectCourse = (id: string) => {
     setSelectedCourseId(id);
     setView('course-detail');
+    window.scrollTo(0, 0);
+  };
+
+  const handleSelectQuiz = (id: string) => {
+    setSelectedQuizId(id);
+    setView('quiz');
+    window.scrollTo(0, 0);
+  };
+
+  const handleSelectAssignment = (id: string) => {
+    setSelectedAssignmentId(id);
+    setView('assignment');
+    window.scrollTo(0, 0);
+  };
+
+  const handleQuizSubmitted = (attemptId: string) => {
+    setLastAttemptId(attemptId);
+    setView('quiz-results');
     window.scrollTo(0, 0);
   };
 
@@ -2607,10 +2975,10 @@ export default function App() {
         <Header onMenuClick={() => setSidebarOpen(true)} onNavigate={handleNavigate} currentView={view} />
         {view === 'dashboard' && <DashboardView onNavigate={handleNavigate} />}
         {view === 'catalog' && <CatalogView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
-        {view === 'course-detail' && <CourseDetailView courseId={selectedCourseId} onNavigate={handleNavigate} />}
-        {view === 'quiz' && <QuizView onNavigate={handleNavigate} />}
-        {view === 'quiz-results' && <QuizResultsView onNavigate={handleNavigate} />}
-        {view === 'assignment' && <AssignmentView onNavigate={handleNavigate} />}
+        {view === 'course-detail' && <CourseDetailView courseId={selectedCourseId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSelectAssignment={handleSelectAssignment} />}
+        {view === 'quiz' && <QuizView quizId={selectedQuizId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSubmitted={handleQuizSubmitted} />}
+        {view === 'quiz-results' && <QuizResultsView attemptId={lastAttemptId} onNavigate={handleNavigate} />}
+        {view === 'assignment' && <AssignmentView assignmentId={selectedAssignmentId} onNavigate={handleNavigate} onSelectAssignment={handleSelectAssignment} />}
         {view === 'discussions' && <DiscussionsView onNavigate={handleNavigate} />}
         {view === 'admin' && <AdminView onNavigate={handleNavigate} />}
         {view === 'users' && <UsersView onNavigate={handleNavigate} />}

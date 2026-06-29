@@ -123,6 +123,16 @@ export function useEnrollments(params?: { page?: number; limit?: number; status?
 
 // ─── Quizzes ─────────────────────────────────────────────────────────────
 
+export function useQuizzes(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+  return useQuery({
+    queryKey: ['quizzes', params],
+    queryFn: async () => {
+      const res = await api.get('/quizzes', { params });
+      return res.data;
+    },
+  });
+}
+
 export function useQuiz(quizId: string | null) {
   return useQuery({
     queryKey: ['quiz', quizId],
@@ -156,11 +166,33 @@ export function useSubmitQuizAttempt() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['quiz-attempt', variables.attemptId] });
+      queryClient.invalidateQueries({ queryKey: ['quiz-attempt-results', variables.attemptId] });
     },
   });
 }
 
+export function useAttemptResults(attemptId: string | null) {
+  return useQuery({
+    queryKey: ['quiz-attempt-results', attemptId],
+    queryFn: async () => {
+      const res = await api.get(`/quizzes/attempts/${attemptId}/results`);
+      return res.data;
+    },
+    enabled: !!attemptId,
+  });
+}
+
 // ─── Assignments ─────────────────────────────────────────────────────────
+
+export function useAssignments(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+  return useQuery({
+    queryKey: ['assignments', params],
+    queryFn: async () => {
+      const res = await api.get('/assignments', { params });
+      return res.data;
+    },
+  });
+}
 
 export function useAssignment(assignmentId: string | null) {
   return useQuery({
@@ -181,6 +213,19 @@ export function useSubmissions(assignmentId: string | null) {
       return res.data;
     },
     enabled: !!assignmentId,
+  });
+}
+
+export function useCreateSubmission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ assignmentId, enrollmentId, content }: { assignmentId: string; enrollmentId: string; content: { text?: string; files?: unknown[]; links?: string[] } }) => {
+      const res = await api.post(`/assignments/${assignmentId}/submissions`, { enrollmentId, content });
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['submissions', variables.assignmentId] });
+    },
   });
 }
 
