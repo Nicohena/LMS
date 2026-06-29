@@ -52,6 +52,61 @@ export function useUsers(params?: { page?: number; limit?: number; search?: stri
   });
 }
 
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      email: string;
+      firstName: string;
+      lastName: string;
+      role?: 'ADMIN' | 'TEACHER' | 'STUDENT';
+      password?: string;
+      mustChangePassword?: boolean;
+      isActive?: boolean;
+      bio?: string;
+    }) => {
+      const res = await api.post('/users', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: {
+      firstName?: string;
+      lastName?: string;
+      role?: 'ADMIN' | 'TEACHER' | 'STUDENT';
+      isActive?: boolean;
+      bio?: string;
+      profilePicture?: string;
+      mustChangePassword?: boolean;
+    } }) => {
+      const res = await api.patch(`/users/${id}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/users/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
 export function useMyProfile() {
   return useQuery({
     queryKey: ['me'],
@@ -60,6 +115,24 @@ export function useMyProfile() {
       return res.data.user;
     },
     retry: 1,
+  });
+}
+
+export function useUpdateMyProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      firstName?: string;
+      lastName?: string;
+      bio?: string;
+      profilePicture?: string;
+    }) => {
+      const res = await api.patch('/users/me', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    },
   });
 }
 
@@ -83,6 +156,28 @@ export function useCourse(id: string | null) {
       return res.data;
     },
     enabled: !!id,
+  });
+}
+
+export function useCreateCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      title: string;
+      description?: string;
+      category?: string;
+      tags?: string[];
+      duration?: number;
+      difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+      language?: string;
+      status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    }) => {
+      const res = await api.post('/courses', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+    },
   });
 }
 
@@ -458,6 +553,32 @@ export function useSettings(category?: string) {
     queryFn: async () => {
       const res = await api.get('/settings', { params: { category } });
       return res.data;
+    },
+  });
+}
+
+export function useBatchUpdateSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (settings: Array<{ key: string; value: unknown; category?: string; description?: string }>) => {
+      const res = await api.patch('/settings/batch', { settings });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+    },
+  });
+}
+
+export function useUpdateSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { key: string; value: unknown; category?: string; description?: string }) => {
+      const res = await api.patch('/settings', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
     },
   });
 }

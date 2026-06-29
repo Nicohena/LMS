@@ -13,7 +13,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useCourses, useCourse, useStudentDashboard, usePlatformDashboard, useUsers, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useNotifications, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -1944,8 +1944,20 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [showCreate, setShowCreate] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [deletingUser, setDeletingUser] = useState<any | null>(null);
+  const [formErr, setFormErr] = useState('');
+  const [formFirstName, setFormFirstName] = useState('');
+  const [formLastName, setFormLastName] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formRole, setFormRole] = useState<'STUDENT' | 'TEACHER' | 'ADMIN'>('STUDENT');
+  const [formPassword, setFormPassword] = useState('');
 
   const { data, isLoading } = useUsers({ page: 1, limit: 50, search: search || undefined });
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
+
   const apiUsers = (data?.data ?? []).map((u: any) => ({
     id: u.id,
     name: `${u.firstName} ${u.lastName}`,
@@ -1955,6 +1967,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
     courses: 0,
     joined: u.createdAt ? formatDate(u.createdAt) : '—',
     avatar: getInitials(`${u.firstName} ${u.lastName}`),
+    isActive: u.isActive,
   }));
 
   const filtered = apiUsers.filter(u => {
@@ -1966,6 +1979,68 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
     ADMIN: 'bg-red-50 text-red-600',
     TEACHER: 'bg-indigo-50 text-indigo-600',
     STUDENT: 'bg-emerald-50 text-emerald-600',
+  };
+
+  const openCreate = () => {
+    setEditingUser(null);
+    setFormFirstName(''); setFormLastName(''); setFormEmail(''); setFormRole('STUDENT'); setFormPassword('');
+    setFormErr('');
+    setShowCreate(true);
+  };
+
+  const openEdit = (u: any) => {
+    setEditingUser(u);
+    const parts = u.name.split(' ');
+    setFormFirstName(parts[0] ?? ''); setFormLastName(parts.slice(1).join(' ') ?? '');
+    setFormEmail(u.email); setFormRole(u.role); setFormPassword('');
+    setFormErr('');
+    setShowCreate(true);
+  };
+
+  const handleSubmit = () => {
+    setFormErr('');
+    if (!formFirstName.trim() || !formLastName.trim() || !formEmail.trim()) {
+      setFormErr('First name, last name, and email are required.');
+      return;
+    }
+    if (editingUser) {
+      // Update existing user
+      updateUser.mutate(
+        { id: editingUser.id, data: { firstName: formFirstName, lastName: formLastName, role: formRole } },
+        {
+          onSuccess: () => setShowCreate(false),
+          onError: (err: any) => setFormErr(err.response?.data?.message || 'Failed to update user.'),
+        },
+      );
+    } else {
+      // Create new user
+      createUser.mutate(
+        {
+          email: formEmail,
+          firstName: formFirstName,
+          lastName: formLastName,
+          role: formRole,
+          password: formPassword || undefined,
+          mustChangePassword: !!formPassword,
+        },
+        {
+          onSuccess: () => setShowCreate(false),
+          onError: (err: any) => setFormErr(err.response?.data?.message || 'Failed to create user.'),
+        },
+      );
+    }
+  };
+
+  const handleToggleActive = (u: any) => {
+    updateUser.mutate({ id: u.id, data: { isActive: !u.isActive } });
+  };
+
+  const handleDelete = () => {
+    if (!deletingUser) return;
+    deleteUser.mutate(deletingUser.id, {
+      onSuccess: () => setDeletingUser(null),
+      onError: (err: any) => { setFormErr(err.response?.data?.message || 'Failed to delete user.'); setDeletingUser(null); },
+    });
   };
 
   return (
@@ -1983,7 +2058,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export CSV</Button>
-          <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
+          <Button onClick={openCreate} className="bg-indigo-600 text-white hover:bg-indigo-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
         </div>
       </div>
 
@@ -2034,17 +2109,17 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     <Badge className={cn('rounded-full hover:opacity-90', roleColors[user.role])}>{user.role}</Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
+                    <button onClick={() => handleToggleActive(user)} title="Toggle active status" className="flex items-center gap-1.5">
                       <div className={cn('h-2 w-2 rounded-full', user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300')} />
-                      <span className="text-xs text-slate-600">{user.status}</span>
-                    </div>
+                      <span className="text-xs text-slate-600 hover:text-indigo-600">{user.status}</span>
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-center text-slate-600">{user.courses}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">{user.joined}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      <button className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
-                      <button className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={() => openEdit(user)} title="Edit user" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => setDeletingUser(user)} title="Delete user" className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -2054,32 +2129,72 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
         </div>
       </Card>
 
-      {/* Create User Modal */}
+      {/* Create / Edit User Modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md border-0 p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Create New User</h2>
+              <h2 className="text-lg font-bold text-slate-900">{editingUser ? 'Edit User' : 'Create New User'}</h2>
               <button onClick={() => setShowCreate(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">First Name</Label><Input placeholder="John" /></div>
-                <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Last Name</Label><Input placeholder="Doe" /></div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">First Name</Label>
+                  <Input value={formFirstName} onChange={(e) => setFormFirstName(e.target.value)} placeholder="John" />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Last Name</Label>
+                  <Input value={formLastName} onChange={(e) => setFormLastName(e.target.value)} placeholder="Doe" />
+                </div>
               </div>
-              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Email</Label><Input type="email" placeholder="john@trenning.com" /></div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Email</Label>
+                <Input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="john@trenning.com" disabled={!!editingUser} />
+                {editingUser && <p className="mt-1 text-xs text-slate-400">Email cannot be changed.</p>}
+              </div>
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Role</Label>
                 <div className="grid grid-cols-3 gap-2">
-                  {['STUDENT', 'TEACHER', 'ADMIN'].map((role) => (
-                    <button key={role} className={cn('rounded-lg border py-2 text-xs font-medium transition-colors', role === 'STUDENT' ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{role}</button>
+                  {(['STUDENT', 'TEACHER', 'ADMIN'] as const).map((role) => (
+                    <button key={role} type="button" onClick={() => setFormRole(role)} className={cn('rounded-lg border py-2 text-xs font-medium transition-colors', role === formRole ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{role}</button>
                   ))}
                 </div>
               </div>
+              {!editingUser && (
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Password (optional)</Label>
+                  <Input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} placeholder="Leave blank for auto-generated" />
+                  <p className="mt-1 text-xs text-slate-400">If blank, a temporary password is generated and the user must change it on first login.</p>
+                </div>
+              )}
+              {formErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{formErr}</div>}
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-                <Button onClick={() => setShowCreate(false)} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700">Create User</Button>
+                <Button onClick={handleSubmit} disabled={createUser.isPending || updateUser.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  {(createUser.isPending || updateUser.isPending) ? 'Saving…' : editingUser ? 'Save Changes' : 'Create User'}
+                </Button>
               </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md border-0 p-6 shadow-xl">
+            <div className="mb-4 flex flex-col items-center text-center">
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-50"><AlertCircle className="h-7 w-7 text-red-500" /></div>
+              <h2 className="text-lg font-bold text-slate-900">Delete User?</h2>
+              <p className="mt-1 text-sm text-slate-500">Are you sure you want to delete <span className="font-semibold text-slate-700">{deletingUser.name}</span> ({deletingUser.email})?</p>
+              <p className="mt-2 text-xs text-amber-600">This action cannot be undone.</p>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setDeletingUser(null)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+              <Button onClick={handleDelete} disabled={deleteUser.isPending} className="flex-1 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                {deleteUser.isPending ? 'Deleting…' : 'Delete'}
+              </Button>
             </div>
           </Card>
         </div>
@@ -2301,12 +2416,17 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Design');
-  const [difficulty, setDifficulty] = useState('Beginner');
+  const [difficulty, setDifficulty] = useState<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'>('BEGINNER');
+  const [publishStatus, setPublishStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
+  const [formErr, setFormErr] = useState('');
+  const [createdCourseId, setCreatedCourseId] = useState<string>('');
+
+  const createCourse = useCreateCourse();
 
   const steps = [
     { num: 1, label: 'General Info' },
     { num: 2, label: 'Add Content' },
-    { num: 3, label: 'Assign Learners' },
+    { num: 3, label: 'Review & Publish' },
   ];
 
   const contentTypes = [
@@ -2317,6 +2437,52 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
     { type: 'Document', icon: File, color: 'bg-purple-50 text-purple-600', desc: 'Upload PDF, DOCX, or other documents' },
     { type: 'External Link', icon: Link2, color: 'bg-cyan-50 text-cyan-600', desc: 'Link to external resources' },
   ];
+
+  const handleCreate = (status: 'DRAFT' | 'PUBLISHED') => {
+    setFormErr('');
+    if (!title.trim() || !description.trim()) {
+      setFormErr('Title and description are required.');
+      setStep(1);
+      return;
+    }
+    createCourse.mutate(
+      {
+        title,
+        description,
+        category,
+        difficulty,
+        status,
+      },
+      {
+        onSuccess: (data: any) => {
+          setPublishStatus(status);
+          setCreatedCourseId(data?.course?.id ?? data?.id ?? '');
+        },
+        onError: (err: any) => setFormErr(err.response?.data?.message || 'Failed to create course.'),
+      },
+    );
+  };
+
+  // Success screen after course is created
+  if (createdCourseId) {
+    return (
+      <main className="mx-auto max-w-2xl p-4 lg:p-6">
+        <Card className="border border-emerald-200 p-8 shadow-sm">
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50"><CheckCircle2 className="h-8 w-8 text-emerald-600" /></div>
+            <h1 className="text-xl font-bold text-slate-900">Course {publishStatus === 'PUBLISHED' ? 'Published!' : 'Saved as Draft!'}</h1>
+            <p className="mt-2 text-sm text-slate-500">
+              <span className="font-semibold text-slate-700">{title}</span> has been {publishStatus === 'PUBLISHED' ? 'published and is now visible in the catalog' : 'saved as a draft'}. You can add modules and content to it from the course detail page.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <Button variant="outline" onClick={() => onNavigate('catalog')} className="border-slate-200 text-slate-600">Browse Catalog</Button>
+              <Button onClick={() => onNavigate('dashboard')} className="bg-indigo-600 text-white hover:bg-indigo-700">Back to Dashboard</Button>
+            </div>
+          </div>
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-4xl p-4 lg:p-6">
@@ -2360,13 +2526,13 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Category</Label>
                 <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
-                  <option>Design</option><option>Programming</option><option>Business</option><option>Data Science</option><option>Marketing</option>
+                  <option>Design</option><option>Programming</option><option>Business</option><option>Data Science</option><option>Marketing</option><option>General</option>
                 </select>
               </div>
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Difficulty</Label>
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
-                  <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED')} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
+                  <option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option>
                 </select>
               </div>
             </div>
@@ -2379,6 +2545,7 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <input type="file" className="hidden" accept="image/*" />
               </label>
             </div>
+            {formErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{formErr}</div>}
           </div>
           <div className="mt-6 flex justify-end gap-3">
             <Button variant="outline" onClick={() => onNavigate('dashboard')} className="border-slate-200 text-slate-600">Cancel</Button>
@@ -2391,60 +2558,72 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
       {step === 2 && (
         <Card className="border border-slate-200 p-6 shadow-sm">
           <h2 className="mb-1 text-base font-semibold text-slate-900">Add Content</h2>
-          <p className="mb-4 text-sm text-slate-500">Choose what type of content you want to add to this course</p>
+          <p className="mb-4 text-sm text-slate-500">You can add modules, lessons, quizzes, and assignments after the course is created. For now, just review the content types available.</p>
 
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-slate-50 p-3">
             <GripVertical className="h-4 w-4 text-slate-300" />
-            <span className="text-sm font-medium text-slate-700">Module 1: Introduction</span>
-            <button className="ml-auto text-xs text-indigo-600 hover:text-indigo-700">Rename</button>
+            <span className="text-sm font-medium text-slate-700">Default Module 1: Introduction (auto-created)</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {contentTypes.map((ct) => (
-              <button key={ct.type} className="flex flex-col items-center rounded-lg border border-slate-200 p-4 text-center transition-all hover:border-indigo-200 hover:shadow-sm">
+              <div key={ct.type} className="flex cursor-not-allowed flex-col items-center rounded-lg border border-slate-200 p-4 text-center opacity-70">
                 <div className={cn('mb-2 flex h-10 w-10 items-center justify-center rounded-lg', ct.color)}>
                   <ct.icon className="h-5 w-5" />
                 </div>
                 <p className="text-sm font-medium text-slate-900">{ct.type}</p>
                 <p className="mt-1 text-[10px] text-slate-400">{ct.desc}</p>
-              </button>
+              </div>
             ))}
           </div>
+          <p className="mt-3 text-xs text-slate-400">Content authoring will be available after the course is created — visit the course detail page to add modules and lessons.</p>
 
           <div className="mt-6 flex justify-between gap-3">
             <Button variant="outline" onClick={() => setStep(1)} className="border-slate-200 text-slate-600"><ArrowLeft className="mr-1.5 h-4 w-4" />Back</Button>
-            <Button onClick={() => setStep(3)} className="bg-indigo-600 text-white hover:bg-indigo-700">Next: Assign Learners<ChevronRight className="ml-1.5 h-4 w-4" /></Button>
+            <Button onClick={() => setStep(3)} className="bg-indigo-600 text-white hover:bg-indigo-700">Next: Review & Publish<ChevronRight className="ml-1.5 h-4 w-4" /></Button>
           </div>
         </Card>
       )}
 
-      {/* Step 3: Assign Learners */}
+      {/* Step 3: Review & Publish */}
       {step === 3 && (
         <Card className="border border-slate-200 p-6 shadow-sm">
-          <h2 className="mb-1 text-base font-semibold text-slate-900">Assign Learners</h2>
-          <p className="mb-4 text-sm text-slate-500">Select who should be enrolled in this course</p>
+          <h2 className="mb-1 text-base font-semibold text-slate-900">Review & Publish</h2>
+          <p className="mb-4 text-sm text-slate-500">Confirm the course details before publishing</p>
 
           <div className="space-y-3">
-            <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
-              <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
-              <div className="flex-1"><p className="text-sm font-medium text-slate-900">All Students</p><p className="text-xs text-slate-400">2,412 students enrolled</p></div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Title</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{title || '—'}</p>
             </div>
-            <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
-              <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
-              <div className="flex-1"><p className="text-sm font-medium text-slate-900">Design Department</p><p className="text-xs text-slate-400">186 students</p></div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Description</p>
+              <p className="mt-1 text-sm text-slate-700">{description || '—'}</p>
             </div>
-            <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
-              <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
-              <div className="flex-1"><p className="text-sm font-medium text-slate-900">New Hires (2024)</p><p className="text-xs text-slate-400">42 students</p></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-slate-100 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Category</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{category}</p>
+              </div>
+              <div className="rounded-lg border border-slate-100 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Difficulty</p>
+                <p className="mt-1 text-sm font-semibold capitalize text-slate-900">{difficulty.toLowerCase()}</p>
+              </div>
             </div>
-            <button className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-3 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600">
-              <UserPlus className="h-4 w-4" />Select Individual Learners
-            </button>
           </div>
+
+          {formErr && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{formErr}</div>}
 
           <div className="mt-6 flex justify-between gap-3">
             <Button variant="outline" onClick={() => setStep(2)} className="border-slate-200 text-slate-600"><ArrowLeft className="mr-1.5 h-4 w-4" />Back</Button>
-            <Button onClick={() => onNavigate('dashboard')} className="bg-emerald-600 text-white hover:bg-emerald-700"><CheckCircle2 className="mr-1.5 h-4 w-4" />Publish Course</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => handleCreate('DRAFT')} disabled={createCourse.isPending} className="border-slate-200 text-slate-600">
+                {createCourse.isPending ? 'Saving…' : 'Save as Draft'}
+              </Button>
+              <Button onClick={() => handleCreate('PUBLISHED')} disabled={createCourse.isPending} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                <CheckCircle2 className="mr-1.5 h-4 w-4" />{createCourse.isPending ? 'Publishing…' : 'Publish Course'}
+              </Button>
+            </div>
           </div>
         </Card>
       )}
@@ -2456,6 +2635,7 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
 function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [activeTab, setActiveTab] = useState('general');
   const { data: settingsData } = useSettings();
+  const batchUpdate = useBatchUpdateSettings();
   const settings = (settingsData?.settings ?? []) as any[];
   const getSetting = (key: string) => settings.find((s: any) => s.key === key)?.value ?? '';
   const [siteName, setSiteName] = useState(getSetting('siteName') || 'Trenning LMS');
@@ -2463,6 +2643,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [allowReg, setAllowReg] = useState(getSetting('allowRegistration') ?? true);
   const [maintMode, setMaintMode] = useState(false);
   const [maintMsg, setMaintMsg] = useState('Platform under maintenance.');
+  const [saveStatus, setSaveStatus] = useState<{ type: 'idle' | 'success' | 'error'; msg?: string }>({ type: 'idle' });
 
   // Keep form state in sync once settings load
   useEffect(() => {
@@ -2471,6 +2652,21 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
     setAllowReg(getSetting('allowRegistration') ?? true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsData]);
+
+  const handleSaveGeneral = () => {
+    setSaveStatus({ type: 'idle' });
+    batchUpdate.mutate(
+      [
+        { key: 'siteName', value: siteName, category: 'general' },
+        { key: 'supportEmail', value: supportEmail, category: 'general' },
+        { key: 'allowRegistration', value: allowReg, category: 'auth' },
+      ],
+      {
+        onSuccess: () => setSaveStatus({ type: 'success', msg: 'Settings saved successfully.' }),
+        onError: (err: any) => setSaveStatus({ type: 'error', msg: err.response?.data?.message || 'Failed to save settings.' }),
+      },
+    );
+  };
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -2545,8 +2741,16 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     <div className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', allowReg ? 'translate-x-5' : 'translate-x-0.5')} />
                   </button>
                 </div>
+                {saveStatus.type === 'success' && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{saveStatus.msg}</div>
+                )}
+                {saveStatus.type === 'error' && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{saveStatus.msg}</div>
+                )}
                 <div className="flex justify-end">
-                  <Button className="bg-indigo-600 text-white hover:bg-indigo-700">Save Changes</Button>
+                  <Button onClick={handleSaveGeneral} disabled={batchUpdate.isPending} className="bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                    {batchUpdate.isPending ? 'Saving…' : 'Save Changes'}
+                  </Button>
                 </div>
               </div>
             </Card>
@@ -2809,6 +3013,8 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { data: profile } = useMyProfile();
   const { data: levelData } = useUserLevel();
   const { data: studentData } = useStudentDashboard();
+  const updateProfile = useUpdateMyProfile();
+  const updateUserStore = useAuthStore((s) => s.updateUser);
 
   const me = profile ?? authUser;
   const level = (levelData as any)?.level;
@@ -2819,6 +3025,45 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const initials = me ? getInitials(fullName) : 'G';
   const joinedDate = me?.createdAt ? formatDate(me.createdAt) : (me?.lastLogin ? formatDate(me.lastLogin) : '—');
   const roleLabel = me?.role ? me.role.toLowerCase() : 'member';
+
+  // Edit profile state
+  const [showEdit, setShowEdit] = useState(false);
+  const [editFirst, setEditFirst] = useState(me?.firstName ?? '');
+  const [editLast, setEditLast] = useState(me?.lastName ?? '');
+  const [editBio, setEditBio] = useState((me as any)?.bio ?? '');
+  const [editErr, setEditErr] = useState('');
+
+  // Sync edit form when profile loads
+  useEffect(() => {
+    if (me) {
+      setEditFirst(me.firstName ?? '');
+      setEditLast(me.lastName ?? '');
+      setEditBio((me as any)?.bio ?? '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
+  const handleSaveProfile = () => {
+    setEditErr('');
+    if (!editFirst.trim() || !editLast.trim()) {
+      setEditErr('First name and last name are required.');
+      return;
+    }
+    updateProfile.mutate(
+      { firstName: editFirst, lastName: editLast, bio: editBio },
+      {
+        onSuccess: (data: any) => {
+          // Update the Zustand auth store too so the header reflects the new name immediately
+          const updated = data?.user ?? data;
+          if (updated) {
+            updateUserStore({ firstName: updated.firstName, lastName: updated.lastName });
+          }
+          setShowEdit(false);
+        },
+        onError: (err: any) => setEditErr(err.response?.data?.message || 'Failed to update profile.'),
+      },
+    );
+  };
 
   const myCourses = (studentData?.courses ?? []).map((c: any) => ({
     title: c.course?.title ?? 'Untitled',
@@ -2879,7 +3124,7 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </div>
               </div>
             </div>
-            <Button variant="outline" className="border-slate-200 text-slate-600"><Edit className="mr-1.5 h-4 w-4" />Edit Profile</Button>
+            <Button onClick={() => setShowEdit(true)} variant="outline" className="border-slate-200 text-slate-600"><Edit className="mr-1.5 h-4 w-4" />Edit Profile</Button>
           </div>
         </div>
       </Card>
@@ -2992,6 +3237,47 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
               <p className="text-[10px] text-slate-400">{badge.earned ? 'Earned' : 'Locked'}</p>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {showEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md border-0 p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Edit Profile</h2>
+              <button onClick={() => setShowEdit(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">First Name</Label>
+                  <Input value={editFirst} onChange={(e) => setEditFirst(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Last Name</Label>
+                  <Input value={editLast} onChange={(e) => setEditLast(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Bio</Label>
+                <textarea
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  rows={4}
+                  placeholder="Tell us about yourself..."
+                  className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+              {editErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{editErr}</div>}
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setShowEdit(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+                <Button onClick={handleSaveProfile} disabled={updateProfile.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  {updateProfile.isPending ? 'Saving…' : 'Save Changes'}
+                </Button>
+              </div>
+            </div>
+          </Card>
         </div>
       )}
     </main>
