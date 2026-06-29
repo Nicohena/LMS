@@ -22,7 +22,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'dashboard' | 'catalog' | 'course-detail';
+type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'assignment' | 'discussion';
 
 interface Course {
   id: number; title: string; description: string; instructor: string;
