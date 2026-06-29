@@ -1,0 +1,64 @@
+// src/common/services/audit.service.ts
+//
+// Centralised audit-logging helper. Writes a record to the `AuditLog`
+// MongoDB collection for every significant write action (create/update/delete).
+//
+// Failures are logged to stderr but never thrown — auditing must NEVER break
+// the request flow.
+
+import type { Prisma } from '@prisma/client';
+import { prisma } from '../../lib/prisma';
+
+export type AuditAction =
+  | 'COURSE_CREATE'
+  | 'COURSE_UPDATE'
+  | 'COURSE_ARCHIVE'
+  | 'MODULE_CREATE'
+  | 'MODULE_UPDATE'
+  | 'MODULE_DELETE'
+  | 'MODULE_REORDER'
+  | 'CONTENT_CREATE'
+  | 'CONTENT_UPDATE'
+  | 'CONTENT_DELETE'
+  | 'CONTENT_REORDER'
+  | 'THUMBNAIL_UPLOAD';
+
+export type AuditEntityType = 'Course' | 'Module' | 'Content';
+
+export interface AuditContext {
+  /** Caller IP (best-effort). */
+  ip?: string;
+  /** Caller User-Agent. */
+  userAgent?: string;
+}
+
+export interface LogActionParams {
+  userId: string;
+  action: AuditAction;
+  entityType: AuditEntityType;
+  entityId: string;
+  details?: Prisma.InputJsonValue;
+  context?: AuditContext;
+}
+
+/**
+ * Persist an audit-log entry. Non-throwing.
+ */
+export async function logAction(params: LogActionParams): Promise<void> {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: params.userId,
+        action: params.action,
+        entityType: params.entityType,
+        entityId: params.entityId,
+        details: params.details ?? undefined,
+        ipAddress: params.context?.ip,
+        userAgent: params.context?.userAgent,
+      },
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[audit] Failed to write audit log:', err);
+  }
+}

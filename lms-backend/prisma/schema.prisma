@@ -29,6 +29,7 @@ model User {
   updatedAt          DateTime       @updatedAt
 
   refreshTokens RefreshToken[] @relation("userRefreshTokens")
+  courses       Course[]        @relation("courseCreator")
 }
 
 model RefreshToken {
@@ -39,4 +40,96 @@ model RefreshToken {
   expiresAt DateTime
   revoked   Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Course management (Step 5)
+// ---------------------------------------------------------------------------
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum ContentType {
+  PAGE
+  VIDEO
+  DOCUMENT
+  QUIZ
+  ASSIGNMENT
+  EXTERNAL_LINK
+}
+
+model Course {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  thumbnail   String?
+  category    String?
+  tags        String[]
+  duration    Int?
+  difficulty  DifficultyLevel @default(BEGINNER)
+  language    String         @default("English")
+  status      CourseStatus   @default(DRAFT)
+  createdBy   String         @db.ObjectId
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  creator User     @relation("courseCreator", fields: [createdBy], references: [id])
+  modules Module[]
+}
+
+model Module {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  courseId    String   @db.ObjectId
+  title       String
+  description String?
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contents Content[]
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Content {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  moduleId    String      @db.ObjectId
+  type        ContentType
+  title       String
+  description String?
+  contentJson Json?
+  videoUrl    String?
+  fileUrl     String?
+  externalUrl String?
+  duration    Int?
+  order       Int
+  isPublished Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Quiz / Assignment relations will be added in a future step
+  // (the ContentType enum reserves QUIZ and ASSIGNMENT for forward compat).
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  action     String
+  entityType String
+  entityId   String
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
 }
