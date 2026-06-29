@@ -12,6 +12,8 @@ import enrollmentRouter, { autoEnrollmentRouter } from './modules/enrollments/en
 import quizRouter from './modules/quizzes/quiz.routes';
 import assignmentRouter from './modules/assignments/assignment.routes';
 import { notificationRouter, discussionRouter, messageRouter, announcementRouter } from './modules/notifications/notification.routes';
+import certificateRouter from './modules/certificates/certificate.routes';
+import gamificationRouter from './modules/gamification/gamification.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -80,6 +82,10 @@ app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/discussions', discussionRouter);
 app.use('/api/v1/messages', messageRouter);
 app.use('/api/v1/announcements', announcementRouter);
+
+// --- Certificates & Gamification module (Step 10) ---
+app.use('/api/v1/certificates', certificateRouter);
+app.use('/api/v1/gamification', gamificationRouter);
 
 // --- Test routes for RBAC verification (Step 3) ---
 // Kept for quick smoke-testing of the authenticate/authorize middlewares.
