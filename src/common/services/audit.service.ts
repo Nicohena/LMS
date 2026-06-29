@@ -21,9 +21,17 @@ export type AuditAction =
   | 'CONTENT_UPDATE'
   | 'CONTENT_DELETE'
   | 'CONTENT_REORDER'
-  | 'THUMBNAIL_UPLOAD';
+  | 'THUMBNAIL_UPLOAD'
+  | 'ENROLLMENT_CREATE'
+  | 'ENROLLMENT_BULK_CREATE'
+  | 'ENROLLMENT_CANCEL'
+  | 'PROGRESS_UPDATE'
+  | 'AUTO_ENROLL_RULE_CREATE'
+  | 'AUTO_ENROLL_RULE_UPDATE'
+  | 'AUTO_ENROLL_RULE_DELETE'
+  | 'AUTO_ENROLL_TRIGGER';
 
-export type AuditEntityType = 'Course' | 'Module' | 'Content';
+export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User';
 
 export interface AuditContext {
   /** Caller IP (best-effort). */
