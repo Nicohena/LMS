@@ -10,6 +10,7 @@ import userRouter from './modules/users/user.routes';
 import courseRouter from './modules/courses/course.routes';
 import enrollmentRouter, { autoEnrollmentRouter } from './modules/enrollments/enrollment.routes';
 import quizRouter from './modules/quizzes/quiz.routes';
+import assignmentRouter from './modules/assignments/assignment.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -69,6 +70,9 @@ app.use('/api/v1/admin/auto-enrollment', autoEnrollmentRouter);
 
 // --- Quizzes module ---
 app.use('/api/v1/quizzes', quizRouter);
+
+// --- Assignments module ---
+app.use('/api/v1/assignments', assignmentRouter);
 
 // --- Test routes for RBAC verification (Step 3) ---
 // Kept for quick smoke-testing of the authenticate/authorize middlewares.
