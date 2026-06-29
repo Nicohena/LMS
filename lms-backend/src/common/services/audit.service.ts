@@ -29,9 +29,18 @@ export type AuditAction =
   | 'AUTO_ENROLL_RULE_CREATE'
   | 'AUTO_ENROLL_RULE_UPDATE'
   | 'AUTO_ENROLL_RULE_DELETE'
-  | 'AUTO_ENROLL_TRIGGER';
+  | 'AUTO_ENROLL_TRIGGER'
+  | 'QUIZ_CREATE'
+  | 'QUIZ_UPDATE'
+  | 'QUIZ_ARCHIVE'
+  | 'QUESTION_CREATE'
+  | 'QUESTION_UPDATE'
+  | 'QUESTION_DELETE'
+  | 'QUIZ_ATTEMPT_START'
+  | 'QUIZ_ATTEMPT_SUBMIT'
+  | 'QUIZ_MANUAL_GRADE';
 
-export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User';
+export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt';
 
 export interface AuditContext {
   /** Caller IP (best-effort). */
