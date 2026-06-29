@@ -7,6 +7,9 @@
     "dev": "nodemon --exec \"ts-node --files\" src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "test": "jest --runInBand --forceExit",
+    "test:coverage": "jest --runInBand --forceExit --coverage",
+    "test:watch": "jest --watch --runInBand",
     "db:generate": "dotenv -o -e .env -- prisma generate",
     "db:push": "dotenv -o -e .env -- prisma db push",
     "db:seed": "dotenv -o -e .env -- ts-node prisma/seed.ts",
@@ -50,7 +53,7 @@
     "redis": "^6.0.1",
     "sharp": "^0.35.2",
     "socket.io": "^4.8.3",
-    "uuid": "^14.0.1",
+    "uuid": "^9.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -59,6 +62,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/ioredis": "^4.28.10",
+    "@types/jest": "^30.0.0",
     "@types/json2csv": "^5.0.7",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
@@ -68,9 +72,13 @@
     "@types/pdfkit": "^0.17.6",
     "@types/qrcode": "^1.5.6",
     "@types/sharp": "^0.31.1",
+    "@types/supertest": "^7.2.0",
     "@types/uuid": "^10.0.0",
     "dotenv-cli": "^11.0.0",
+    "jest": "^30.4.2",
     "nodemon": "^3.1.14",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
     "typescript": "~5.7.0"
   }
