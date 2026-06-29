@@ -22,7 +22,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'assignment' | 'discussion';
+type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions';
 
 interface Course {
   id: number; title: string; description: string; instructor: string;
@@ -41,10 +41,10 @@ const navItems = [
   { label: 'My Learning', icon: BookOpen, view: 'dashboard' as View },
   { label: 'Catalog', icon: Layers, view: 'catalog' as View },
   { label: 'Favorites', icon: Star },
-  { label: 'Assignments', icon: FileText, badge: 3 },
-  { label: 'Quizzes', icon: FileQuestion },
+  { label: 'Assignments', icon: FileText, badge: 3, view: 'assignment' as View },
+  { label: 'Quizzes', icon: FileQuestion, view: 'quiz' as View },
   { label: 'Certificates', icon: Award },
-  { label: 'Messages', icon: MessageSquare, badge: 5 },
+  { label: 'Discussions', icon: MessageSquare, badge: 5, view: 'discussions' as View },
   { label: 'Calendar', icon: Calendar },
 ];
 
