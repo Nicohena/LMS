@@ -16,6 +16,7 @@ import certificateRouter from './modules/certificates/certificate.routes';
 import gamificationRouter from './modules/gamification/gamification.routes';
 import { dashboardRouter, reportRouter, scheduleRouter } from './modules/reports/report.routes';
 import auditRouter from './modules/audit/audit.routes';
+import { settingRouter, emailTemplateRouter, gradingScaleRouter, academicYearRouter, healthRouter, maintenanceRouter } from './modules/settings/setting.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -94,6 +95,14 @@ app.use('/api/v1/dashboards', dashboardRouter);
 app.use('/api/v1/reports', reportRouter);
 app.use('/api/v1/schedules', scheduleRouter);
 app.use('/api/v1/audit', auditRouter);
+
+// --- System Settings & Configuration module (Step 12) ---
+app.use('/api/v1/settings', settingRouter);
+app.use('/api/v1/email-templates', emailTemplateRouter);
+app.use('/api/v1/grading-scales', gradingScaleRouter);
+app.use('/api/v1/academic-years', academicYearRouter);
+app.use('/api/v1/health', healthRouter);
+app.use('/api/v1/maintenance', maintenanceRouter);
 
 // --- Test routes for RBAC verification (Step 3) ---
 // Kept for quick smoke-testing of the authenticate/authorize middlewares.
