@@ -20,6 +20,10 @@ export function useLogin() {
       // but also returns user data. We store the user in Zustand.
       setAuth(data.user, 'cookie-based');
       queryClient.invalidateQueries({ queryKey: ['me'] });
+      // Lazily establish the Socket.io connection now that we're authenticated
+      if (typeof window !== 'undefined') {
+        import('./socket').then(({ getSocket }) => getSocket()).catch(() => {});
+      }
     },
   });
 }
@@ -177,6 +181,81 @@ export function useCreateCourse() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
+    },
+  });
+}
+
+// ─── Modules & Content (course authoring) ────────────────────────────────
+
+export function useCreateModule(courseId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { title: string; description?: string; order?: number }) => {
+      const res = await api.post(`/courses/${courseId}/modules`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      if (courseId) queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+    },
+  });
+}
+
+export function useUpdateModule(courseId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ moduleId, data }: { moduleId: string; data: { title?: string; description?: string; order?: number } }) => {
+      const res = await api.patch(`/courses/modules/${moduleId}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      if (courseId) queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+    },
+  });
+}
+
+export function useDeleteModule(courseId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (moduleId: string) => {
+      await api.delete(`/courses/modules/${moduleId}`);
+    },
+    onSuccess: () => {
+      if (courseId) queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+    },
+  });
+}
+
+export function useCreateContent(courseId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ moduleId, data }: { moduleId: string; data: {
+      type: 'PAGE' | 'VIDEO' | 'DOCUMENT' | 'QUIZ' | 'ASSIGNMENT' | 'EXTERNAL_LINK';
+      title: string;
+      description?: string;
+      videoUrl?: string;
+      fileUrl?: string;
+      externalUrl?: string;
+      duration?: number;
+      order?: number;
+      isPublished?: boolean;
+    } }) => {
+      const res = await api.post(`/courses/modules/${moduleId}/contents`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      if (courseId) queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+    },
+  });
+}
+
+export function useDeleteContent(courseId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (contentId: string) => {
+      await api.delete(`/courses/contents/${contentId}`);
+    },
+    onSuccess: () => {
+      if (courseId) queryClient.invalidateQueries({ queryKey: ['course', courseId] });
     },
   });
 }
@@ -388,6 +467,18 @@ export function useMarkNotificationRead() {
   });
 }
 
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.patch('/notifications/all-read');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
 // ─── Discussions ─────────────────────────────────────────────────────────
 
 export function useDiscussions(params?: { courseId?: string; page?: number; limit?: number; search?: string }) {
@@ -459,6 +550,50 @@ export function useAnnouncements(params?: { courseId?: string; page?: number; li
     queryFn: async () => {
       const res = await api.get('/announcements', { params });
       return res.data;
+    },
+  });
+}
+
+export function useCreateAnnouncement() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      title: string;
+      content: string;
+      courseId?: string;
+      priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+      scheduledAt?: string;
+      expiresAt?: string;
+    }) => {
+      const res = await api.post('/announcements', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+    },
+  });
+}
+
+export function useDeleteAnnouncement() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/announcements/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+    },
+  });
+}
+
+export function useMarkAnnouncementRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.patch(`/announcements/${id}/read`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
     },
   });
 }

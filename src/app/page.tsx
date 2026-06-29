@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard, BookOpen, FileText, GraduationCap, Award, Settings,
   Bell, Search, Calendar, ChevronRight, Menu, X, LogOut, MessageSquare,
@@ -13,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,7 +28,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'admin' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
+type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'announcements' | 'admin' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
 
 interface Course {
   id: string; title: string; description: string; instructor: string;
@@ -50,6 +51,7 @@ const navItems = [
   { label: 'Quizzes', icon: FileQuestion, view: 'quiz' as View },
   { label: 'Certificates', icon: Award, view: 'gamification' as View },
   { label: 'Discussions', icon: MessageSquare, badge: 5, view: 'discussions' as View },
+  { label: 'Announcements', icon: Bell, view: 'announcements' as View },
   { label: 'Messages', icon: MessageSquare, badge: 3, view: 'messages' as View },
   { label: 'Admin Panel', icon: BarChart3, view: 'admin' as View },
   { label: 'User Management', icon: Users, view: 'users' as View },
@@ -170,11 +172,20 @@ function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; on
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────
-function Header({ onMenuClick, onNavigate, currentView }: { onMenuClick: () => void; onNavigate: (v: View) => void; currentView: View }) {
+function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMenuClick: () => void; onNavigate: (v: View) => void; currentView: View; onSelectCourse: (id: string) => void }) {
   const user = useAuthStore((s) => s.user);
   const logoutMutation = useLogout();
-  const { data: notifData } = useNotifications({ limit: 5, unreadOnly: true });
-  const unreadCount = (notifData?.data ?? []).length;
+  const queryClient = useQueryClient();
+  const { data: notifData } = useNotifications({ limit: 20 });
+  const markReadMut = useMarkNotificationRead();
+  const markAllReadMut = useMarkAllNotificationsRead();
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const { data: searchData } = useCourses({ limit: 10, search: searchQuery || undefined });
+  const searchResults = ((searchData?.data ?? []) as any[]).slice(0, 5);
+  const allNotifications = (notifData?.data ?? []) as any[];
+  const unreadCount = allNotifications.filter((n: any) => !n.isRead).length;
   const headerLinks = [
     { label: 'Home', view: 'dashboard' as View },
     { label: 'My Learning', view: 'dashboard' as View },
@@ -184,6 +195,34 @@ function Header({ onMenuClick, onNavigate, currentView }: { onMenuClick: () => v
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'Guest';
   const initials = user ? getInitials(displayName) : 'G';
   const roleLabel = user?.role.toLowerCase() ?? 'visitor';
+
+  const handleMarkAllRead = () => { markAllReadMut.mutate(); };
+  const handleMarkOneRead = (id: string) => { markReadMut.mutate(id); };
+
+  // Subscribe to real-time notification pushes from the backend via Socket.io
+  useEffect(() => {
+    let socket: any = null;
+    let cancelled = false;
+    (async () => {
+      const { getSocket } = await import('@/lib/socket');
+      socket = getSocket();
+      if (!socket || cancelled) return;
+      const onNotification = () => {
+        // Invalidate the notifications query so the bell badge + dropdown refresh
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      };
+      socket.on('notification', onNotification);
+      return () => { socket.off('notification', onNotification); };
+    })();
+    return () => { cancelled = true; };
+  }, [queryClient]);
+
+  const handleSelectSearchResult = (id: string) => {
+    onSelectCourse(id);
+    setSearchQuery('');
+    setShowSearch(false);
+  };
+
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-4 lg:px-6">
       <button onClick={onMenuClick} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"><Menu className="h-5 w-5" /></button>
@@ -194,10 +233,117 @@ function Header({ onMenuClick, onNavigate, currentView }: { onMenuClick: () => v
       </nav>
       <div className="relative hidden flex-1 md:block lg:max-w-xs">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input type="text" placeholder="Search..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        <input
+          type="text"
+          placeholder="Search courses..."
+          value={searchQuery}
+          onChange={(e) => { setSearchQuery(e.target.value); setShowSearch(true); }}
+          onFocus={() => setShowSearch(true)}
+          onBlur={() => setTimeout(() => setShowSearch(false), 200)}
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+        {showSearch && searchQuery.trim() && (
+          <div className="absolute left-0 right-0 top-full z-40 mt-2 rounded-xl border border-slate-200 bg-white shadow-lg">
+            {searchResults.length === 0 ? (
+              <div className="px-4 py-6 text-center">
+                <Search className="mx-auto mb-2 h-6 w-6 text-slate-300" />
+                <p className="text-sm text-slate-500">No courses found for "{searchQuery}"</p>
+              </div>
+            ) : (
+              <>
+                <div className="border-b border-slate-100 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  {searchResults.length} course{searchResults.length !== 1 ? 's' : ''}
+                </div>
+                {searchResults.map((c: any) => (
+                  <button
+                    key={c.id}
+                    onClick={() => handleSelectSearchResult(c.id)}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
+                      <BookOpen className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <p className="truncate text-sm font-medium text-slate-900">{c.title}</p>
+                      <p className="truncate text-xs text-slate-400">{c.category ?? 'General'} · {c.difficulty ? c.difficulty.charAt(0) + c.difficulty.slice(1).toLowerCase() : 'Beginner'}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-300" />
+                  </button>
+                ))}
+                <button
+                  onClick={() => { onNavigate('catalog'); setShowSearch(false); setSearchQuery(''); }}
+                  className="block w-full border-t border-slate-200 px-3 py-2.5 text-center text-xs font-medium text-indigo-600 hover:bg-slate-50"
+                >
+                  View all results in catalog
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
       <div className="ml-auto flex items-center gap-3">
-        <button className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"><Bell className="h-5 w-5" />{unreadCount > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />}</button>
+        {/* Notifications */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifs(!showNotifs)}
+            className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            title="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          {showNotifs && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setShowNotifs(false)} />
+              <div className="absolute right-0 top-full z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] origin-top-right rounded-xl border border-slate-200 bg-white shadow-lg">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                  <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button onClick={handleMarkAllRead} disabled={markAllReadMut.isPending} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {allNotifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                      <Bell className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                      <p className="text-sm text-slate-500">You're all caught up!</p>
+                      <p className="mt-0.5 text-xs text-slate-400">No notifications yet.</p>
+                    </div>
+                  ) : (
+                    allNotifications.slice(0, 10).map((n: any) => (
+                      <button
+                        key={n.id}
+                        onClick={() => !n.isRead && handleMarkOneRead(n.id)}
+                        className={cn('flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50', !n.isRead && 'bg-indigo-50/40')}
+                      >
+                        <div className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', n.isRead ? 'bg-transparent' : 'bg-indigo-500')} />
+                        <div className="flex-1 overflow-hidden">
+                          <p className={cn('text-sm', n.isRead ? 'font-medium text-slate-700' : 'font-semibold text-slate-900')}>{n.title}</p>
+                          {n.message && <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{n.message}</p>}
+                          <p className="mt-1 text-[10px] text-slate-400">{n.createdAt ? timeAgo(n.createdAt) : ''}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+                {allNotifications.length > 0 && (
+                  <button
+                    onClick={() => { setShowNotifs(false); onNavigate('announcements'); }}
+                    className="block w-full border-t border-slate-200 px-4 py-2.5 text-center text-xs font-medium text-indigo-600 hover:bg-slate-50"
+                  >
+                    View all announcements
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-3 border-l border-slate-200 pl-3">
           <div className="hidden text-right md:block"><p className="text-sm font-semibold text-slate-900">{displayName}</p><p className="text-xs capitalize text-slate-500">{roleLabel}</p></div>
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{initials}</div>
@@ -618,6 +764,18 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
 // ─── Course Detail View ──────────────────────────────────────────────────
 function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignment }: { courseId: string; onNavigate: (v: View) => void; onSelectQuiz?: (id: string) => void; onSelectAssignment?: (id: string) => void }) {
   const { data: courseData, isLoading } = useCourse(courseId || null);
+  const authUser = useAuthStore((s) => s.user);
+  const canAuthor = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
+  const createModuleMut = useCreateModule(courseId || null);
+  const deleteModuleMut = useDeleteModule(courseId || null);
+  const createContentMut = useCreateContent(courseId || null);
+  const deleteContentMut = useDeleteContent(courseId || null);
+  const [showAddModule, setShowAddModule] = useState(false);
+  const [newModuleTitle, setNewModuleTitle] = useState('');
+  const [showAddContent, setShowAddContent] = useState<string | null>(null); // module ID
+  const [newContentTitle, setNewContentTitle] = useState('');
+  const [newContentType, setNewContentType] = useState<'PAGE' | 'VIDEO' | 'DOCUMENT' | 'QUIZ' | 'ASSIGNMENT' | 'EXTERNAL_LINK'>('PAGE');
+  const [authorErr, setAuthorErr] = useState('');
   // Normalize the API response into our Course shape; fall back to first mock for layout
   const apiCourse = courseData as any;
   // Collect all content IDs from the course so we can look up quizzes/assignments attached to them
@@ -678,6 +836,49 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
     } else if (lesson.type === 'assignment' && onSelectAssignment && assignmentIdByContent[contentId]) {
       onSelectAssignment(assignmentIdByContent[contentId]);
     }
+  };
+
+  const handleCreateModule = () => {
+    setAuthorErr('');
+    if (!newModuleTitle.trim()) {
+      setAuthorErr('Module title is required.');
+      return;
+    }
+    createModuleMut.mutate(
+      { title: newModuleTitle },
+      {
+        onSuccess: () => { setNewModuleTitle(''); setShowAddModule(false); },
+        onError: (err: any) => setAuthorErr(err.response?.data?.message || 'Failed to create module.'),
+      },
+    );
+  };
+
+  const handleCreateContent = (moduleId: string) => {
+    setAuthorErr('');
+    if (!newContentTitle.trim()) {
+      setAuthorErr('Content title is required.');
+      return;
+    }
+    createContentMut.mutate(
+      { moduleId, data: { title: newContentTitle, type: newContentType, isPublished: true } },
+      {
+        onSuccess: () => {
+          setNewContentTitle('');
+          setShowAddContent(null);
+        },
+        onError: (err: any) => setAuthorErr(err.response?.data?.message || 'Failed to create content.'),
+      },
+    );
+  };
+
+  const handleDeleteModule = (moduleId: string) => {
+    if (!confirm('Delete this module and all its content? This cannot be undone.')) return;
+    deleteModuleMut.mutate(moduleId);
+  };
+
+  const handleDeleteContent = (contentId: string) => {
+    if (!confirm('Delete this content? This cannot be undone.')) return;
+    deleteContentMut.mutate(contentId);
   };
 
   const completedLessons = course.modules?.reduce((acc, m) => acc + m.lessons.filter(l => l.completed).length, 0) || 0;
@@ -813,8 +1014,17 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
         <div>
           <Card className="border border-slate-200 shadow-sm">
             <div className="border-b border-slate-200 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Course Content</h3>
-              <p className="mt-0.5 text-xs text-slate-400">{completedLessons}/{totalLessons} lessons completed</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Course Content</h3>
+                  <p className="mt-0.5 text-xs text-slate-400">{completedLessons}/{totalLessons} lessons completed</p>
+                </div>
+                {canAuthor && (
+                  <button onClick={() => setShowAddModule(true)} title="Add module" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600">
+                    <Plus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                 <div className="h-full rounded-full bg-indigo-600" style={{ width: `${totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0}%` }} />
               </div>
@@ -822,37 +1032,61 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
             <div className="max-h-[500px] overflow-y-auto p-2">
               {course.modules?.map((module, mIdx) => (
                 <div key={module.id} className="mb-2">
-                  <button onClick={() => setActiveModule(mIdx)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-50">
-                    <span className="text-sm font-semibold text-slate-900">{module.title}</span>
-                    <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', mIdx === activeModule && 'rotate-180')} />
-                  </button>
+                  <div className="flex items-center">
+                    <button onClick={() => setActiveModule(mIdx)} className="flex flex-1 items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-50">
+                      <span className="text-sm font-semibold text-slate-900">{module.title}</span>
+                      <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', mIdx === activeModule && 'rotate-180')} />
+                    </button>
+                    {canAuthor && (
+                      <div className="flex gap-0.5 pr-1">
+                        <button onClick={() => setShowAddContent(String(module.id))} title="Add content" className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Plus className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => handleDeleteModule(String(module.id))} title="Delete module" className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    )}
+                  </div>
                   {mIdx === activeModule && (
                     <div className="mt-1 space-y-0.5 pl-2">
                       {module.lessons.map((lesson, lIdx) => {
                         const Icon = lessonTypeIcons[lesson.type] || Video;
                         const hasLinkedEntity = (lesson.type === 'quiz' && quizIdByContent[String(lesson.id)]) || (lesson.type === 'assignment' && assignmentIdByContent[String(lesson.id)]);
                         return (
-                          <button
-                            key={lesson.id}
-                            onClick={() => handleLessonClick(mIdx, lIdx, lesson)}
-                            className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors', mIdx === activeModule && lIdx === activeLesson ? 'bg-indigo-50' : 'hover:bg-slate-50', hasLinkedEntity && 'hover:border-indigo-200')}
-                            title={hasLinkedEntity ? `Open ${lesson.type}` : undefined}
-                          >
-                            <div className={cn('flex h-5 w-5 items-center justify-center rounded-full', lesson.completed ? 'bg-emerald-100' : 'bg-slate-100')}>
-                              {lesson.completed ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Icon className={cn('h-3 w-3', lesson.type === 'quiz' || lesson.type === 'assignment' ? 'text-indigo-500' : 'text-slate-400')} />}
-                            </div>
-                            <div className="flex-1">
-                              <p className={cn('text-xs', mIdx === activeModule && lIdx === activeLesson ? 'font-medium text-indigo-600' : 'text-slate-600')}>{lesson.title}</p>
-                            </div>
-                            {hasLinkedEntity && <ChevronRight className="h-3 w-3 text-indigo-400" />}
-                            <span className="text-[10px] text-slate-400">{lesson.duration}</span>
-                          </button>
+                          <div key={lesson.id} className={cn('group flex items-center rounded-lg', mIdx === activeModule && lIdx === activeLesson ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
+                            <button
+                              onClick={() => handleLessonClick(mIdx, lIdx, lesson)}
+                              className={cn('flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors')}
+                              title={hasLinkedEntity ? `Open ${lesson.type}` : undefined}
+                            >
+                              <div className={cn('flex h-5 w-5 items-center justify-center rounded-full', lesson.completed ? 'bg-emerald-100' : 'bg-slate-100')}>
+                                {lesson.completed ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Icon className={cn('h-3 w-3', lesson.type === 'quiz' || lesson.type === 'assignment' ? 'text-indigo-500' : 'text-slate-400')} />}
+                              </div>
+                              <div className="flex-1">
+                                <p className={cn('text-xs', mIdx === activeModule && lIdx === activeLesson ? 'font-medium text-indigo-600' : 'text-slate-600')}>{lesson.title}</p>
+                              </div>
+                              {hasLinkedEntity && <ChevronRight className="h-3 w-3 text-indigo-400" />}
+                              <span className="text-[10px] text-slate-400">{lesson.duration}</span>
+                            </button>
+                            {canAuthor && (
+                              <button onClick={() => handleDeleteContent(String(lesson.id))} title="Delete content" className="mr-2 rounded p-1 text-slate-300 opacity-0 hover:text-red-500 group-hover:opacity-100">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
                         );
                       })}
+                      {canAuthor && (
+                        <button onClick={() => setShowAddContent(String(module.id))} className="flex w-full items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 hover:border-indigo-300 hover:text-indigo-600">
+                          <Plus className="h-3 w-3" />Add content
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
               ))}
+              {canAuthor && course.modules && course.modules.length === 0 && (
+                <button onClick={() => setShowAddModule(true)} className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-4 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600">
+                  <Plus className="h-4 w-4" />Add first module
+                </button>
+              )}
             </div>
           </Card>
 
@@ -878,6 +1112,72 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
           </Card>
         </div>
       </div>
+
+      {/* Add Module Modal */}
+      {showAddModule && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md border-0 p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Add Module</h2>
+              <button onClick={() => setShowAddModule(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Module Title *</Label>
+                <Input value={newModuleTitle} onChange={(e) => setNewModuleTitle(e.target.value)} placeholder="e.g., Module 2: Advanced Topics" />
+              </div>
+              {authorErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{authorErr}</div>}
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setShowAddModule(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+                <Button onClick={handleCreateModule} disabled={createModuleMut.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  {createModuleMut.isPending ? 'Creating…' : 'Create Module'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Add Content Modal */}
+      {showAddContent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md border-0 p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Add Content</h2>
+              <button onClick={() => setShowAddContent(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Content Title *</Label>
+                <Input value={newContentTitle} onChange={(e) => setNewContentTitle(e.target.value)} placeholder="e.g., Introduction to UX" />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Content Type</Label>
+                <select value={newContentType} onChange={(e) => setNewContentType(e.target.value as any)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
+                  <option value="PAGE">Page (rich text)</option>
+                  <option value="VIDEO">Video</option>
+                  <option value="DOCUMENT">Document</option>
+                  <option value="QUIZ">Quiz</option>
+                  <option value="ASSIGNMENT">Assignment</option>
+                  <option value="EXTERNAL_LINK">External Link</option>
+                </select>
+                <p className="mt-1 text-xs text-slate-400">
+                  {newContentType === 'QUIZ' && 'After creating this content, you can attach quiz questions via the Quizzes page.'}
+                  {newContentType === 'ASSIGNMENT' && 'After creating this content, you can configure the assignment via the Assignments page.'}
+                  {newContentType === 'VIDEO' && 'You can add the video URL after creation.'}
+                </p>
+              </div>
+              {authorErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{authorErr}</div>}
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setShowAddContent(null)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+                <Button onClick={() => handleCreateContent(showAddContent)} disabled={createContentMut.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  {createContentMut.isPending ? 'Creating…' : 'Create Content'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </main>
   );
 }
@@ -1730,6 +2030,170 @@ function DiscussionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
                 <Button onClick={handleCreate} disabled={!newTitle.trim()} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">Post Thread</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ─── Announcements View ──────────────────────────────────────────────────
+function AnnouncementsView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const authUser = useAuthStore((s) => s.user);
+  const canManage = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
+  const { data, isLoading } = useAnnouncements({ limit: 50 });
+  const createMut = useCreateAnnouncement();
+  const deleteMut = useDeleteAnnouncement();
+  const markReadMut = useMarkAnnouncementRead();
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newPriority, setNewPriority] = useState<'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'>('NORMAL');
+  const [formErr, setFormErr] = useState('');
+
+  const announcements = (data?.data ?? []) as any[];
+
+  const handleCreate = () => {
+    setFormErr('');
+    if (!newTitle.trim() || !newContent.trim()) {
+      setFormErr('Title and content are required.');
+      return;
+    }
+    createMut.mutate(
+      { title: newTitle, content: newContent, priority: newPriority },
+      {
+        onSuccess: () => {
+          setNewTitle(''); setNewContent(''); setNewPriority('NORMAL');
+          setShowCreate(false);
+        },
+        onError: (err: any) => setFormErr(err.response?.data?.message || 'Failed to create announcement.'),
+      },
+    );
+  };
+
+  const handleDelete = (id: string) => {
+    if (!confirm('Delete this announcement? This cannot be undone.')) return;
+    deleteMut.mutate(id);
+  };
+
+  const handleMarkRead = (id: string) => {
+    markReadMut.mutate(id);
+  };
+
+  const priorityColors: Record<string, string> = {
+    LOW: 'bg-slate-100 text-slate-600',
+    NORMAL: 'bg-blue-50 text-blue-600',
+    HIGH: 'bg-amber-50 text-amber-600',
+    URGENT: 'bg-red-50 text-red-600',
+  };
+
+  return (
+    <main className="mx-auto max-w-4xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Announcements</span>
+      </div>
+
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Announcements</h1>
+          <p className="mt-1 text-sm text-slate-500">{announcements.length} announcement{announcements.length !== 1 ? 's' : ''} · Stay up to date</p>
+        </div>
+        {canManage && (
+          <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">
+            <Plus className="mr-1.5 h-4 w-4" />New Announcement
+          </Button>
+        )}
+      </div>
+
+      {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading announcements…</div>}
+      {!isLoading && announcements.length === 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
+          <Bell className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+          <p className="text-sm font-medium text-slate-500">No announcements yet.</p>
+          {canManage && <p className="mt-1 text-xs text-slate-400">Click "New Announcement" to create your first one.</p>}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {announcements.map((a: any) => {
+          const creator = a.creator ? `${a.creator.firstName} ${a.creator.lastName}` : 'Unknown';
+          const isUnread = a.readReceipts === null || (Array.isArray(a.readReceipts) && !a.readReceipts.includes(authUser?.id));
+          return (
+            <Card key={a.id} className={cn('border p-5 shadow-sm transition-all', isUnread ? 'border-indigo-200 bg-indigo-50/30' : 'border-slate-200')}>
+              <div className="flex items-start gap-3">
+                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', priorityColors[a.priority ?? 'NORMAL'] || priorityColors.NORMAL)}>
+                  <Bell className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-semibold text-slate-900">{a.title}</h3>
+                        {isUnread && <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">New</Badge>}
+                        <Badge className={cn('hover:opacity-90', priorityColors[a.priority ?? 'NORMAL'] || priorityColors.NORMAL)}>{a.priority ?? 'NORMAL'}</Badge>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-400">By {creator} · {timeAgo(a.createdAt)}</p>
+                    </div>
+                    {canManage && (
+                      <button onClick={() => handleDelete(a.id)} title="Delete" className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{a.content}</p>
+                  {isUnread && (
+                    <button onClick={() => handleMarkRead(a.id)} className="mt-3 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                      Mark as read
+                    </button>
+                  )}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Create Announcement Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-lg border-0 p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">New Announcement</h2>
+              <button onClick={() => setShowCreate(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Title *</Label>
+                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Schedule update for next week" />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Content *</Label>
+                <textarea
+                  value={newContent}
+                  onChange={(e) => setNewContent(e.target.value)}
+                  rows={5}
+                  placeholder="Write your announcement..."
+                  className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Priority</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const).map((p) => (
+                    <button key={p} type="button" onClick={() => setNewPriority(p)} className={cn('rounded-lg border py-2 text-xs font-medium transition-colors', p === newPriority ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{p}</button>
+                  ))}
+                </div>
+              </div>
+              {formErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{formErr}</div>}
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+                <Button onClick={handleCreate} disabled={createMut.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  {createMut.isPending ? 'Publishing…' : 'Publish'}
+                </Button>
               </div>
             </div>
           </Card>
@@ -2863,9 +3327,12 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [activeChat, setActiveChat] = useState<string>('');
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [remoteTyping, setRemoteTyping] = useState(false);
   const { data: convData } = useConversations();
   const { data: msgData } = useMessages(activeChat || null);
   const sendMutation = useSendMessage();
+  const queryClient = useQueryClient();
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const conversations = (convData?.conversations ?? []).map((c: any) => ({
     id: c.id ?? c.groupId ?? c.userId,
@@ -2903,12 +3370,79 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
     { id: 3, sender: activeConv?.name ?? 'Sarah Chen', text: 'Sure, what do you need help with?', time: '10:33 AM', isMe: false },
   ];
 
+  // --- Socket.io real-time subscriptions ---
+  useEffect(() => {
+    let socket: any = null;
+    let cancelled = false;
+    (async () => {
+      const { getSocket } = await import('@/lib/socket');
+      socket = getSocket();
+      if (!socket || cancelled) return;
+      // Listen for incoming messages — invalidate the active chat query so it refetches
+      const onMessage = (msg: any) => {
+        // If the message belongs to the active chat, refetch
+        const msgGroupId = msg?.groupId ?? msg?.conversationId;
+        const msgSenderId = msg?.senderId ?? msg?.sender?.id;
+        if (msgGroupId === activeChatId || msgSenderId) {
+          queryClient.invalidateQueries({ queryKey: ['messages', activeChatId] });
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        }
+      };
+      const onTyping = (data: any) => {
+        if (data?.groupId === activeChatId && data?.isTyping) {
+          setRemoteTyping(true);
+          // Auto-clear after 3s of no further events
+          setTimeout(() => setRemoteTyping(false), 3000);
+        } else if (data?.groupId === activeChatId && !data?.isTyping) {
+          setRemoteTyping(false);
+        }
+      };
+      socket.on('message', onMessage);
+      socket.on('typing', onTyping);
+      // Join the active conversation's room if it's a real (non-mock) ID
+      if (activeChatId && !activeChatId.startsWith('mock')) {
+        socket.emit('join', activeChatId);
+      }
+      return () => {
+        socket.off('message', onMessage);
+        socket.off('typing', onTyping);
+        if (activeChatId && !activeChatId.startsWith('mock')) {
+          socket.emit('leave', activeChatId);
+        }
+      };
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeChatId, queryClient]);
+
+  // Auto-scroll to the latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [allMessages.length]);
+
   const handleSend = () => {
     if (!message.trim()) return;
-    sendMutation.mutate({ content: message, receiverId: activeConv?.id?.startsWith('mock') ? undefined : activeConv?.id });
+    sendMutation.mutate({
+      content: message,
+      receiverId: activeConv?.id?.startsWith('mock') ? undefined : activeConv?.id,
+      groupId: activeConv?.id?.startsWith('mock') ? undefined : activeConv?.id,
+    });
     setMessage('');
     setIsTyping(true);
     setTimeout(() => setIsTyping(false), 2000);
+  };
+
+  // Emit typing event when the user types
+  const handleType = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+    // Emit typing indicator to the active group (best-effort, ignore errors)
+    if (activeChatId && !activeChatId.startsWith('mock')) {
+      import('@/lib/socket').then(({ getSocket }) => {
+        const sock = getSocket();
+        sock?.emit('typing', { groupId: activeChatId, isTyping: e.target.value.length > 0 });
+      }).catch(() => {});
+    }
   };
 
   return (
@@ -2972,7 +3506,7 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </div>
               </div>
             ))}
-            {isTyping && (
+            {(remoteTyping || isTyping) && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-white px-4 py-3 border border-slate-200">
                   <div className="h-2 w-2 animate-bounce rounded-full bg-slate-300" style={{ animationDelay: '0ms' }} />
@@ -2981,6 +3515,7 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </div>
 
@@ -2991,7 +3526,7 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
             <input
               type="text"
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={handleType}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Type a message..."
               className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -3334,7 +3869,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} currentView={view} onNavigate={handleNavigate} />
       <div className="lg:pl-64">
-        <Header onMenuClick={() => setSidebarOpen(true)} onNavigate={handleNavigate} currentView={view} />
+        <Header onMenuClick={() => setSidebarOpen(true)} onNavigate={handleNavigate} currentView={view} onSelectCourse={handleSelectCourse} />
         {view === 'dashboard' && <DashboardView onNavigate={handleNavigate} />}
         {view === 'catalog' && <CatalogView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
         {view === 'course-detail' && <CourseDetailView courseId={selectedCourseId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSelectAssignment={handleSelectAssignment} />}
@@ -3342,6 +3877,7 @@ export default function App() {
         {view === 'quiz-results' && <QuizResultsView attemptId={lastAttemptId} onNavigate={handleNavigate} />}
         {view === 'assignment' && <AssignmentView assignmentId={selectedAssignmentId} onNavigate={handleNavigate} onSelectAssignment={handleSelectAssignment} />}
         {view === 'discussions' && <DiscussionsView onNavigate={handleNavigate} />}
+        {view === 'announcements' && <AnnouncementsView onNavigate={handleNavigate} />}
         {view === 'admin' && <AdminView onNavigate={handleNavigate} />}
         {view === 'users' && <UsersView onNavigate={handleNavigate} />}
         {view === 'gamification' && <GamificationView onNavigate={handleNavigate} />}

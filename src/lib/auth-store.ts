@@ -40,6 +40,8 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('accessToken');
+          // Lazily disconnect the socket (dynamic import to avoid SSR issues)
+          import('./socket').then(({ disconnectSocket }) => disconnectSocket()).catch(() => {});
         }
         set({ user: null, accessToken: null, isAuthenticated: false });
       },
