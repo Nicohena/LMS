@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { prisma } from './lib/prisma';
 import authRouter from './modules/auth/auth.routes';
+import userRouter from './modules/users/user.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -50,8 +51,11 @@ app.get('/api/v1/ping', (_req: Request, res: Response) => {
 // --- Auth module ---
 app.use('/api/v1/auth', authRouter);
 
+// --- Users module ---
+app.use('/api/v1/users', userRouter);
+
 // --- Test routes for RBAC verification (Step 3) ---
-// Remove or guard these once real protected routes exist.
+// Kept for quick smoke-testing of the authenticate/authorize middlewares.
 app.get(
   '/api/v1/admin-only',
   authenticate,
