@@ -51,9 +51,21 @@ export type AuditAction =
   | 'SUBMISSION_REVISION_REQUEST'
   | 'SUBMISSION_RESUBMIT'
   | 'PEER_REVIEW_ASSIGN'
-  | 'PEER_REVIEW_SUBMIT';
+  | 'PEER_REVIEW_SUBMIT'
+  | 'NOTIFICATION_CREATE'
+  | 'DISCUSSION_CREATE'
+  | 'DISCUSSION_UPDATE'
+  | 'DISCUSSION_DELETE'
+  | 'DISCUSSION_REPLY_CREATE'
+  | 'DISCUSSION_REPLY_DELETE'
+  | 'DISCUSSION_UPVOTE'
+  | 'DISCUSSION_BEST_ANSWER'
+  | 'MESSAGE_SEND'
+  | 'ANNOUNCEMENT_CREATE'
+  | 'ANNOUNCEMENT_UPDATE'
+  | 'ANNOUNCEMENT_DELETE';
 
-export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt' | 'Assignment' | 'Rubric' | 'Submission' | 'PeerReview';
+export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt' | 'Assignment' | 'Rubric' | 'Submission' | 'PeerReview' | 'Notification' | 'Discussion' | 'DiscussionReply' | 'Message' | 'Announcement';
 
 export interface AuditContext {
   /** Caller IP (best-effort). */
