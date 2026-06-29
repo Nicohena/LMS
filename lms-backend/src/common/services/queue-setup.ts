@@ -6,13 +6,7 @@
 
 import { registerQueue } from './queue.service';
 import type { Job } from 'bullmq';
-
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface ProgressJobData {}
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface EnrollmentJobData {}
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface NotificationJobData {}
+import { sendEmailImmediate, type SendEmailParams } from '../../modules/notifications/email.service';
 
 let initialized = false;
 
@@ -24,27 +18,31 @@ export function setupQueues(): void {
   initialized = true;
 
   // Progress queue — recalculation, milestone events, etc.
-  registerQueue<ProgressJobData>('progressQueue', async (job: Job<ProgressJobData>) => {
+  registerQueue<unknown>('progressQueue', async (job: Job) => {
     // eslint-disable-next-line no-console
     console.log('[progressQueue] Processing job:', job.id, (job as any).data);
-    // Placeholder — actual handlers (e.g., sending milestone notifications,
-    // updating leaderboards) would live here.
     return;
   });
 
   // Enrollment queue — bulk enrollment post-processing, progress init
-  registerQueue<EnrollmentJobData>('enrollmentQueue', async (job: Job<EnrollmentJobData>) => {
+  registerQueue<unknown>('enrollmentQueue', async (job: Job) => {
     // eslint-disable-next-line no-console
     console.log('[enrollmentQueue] Processing job:', job.id, (job as any).data);
-    // Placeholder — e.g., initialize progress records, send welcome emails.
     return;
   });
 
-  // Notification queue — emails, in-app notifications
-  registerQueue<NotificationJobData>('notificationQueue', async (job: Job<NotificationJobData>) => {
+  // Notification queue — in-app notification aggregation
+  registerQueue<unknown>('notificationQueue', async (job: Job) => {
     // eslint-disable-next-line no-console
     console.log('[notificationQueue] Processing job:', job.id, (job as any).data);
-    // Placeholder — actual email/notification sending will be implemented in Step 8.
     return;
+  });
+
+  // Email queue — async email sending via Nodemailer + Handlebars
+  registerQueue<SendEmailParams>('emailQueue', async (job: Job<SendEmailParams>) => {
+    const params = job.data;
+    // eslint-disable-next-line no-console
+    console.log(`[emailQueue] Sending email to ${params.to} (template: ${params.template})`);
+    await sendEmailImmediate(params);
   });
 }

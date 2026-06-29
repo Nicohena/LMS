@@ -39,6 +39,14 @@ model User {
   gradedSubmissions    Submission[]      @relation("submissionGrader")
   peerReviewsGiven     PeerReview[]      @relation("peerReviewReviewer")
   gradeChanges         GradeHistory[]    @relation("gradeChanger")
+  notifications        Notification[]
+  notificationPrefs    NotificationPreference[]
+  discussions          Discussion[]      @relation("discussionAuthor")
+  discussionReplies    DiscussionReply[] @relation("replyAuthor")
+  sentMessages         Message[]         @relation("messageSender")
+  receivedMessages     Message[]         @relation("messageReceiver")
+  messageGroupMemberships MessageGroupMember[]
+  announcements        Announcement[]
 }
 
 model RefreshToken {
@@ -95,6 +103,8 @@ model Course {
   modules Module[]
   enrollments Enrollment[]
   autoEnrollmentRules AutoEnrollmentRule[]
+  discussions  Discussion[]
+  announcements Announcement[]
 }
 
 model Module {
@@ -107,6 +117,7 @@ model Module {
   updatedAt   DateTime @updatedAt
 
   contents Content[]
+  discussions Discussion[] @relation("moduleDiscussions")
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }
@@ -491,4 +502,173 @@ model GradeHistory {
 
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   changer    User       @relation("gradeChanger", fields: [changedBy], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications & Communication (Step 9)
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  ENROLLMENT
+  ASSIGNMENT_POSTED
+  ASSIGNMENT_DUE
+  ASSIGNMENT_GRADED
+  QUIZ_GRADED
+  COURSE_COMPLETED
+  DISCUSSION_REPLY
+  MENTION
+  ANNOUNCEMENT
+  PEER_REVIEW_ASSIGNED
+  PEER_REVIEW_COMPLETED
+  REVISION_REQUESTED
+  SYSTEM
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+  SMS
+}
+
+model Notification {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String               @db.ObjectId
+  type        NotificationType
+  title       String
+  content     String
+  priority    NotificationPriority @default(NORMAL)
+  link        String?
+  isRead      Boolean              @default(false)
+  readAt      DateTime?
+  deliveredAt DateTime?
+  channels    NotificationChannel[]
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationPreference {
+  id              String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String               @db.ObjectId
+  type            NotificationType
+  channel         NotificationChannel
+  enabled         Boolean              @default(true)
+  quietHoursStart String?
+  quietHoursEnd   String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, channel])
+}
+
+model Discussion {
+  id           String             @id @default(auto()) @map("_id") @db.ObjectId
+  courseId     String?            @db.ObjectId
+  sectionId    String?            @db.ObjectId
+  title        String
+  content      String
+  authorId     String             @db.ObjectId
+  pinned       Boolean            @default(false)
+  locked       Boolean            @default(false)
+  bestAnswerId String?            @unique @db.ObjectId
+  views        Int                @default(0)
+  upvotes      Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  course      Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  section     Module?           @relation("moduleDiscussions", fields: [sectionId], references: [id])
+  author      User              @relation("discussionAuthor", fields: [authorId], references: [id])
+  replies     DiscussionReply[]
+  bestAnswer  DiscussionReply?  @relation("BestAnswer", fields: [bestAnswerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model DiscussionReply {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  discussionId String           @db.ObjectId
+  authorId     String           @db.ObjectId
+  content      String
+  parentId     String?          @db.ObjectId
+  upvotes      Int              @default(0)
+  isBestAnswer Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  discussion Discussion        @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  author     User              @relation("replyAuthor", fields: [authorId], references: [id])
+  parent     DiscussionReply?  @relation("ParentReply", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children   DiscussionReply[] @relation("ParentReply")
+  bestAnswerOf Discussion?     @relation("BestAnswer")
+}
+
+model Message {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId   String   @db.ObjectId
+  receiverId String?  @db.ObjectId
+  groupId    String?  @db.ObjectId
+  content    String
+  attachments Json?
+  isRead     Boolean  @default(false)
+  readAt     DateTime?
+  deliveredAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sender   User           @relation("messageSender", fields: [senderId], references: [id])
+  receiver User?          @relation("messageReceiver", fields: [receiverId], references: [id])
+  group    MessageGroup?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model MessageGroup {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String?
+  isDirect  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  MessageGroupMember[]
+  messages Message[]
+}
+
+model MessageGroupMember {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  groupId    String   @db.ObjectId
+  userId     String   @db.ObjectId
+  joinedAt   DateTime @default(now())
+  lastReadAt DateTime @default(now())
+
+  group MessageGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model Announcement {
+  id           String               @id @default(auto()) @map("_id") @db.ObjectId
+  courseId     String?              @db.ObjectId
+  title        String
+  content      String
+  priority     NotificationPriority @default(NORMAL)
+  createdBy    String               @db.ObjectId
+  scheduledAt  DateTime?
+  expiresAt    DateTime?
+  isActive     Boolean              @default(true)
+  readReceipts Json?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  course  Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator User    @relation(fields: [createdBy], references: [id])
 }
