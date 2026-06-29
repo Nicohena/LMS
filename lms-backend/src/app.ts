@@ -2,14 +2,24 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import { prisma } from './lib/prisma';
+import authRouter from './modules/auth/auth.routes';
+import { authenticate } from './common/middlewares/auth.middleware';
+import { authorize } from './common/middlewares/rbac.middleware';
 
 const app = express();
 
 // --- Security & parsing middlewares ---
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    credentials: true, // allow cookies to be sent cross-origin
+  }),
+);
 app.use(express.json());
+app.use(cookieParser());
 app.use(morgan('dev'));
 
 // --- Routes ---
@@ -36,6 +46,27 @@ app.get('/api/v1/health', async (_req: Request, res: Response) => {
 app.get('/api/v1/ping', (_req: Request, res: Response) => {
   res.status(200).json({ message: 'pong' });
 });
+
+// --- Auth module ---
+app.use('/api/v1/auth', authRouter);
+
+// --- Test routes for RBAC verification (Step 3) ---
+// Remove or guard these once real protected routes exist.
+app.get(
+  '/api/v1/admin-only',
+  authenticate,
+  authorize('ADMIN'),
+  (req: Request, res: Response) => {
+    res.json({ message: 'Admin access granted', user: req.user });
+  },
+);
+app.get(
+  '/api/v1/me',
+  authenticate,
+  (req: Request, res: Response) => {
+    res.json({ user: req.user });
+  },
+);
 
 // --- 404 handler (no matching route) ---
 app.use((_req: Request, res: Response) => {
