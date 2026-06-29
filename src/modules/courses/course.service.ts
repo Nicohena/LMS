@@ -61,6 +61,7 @@ function toCourseResponse(
     language: string;
     status: any;
     createdBy: string;
+    academicYearId: string | null;
     createdAt: Date;
     updatedAt: Date;
     creator: { id: string; firstName: string; lastName: string; email: string; role: Role };
@@ -79,6 +80,7 @@ function toCourseResponse(
     difficulty: course.difficulty,
     language: course.language,
     status: course.status,
+    academicYearId: course.academicYearId,
     // Replace the raw createdBy string with the populated creator summary.
     createdBy: toCreatorSummary(course.creator),
     createdAt: course.createdAt,

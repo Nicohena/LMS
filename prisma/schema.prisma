@@ -55,6 +55,8 @@ model User {
   auditLogs            AuditLog[]
   reportTemplates      ReportTemplate[]
   platformSettings     PlatformSetting[]
+  emailTemplates       EmailTemplate[]
+  gradingScales        GradingScale[]
 }
 
 model RefreshToken {
@@ -104,6 +106,7 @@ model Course {
   language    String         @default("English")
   status      CourseStatus   @default(DRAFT)
   createdBy   String         @db.ObjectId
+  academicYearId String?     @db.ObjectId
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -115,6 +118,7 @@ model Course {
   announcements Announcement[]
   certificates Certificate[]
   leaderboardSnapshots LeaderboardSnapshot[]
+  academicYear AcademicYear? @relation(fields: [academicYearId], references: [id])
 }
 
 model Module {
@@ -954,4 +958,72 @@ model PlatformSetting {
   createdAt   DateTime @default(now())
 
   updater User? @relation(fields: [updatedBy], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// System Settings & Configuration (Step 12)
+// ---------------------------------------------------------------------------
+
+enum EmailTemplateType {
+  WELCOME
+  PASSWORD_RESET
+  ENROLLMENT_CONFIRMATION
+  ASSIGNMENT_GRADED
+  QUIZ_GRADED
+  COURSE_COMPLETED
+  ANNOUNCEMENT
+  PEER_REVIEW_ASSIGNED
+  REVISION_REQUESTED
+  CERTIFICATE_ISSUED
+  REPORT_READY
+}
+
+enum AcademicYearStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+model EmailTemplate {
+  id           String            @id @default(auto()) @map("_id") @db.ObjectId
+  type         EmailTemplateType @unique
+  name         String
+  subject      String
+  htmlContent  String
+  textContent  String?
+  placeholders Json
+  isActive     Boolean           @default(true)
+  version      Int               @default(1)
+  updatedBy    String?           @db.ObjectId
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  updater User? @relation(fields: [updatedBy], references: [id])
+}
+
+model GradingScale {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  type        String
+  grades      Json
+  isDefault   Boolean  @default(false)
+  createdBy   String   @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator User @relation(fields: [createdBy], references: [id])
+}
+
+model AcademicYear {
+  id        String             @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    AcademicYearStatus @default(ACTIVE)
+  isCurrent Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  courses Course[]
 }
