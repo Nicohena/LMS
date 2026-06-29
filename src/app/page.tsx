@@ -8,7 +8,9 @@ import {
   Plus, Filter, PlayCircle, Sparkles, Clock, Users, CheckCircle2,
   AlertCircle, Lock, Mail, Eye, EyeOff, ArrowLeft, BookMarked,
   Video, File, Link2, ChevronDown, MoreHorizontal, Zap, CircleDot,
-  Upload, Pin,
+  Upload, Pin, BarChart3, Users, Crown, Trash2, Edit, UserPlus,
+  Download, Search, Trophy, Target, Flame, Medal, BadgeCheck,
+  Check, GripVertical, Image, Type, ListOrdered,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -23,7 +25,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions';
+type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'admin' | 'users' | 'gamification' | 'course-create';
 
 interface Course {
   id: number; title: string; description: string; instructor: string;
@@ -44,8 +46,11 @@ const navItems = [
   { label: 'Favorites', icon: Star },
   { label: 'Assignments', icon: FileText, badge: 3, view: 'assignment' as View },
   { label: 'Quizzes', icon: FileQuestion, view: 'quiz' as View },
-  { label: 'Certificates', icon: Award },
+  { label: 'Certificates', icon: Award, view: 'gamification' as View },
   { label: 'Discussions', icon: MessageSquare, badge: 5, view: 'discussions' as View },
+  { label: 'Admin Panel', icon: BarChart3, view: 'admin' as View },
+  { label: 'User Management', icon: Users, view: 'users' as View },
+  { label: 'Create Course', icon: Plus, view: 'course-create' as View },
   { label: 'Calendar', icon: Calendar },
 ];
 
