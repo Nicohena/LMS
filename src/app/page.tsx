@@ -8,6 +8,7 @@ import {
   Plus, Filter, PlayCircle, Sparkles, Clock, Users, CheckCircle2,
   AlertCircle, Lock, Mail, Eye, EyeOff, ArrowLeft, BookMarked,
   Video, File, Link2, ChevronDown, MoreHorizontal, Zap, CircleDot,
+  Upload, Pin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -662,6 +663,501 @@ function CourseDetailView({ courseId, onNavigate }: { courseId: number; onNaviga
   );
 }
 
+// ─── Quiz View ───────────────────────────────────────────────────────────
+function QuizView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [currentQ, setCurrentQ] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [showSubmit, setShowSubmit] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(1800); // 30 min
+
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+    const t = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timeLeft]);
+
+  const questions = [
+    { id: 1, type: 'MCQ', text: 'What is the primary purpose of a wireframe in UI design?', options: ['To showcase the final visual design', 'To outline structure and layout', 'To test user interactions', 'To finalize color schemes'], correct: 1 },
+    { id: 2, type: 'True/False', text: 'Usability heuristics were developed by Jakob Nielsen.', options: ['True', 'False'], correct: 0 },
+    { id: 3, type: 'MCQ', text: 'Which color contrast ratio meets WCAG AA standards for normal text?', options: ['3:1', '4.5:1', '7:1', '2:1'], correct: 1 },
+    { id: 4, type: 'MCQ', text: 'What does "affordance" mean in design?', options: ['The cost of a design tool', 'A clue about how to use an object', 'The aesthetic appeal', 'The loading speed'], correct: 1 },
+    { id: 5, type: 'True/False', text: 'A design system should only include color palettes.', options: ['True', 'False'], correct: 1 },
+  ];
+
+  const answered = Object.keys(answers).length;
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+
+  const handleSubmit = () => {
+    setShowSubmit(false);
+    onNavigate('quiz-results');
+  };
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      {/* Breadcrumb */}
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('course-detail')} className="hover:text-slate-700">Course</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">UI Design Principles Quiz</span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+        {/* Question Area */}
+        <div className="lg:col-span-3">
+          {/* Quiz Header */}
+          <Card className="mb-4 border border-slate-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">UI Design Principles Quiz</h1>
+                <p className="mt-0.5 text-sm text-slate-500">{questions.length} questions · 30 min · Passing score: 70%</p>
+              </div>
+              <div className={cn('flex items-center gap-2 rounded-lg px-3 py-2', timeLeft < 300 ? 'bg-red-50' : 'bg-slate-50')}>
+                <Clock className={cn('h-4 w-4', timeLeft < 300 ? 'text-red-500' : 'text-slate-500')} />
+                <span className={cn('text-sm font-semibold', timeLeft < 300 ? 'text-red-600' : 'text-slate-700')}>{mins}:{secs.toString().padStart(2, '0')}</span>
+              </div>
+            </div>
+            {/* Progress */}
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }} />
+            </div>
+            <p className="mt-1.5 text-xs text-slate-400">Question {currentQ + 1} of {questions.length}</p>
+          </Card>
+
+          {/* Question Card */}
+          <Card className="border border-slate-200 p-6 shadow-sm">
+            <div className="mb-4">
+              <Badge className="mb-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-50">{questions[currentQ].type}</Badge>
+              <h2 className="text-lg font-semibold text-slate-900">{questions[currentQ].text}</h2>
+            </div>
+            <div className="space-y-2">
+              {questions[currentQ].options.map((opt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setAnswers({ ...answers, [questions[currentQ].id]: String(idx) })}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-lg border p-3.5 text-left text-sm transition-all',
+                    answers[questions[currentQ].id] === String(idx)
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
+                      : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50',
+                  )}
+                >
+                  <div className={cn(
+                    'flex h-5 w-5 items-center justify-center rounded-full border-2 text-xs font-bold',
+                    answers[questions[currentQ].id] === String(idx)
+                      ? 'border-indigo-600 bg-indigo-600 text-white'
+                      : 'border-slate-300 text-slate-400',
+                  )}>
+                    {String.fromCharCode(65 + idx)}
+                  </div>
+                  {opt}
+                </button>
+              ))}
+            </div>
+
+            {/* Navigation */}
+            <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+              <Button
+                variant="outline"
+                disabled={currentQ === 0}
+                onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
+                className="border-slate-200 text-slate-600"
+              >
+                <ArrowLeft className="mr-1.5 h-4 w-4" />
+                Previous
+              </Button>
+              {currentQ === questions.length - 1 ? (
+                <Button onClick={() => setShowSubmit(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">
+                  Submit Quiz
+                </Button>
+              ) : (
+                <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-indigo-600 text-white hover:bg-indigo-700">
+                  Next
+                  <ChevronRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Quiz Navigation Sidebar */}
+        <div>
+          <Card className="border border-slate-200 shadow-sm">
+            <div className="border-b border-slate-200 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">Questions</h3>
+              <p className="mt-0.5 text-xs text-slate-400">{answered}/{questions.length} answered</p>
+            </div>
+            <div className="grid grid-cols-5 gap-2 p-4">
+              {questions.map((q, idx) => (
+                <button
+                  key={q.id}
+                  onClick={() => setCurrentQ(idx)}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors',
+                    idx === currentQ
+                      ? 'bg-indigo-600 text-white'
+                      : answers[q.id]
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
+                  )}
+                >
+                  {idx + 1}
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-slate-200 p-4">
+              <div className="mb-3 space-y-1.5 text-xs">
+                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-indigo-600" /><span className="text-slate-500">Current</span></div>
+                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-emerald-100" /><span className="text-slate-500">Answered</span></div>
+                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-100" /><span className="text-slate-500">Not answered</span></div>
+              </div>
+              <Button onClick={() => setShowSubmit(true)} className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
+                Submit Quiz
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Submission Modal */}
+      {showSubmit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md border-0 p-6 shadow-xl">
+            <div className="mb-4 flex flex-col items-center text-center">
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50"><AlertCircle className="h-7 w-7 text-amber-500" /></div>
+              <h2 className="text-lg font-bold text-slate-900">Submit Quiz?</h2>
+              <p className="mt-1 text-sm text-slate-500">You have answered {answered} out of {questions.length} questions.</p>
+              {answered < questions.length && (
+                <p className="mt-2 text-xs font-medium text-amber-600">{questions.length - answered} questions are still unanswered.</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowSubmit(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+              <Button onClick={handleSubmit} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700">Finish!</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ─── Quiz Results View ────────────────────────────────────────────────────
+function QuizResultsView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const score = 80;
+  const correct = 4;
+  const total = 5;
+  const accuracy = Math.round((correct / total) * 100);
+
+  const questionResults = [
+    { id: 1, text: 'What is the primary purpose of a wireframe?', yourAnswer: 'To outline structure and layout', correct: true },
+    { id: 2, text: 'Usability heuristics were developed by Jakob Nielsen.', yourAnswer: 'True', correct: true },
+    { id: 3, text: 'Which color contrast ratio meets WCAG AA?', yourAnswer: '3:1', correct: false, correctAnswer: '4.5:1' },
+    { id: 4, text: 'What does "affordance" mean in design?', yourAnswer: 'A clue about how to use an object', correct: true },
+    { id: 5, text: 'A design system should only include color palettes.', yourAnswer: 'False', correct: true },
+  ];
+
+  return (
+    <main className="mx-auto max-w-4xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('quiz')} className="hover:text-slate-700">Quiz</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Results</span>
+      </div>
+
+      {/* Score Summary */}
+      <Card className="mb-6 border border-slate-200 p-8 shadow-sm">
+        <div className="flex flex-col items-center text-center">
+          <div className="relative mb-4 flex h-32 w-32 items-center justify-center">
+            <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="#E2E8F0" strokeWidth="8" />
+              <circle cx="50" cy="50" r="42" fill="none" stroke="#4F46E5" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
+            </svg>
+            <div>
+              <p className="text-3xl font-bold text-slate-900">{score}%</p>
+              <p className="text-xs text-slate-400">Score</p>
+            </div>
+          </div>
+          <Badge className="mb-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-50"><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</Badge>
+          <h1 className="text-xl font-bold text-slate-900">Quiz Completed!</h1>
+          <p className="mt-1 text-sm text-slate-500">UI Design Principles Quiz · {correct}/{total} correct</p>
+        </div>
+
+        {/* Stats Row */}
+        <div className="mt-6 grid grid-cols-3 gap-4">
+          <div className="rounded-lg border border-slate-100 p-3 text-center">
+            <p className="text-2xl font-bold text-emerald-600">{correct}</p>
+            <p className="text-xs text-slate-400">Correct</p>
+          </div>
+          <div className="rounded-lg border border-slate-100 p-3 text-center">
+            <p className="text-2xl font-bold text-red-500">{total - correct}</p>
+            <p className="text-xs text-slate-400">Incorrect</p>
+          </div>
+          <div className="rounded-lg border border-slate-100 p-3 text-center">
+            <p className="text-2xl font-bold text-indigo-600">{accuracy}%</p>
+            <p className="text-xs text-slate-400">Accuracy</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Answer Review */}
+      <Card className="border border-slate-200 p-5 shadow-sm">
+        <h2 className="mb-4 text-base font-semibold text-slate-900">Answer Review</h2>
+        <div className="space-y-3">
+          {questionResults.map((q, idx) => (
+            <div key={q.id} className={cn('rounded-lg border p-4', q.correct ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/50')}>
+              <div className="flex items-start gap-3">
+                <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', q.correct ? 'bg-emerald-100' : 'bg-red-100')}>
+                  {q.correct ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-red-500" />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">Q{idx + 1}: {q.text}</p>
+                  <p className="mt-1 text-xs text-slate-500">Your answer: <span className={q.correct ? 'font-medium text-emerald-600' : 'font-medium text-red-500'}>{q.yourAnswer}</span></p>
+                  {!q.correct && q.correctAnswer && (
+                    <p className="mt-0.5 text-xs text-slate-500">Correct answer: <span className="font-medium text-emerald-600">{q.correctAnswer}</span></p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Actions */}
+      <div className="mt-6 flex gap-3">
+        <Button variant="outline" onClick={() => onNavigate('course-detail')} className="border-slate-200 text-slate-600">Back to Course</Button>
+        <Button onClick={() => onNavigate('dashboard')} className="bg-indigo-600 text-white hover:bg-indigo-700">Back to Dashboard</Button>
+      </div>
+    </main>
+  );
+}
+
+// ─── Assignment View ──────────────────────────────────────────────────────
+function AssignmentView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [submissionText, setSubmissionText] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const assignment = {
+    title: 'Wireframing Assignment',
+    course: 'UI Design Fundamentals',
+    dueDate: 'Tomorrow at 11:59 PM',
+    points: 100,
+    status: 'Pending',
+    instructions: 'Create low-fidelity wireframes for a mobile e-commerce app. Include at least 5 screens: Home, Product List, Product Detail, Cart, and Checkout. Use any wireframing tool of your choice (Figma, Balsamiq, or pen & paper). Submit your wireframes as a PDF.',
+    rubric: [
+      { criterion: 'Completeness', maxPoints: 25, description: 'All 5 screens are included' },
+      { criterion: 'Usability', maxPoints: 30, description: 'Navigation flow is logical and intuitive' },
+      { criterion: 'Consistency', maxPoints: 25, description: 'Design patterns are consistent across screens' },
+      { criterion: 'Documentation', maxPoints: 20, description: 'Annotations explain key design decisions' },
+    ],
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setFileName(file.name);
+  };
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    setTimeout(() => onNavigate('dashboard'), 2000);
+  };
+
+  return (
+    <main className="mx-auto max-w-5xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Assignment</span>
+      </div>
+
+      {/* Assignment Header */}
+      <Card className="mb-6 border border-slate-200 p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Badge className="bg-amber-50 text-amber-600 hover:bg-amber-50">{assignment.status}</Badge>
+              <span className="text-xs text-slate-400">{assignment.course}</span>
+            </div>
+            <h1 className="text-xl font-bold text-slate-900">{assignment.title}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+              <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />Due: {assignment.dueDate}</span>
+              <span className="flex items-center gap-1"><Award className="h-3.5 w-3.5" />{assignment.points} points</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Main Content */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Instructions */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-slate-900">Instructions</h2>
+            <p className="text-sm leading-relaxed text-slate-600">{assignment.instructions}</p>
+          </Card>
+
+          {/* Submission Form */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">Submit Your Work</h2>
+            {submitted ? (
+              <div className="flex flex-col items-center py-8 text-center">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50"><CheckCircle2 className="h-7 w-7 text-emerald-600" /></div>
+                <p className="text-base font-semibold text-slate-900">Submission Successful!</p>
+                <p className="mt-1 text-sm text-slate-500">Your assignment has been submitted. Redirecting...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* File Upload */}
+                <div>
+                  <Label className="mb-2 block text-sm font-medium text-slate-700">Upload File</Label>
+                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-8 hover:border-indigo-300 hover:bg-slate-50">
+                    <Upload className="mb-2 h-8 w-8 text-slate-400" />
+                    <p className="text-sm text-slate-500">{fileName || 'Click to upload or drag and drop'}</p>
+                    <p className="mt-1 text-xs text-slate-400">PDF, DOCX, ZIP up to 25MB</p>
+                    <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.docx,.zip" />
+                  </label>
+                </div>
+                {/* Text Submission */}
+                <div>
+                  <Label className="mb-2 block text-sm font-medium text-slate-700">Comments (optional)</Label>
+                  <textarea
+                    value={submissionText}
+                    onChange={(e) => setSubmissionText(e.target.value)}
+                    rows={4}
+                    placeholder="Add any comments for your instructor..."
+                    className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <Button onClick={handleSubmit} disabled={!fileName} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  Submit Assignment
+                </Button>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Sidebar — Rubric */}
+        <div>
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-slate-900">Grading Rubric</h3>
+            <div className="space-y-3">
+              {assignment.rubric.map((item) => (
+                <div key={item.criterion} className="rounded-lg border border-slate-100 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-slate-900">{item.criterion}</p>
+                    <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">{item.maxPoints} pts</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{item.description}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 border-t border-slate-100 pt-3 text-center">
+              <p className="text-2xl font-bold text-slate-900">{assignment.points}</p>
+              <p className="text-xs text-slate-400">Total Points</p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ─── Discussions View ─────────────────────────────────────────────────────
+function DiscussionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [threads, setThreads] = useState([
+    { id: 1, title: 'How do I approach wireframing for complex apps?', author: 'Sarah Chen', avatar: 'SC', replies: 12, likes: 8, pinned: true, time: '2 hours ago', lastReply: 'Mike Rodriguez' },
+    { id: 2, title: 'Best practices for color accessibility?', author: 'James Park', avatar: 'JP', replies: 7, likes: 15, pinned: false, time: '5 hours ago', lastReply: 'Emily Davis' },
+    { id: 3, title: 'Sharing my final wireframe for feedback', author: 'Lisa Wang', avatar: 'LW', replies: 23, likes: 19, pinned: false, time: '1 day ago', lastReply: 'Sarah Chen' },
+    { id: 4, title: 'Question about the rubric — what counts as "consistency"?', author: 'David Kim', avatar: 'DK', replies: 4, likes: 3, pinned: false, time: '2 days ago', lastReply: 'Ricky Fajrin' },
+  ]);
+
+  const handleCreate = () => {
+    if (!newTitle.trim()) return;
+    setThreads([{ id: Date.now(), title: newTitle, author: 'Ricky Fajrin', avatar: 'RF', replies: 0, likes: 0, pinned: false, time: 'just now', lastReply: '' }, ...threads]);
+    setNewTitle(''); setNewContent(''); setShowCreate(false);
+  };
+
+  return (
+    <main className="mx-auto max-w-5xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Discussions</span>
+      </div>
+
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Discussions</h1>
+          <p className="mt-1 text-sm text-slate-500">{threads.length} threads · UI Design Fundamentals</p>
+        </div>
+        <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">
+          <Plus className="mr-1.5 h-4 w-4" />
+          New Thread
+        </Button>
+      </div>
+
+      {/* Thread List */}
+      <div className="space-y-3">
+        {threads.map((thread) => (
+          <Card key={thread.id} className="cursor-pointer border border-slate-200 p-4 shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{thread.avatar}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  {thread.pinned && <Pin className="h-3.5 w-3.5 text-indigo-500" />}
+                  <h3 className="text-sm font-semibold text-slate-900 hover:text-indigo-600">{thread.title}</h3>
+                </div>
+                <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
+                  <span>{thread.author}</span>
+                  <span>·</span>
+                  <span>{thread.time}</span>
+                  <span>·</span>
+                  <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{thread.replies} replies</span>
+                  <span>·</span>
+                  <span className="flex items-center gap-1"><Star className="h-3 w-3" />{thread.likes}</span>
+                </div>
+                {thread.lastReply && <p className="mt-1.5 text-xs text-slate-400">Last reply by {thread.lastReply}</p>}
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-300" />
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Create Thread Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-lg border-0 p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Create New Thread</h2>
+              <button onClick={() => setShowCreate(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-2 block text-sm font-medium text-slate-700">Title</Label>
+                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="What do you want to discuss?" />
+              </div>
+              <div>
+                <Label className="mb-2 block text-sm font-medium text-slate-700">Content</Label>
+                <textarea value={newContent} onChange={(e) => setNewContent(e.target.value)} rows={5} placeholder="Share your thoughts..." className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+                <Button onClick={handleCreate} disabled={!newTitle.trim()} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">Post Thread</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </main>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState<View>('login');
@@ -685,7 +1181,7 @@ export default function App() {
     return <LoginPage onLogin={() => handleNavigate('dashboard')} />;
   }
 
-  // Dashboard/Catalog/Course Detail — with sidebar + header
+  // All other views — with sidebar + header
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} currentView={view} onNavigate={handleNavigate} />
@@ -694,6 +1190,10 @@ export default function App() {
         {view === 'dashboard' && <DashboardView onNavigate={handleNavigate} />}
         {view === 'catalog' && <CatalogView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
         {view === 'course-detail' && <CourseDetailView courseId={selectedCourseId} onNavigate={handleNavigate} />}
+        {view === 'quiz' && <QuizView onNavigate={handleNavigate} />}
+        {view === 'quiz-results' && <QuizResultsView onNavigate={handleNavigate} />}
+        {view === 'assignment' && <AssignmentView onNavigate={handleNavigate} />}
+        {view === 'discussions' && <DiscussionsView onNavigate={handleNavigate} />}
       </div>
     </div>
   );
