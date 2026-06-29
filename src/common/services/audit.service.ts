@@ -70,9 +70,18 @@ export type AuditAction =
   | 'BADGE_AWARD'
   | 'BADGE_TEMPLATE_CREATE'
   | 'XP_AWARD'
-  | 'XP_RULE_UPDATE';
+  | 'XP_RULE_UPDATE'
+  | 'REPORT_TEMPLATE_CREATE'
+  | 'REPORT_TEMPLATE_UPDATE'
+  | 'REPORT_TEMPLATE_DELETE'
+  | 'REPORT_GENERATE'
+  | 'REPORT_SCHEDULE_CREATE'
+  | 'REPORT_SCHEDULE_TRIGGER'
+  | 'DATA_EXPORT'
+  | 'DATA_DELETE'
+  | 'PLATFORM_SETTING_UPDATE';
 
-export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt' | 'Assignment' | 'Rubric' | 'Submission' | 'PeerReview' | 'Notification' | 'Discussion' | 'DiscussionReply' | 'Message' | 'Announcement' | 'Certificate' | 'CertificateTemplate' | 'BadgeTemplate' | 'UserBadge' | 'XPTransaction';
+export type AuditEntityType = 'Course' | 'Module' | 'Content' | 'Enrollment' | 'AutoEnrollmentRule' | 'User' | 'Quiz' | 'Question' | 'QuizAttempt' | 'Assignment' | 'Rubric' | 'Submission' | 'PeerReview' | 'Notification' | 'Discussion' | 'DiscussionReply' | 'Message' | 'Announcement' | 'Certificate' | 'CertificateTemplate' | 'BadgeTemplate' | 'UserBadge' | 'XPTransaction' | 'ReportTemplate' | 'ScheduledReport' | 'ReportHistory' | 'PlatformSetting';
 
 export interface AuditContext {
   /** Caller IP (best-effort). */

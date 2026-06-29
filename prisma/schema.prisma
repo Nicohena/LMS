@@ -52,6 +52,9 @@ model User {
   xpTransactions       XPTransaction[]
   userLevel            UserLevel?
   learningStreak       LearningStreak?
+  auditLogs            AuditLog[]
+  reportTemplates      ReportTemplate[]
+  platformSettings     PlatformSetting[]
 }
 
 model RefreshToken {
@@ -157,14 +160,17 @@ model Content {
 
 model AuditLog {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String   @db.ObjectId
+  userId     String?  @db.ObjectId
   action     String
   entityType String
-  entityId   String
+  entityId   String?
   details    Json?
   ipAddress  String?
   userAgent  String?
+  metadata   Json?
   createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 }
 
 // ---------------------------------------------------------------------------
@@ -855,4 +861,97 @@ model LearningStreak {
   updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Admin Dashboard & Reporting (Step 11)
+// ---------------------------------------------------------------------------
+
+enum ReportStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ReportFormat {
+  PDF
+  EXCEL
+  CSV
+  JSON
+}
+
+enum ReportFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
+model ReportTemplate {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  description      String?
+  dataSource       String
+  metrics          Json
+  dimensions       Json
+  filters          Json?
+  chartType        String?
+  isPublic         Boolean  @default(false)
+  createdBy        String   @db.ObjectId
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  creator          User             @relation(fields: [createdBy], references: [id])
+  scheduledReports ScheduledReport[]
+}
+
+model ScheduledReport {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  templateId   String           @db.ObjectId
+  name         String
+  frequency    ReportFrequency
+  dayOfWeek    Int?
+  dayOfMonth   Int?
+  time         String
+  recipients   Json
+  format       ReportFormat     @default(PDF)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  isActive     Boolean          @default(true)
+  status       ReportStatus     @default(DRAFT)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  template      ReportTemplate   @relation(fields: [templateId], references: [id])
+  reportHistory ReportHistory[]
+}
+
+model ReportHistory {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  scheduleId   String       @db.ObjectId
+  executedAt   DateTime     @default(now())
+  status       ReportStatus
+  fileUrl      String?
+  errorMessage String?
+  recipients   Json
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+
+  schedule ScheduledReport @relation(fields: [scheduleId], references: [id])
+}
+
+model PlatformSetting {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  value       Json
+  category    String
+  description String?
+  updatedBy   String?  @db.ObjectId
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  updater User? @relation(fields: [updatedBy], references: [id])
 }
