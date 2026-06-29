@@ -8,7 +8,7 @@ import {
   Plus, Filter, PlayCircle, Sparkles, Clock, Users, CheckCircle2,
   AlertCircle, Lock, Mail, Eye, EyeOff, ArrowLeft, BookMarked,
   Video, File, Link2, ChevronDown, MoreHorizontal, Zap, CircleDot,
-  Upload, Pin, BarChart3, Trash2, UserPlus,
+  Upload, Pin, BarChart3, Trash2, UserPlus, Edit,
   Download, Trophy, Target, Flame, Medal, BadgeCheck,
   Check, GripVertical, Image,
 } from 'lucide-react';
@@ -25,7 +25,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'admin' | 'users' | 'gamification' | 'course-create';
+type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'admin' | 'users' | 'gamification' | 'course-create' | 'settings';
 
 interface Course {
   id: number; title: string; description: string; instructor: string;
@@ -51,6 +51,7 @@ const navItems = [
   { label: 'Admin Panel', icon: BarChart3, view: 'admin' as View },
   { label: 'User Management', icon: Users, view: 'users' as View },
   { label: 'Create Course', icon: Plus, view: 'course-create' as View },
+  { label: 'Settings', icon: Settings, view: 'settings' as View },
   { label: 'Calendar', icon: Calendar },
 ];
 
@@ -147,7 +148,7 @@ function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; on
           ))}
         </nav>
         <div className="absolute bottom-0 left-0 right-0 border-t border-slate-200 p-4">
-          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><Settings className="h-4 w-4" />Settings</button>
+          <button onClick={() => onNavigate('settings')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><Settings className="h-4 w-4" />Settings</button>
           <button onClick={() => onNavigate('login')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><LogOut className="h-4 w-4" />Logout</button>
         </div>
       </aside>
@@ -1837,6 +1838,197 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
   );
 }
 
+// ─── Settings View ───────────────────────────────────────────────────────
+function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [activeTab, setActiveTab] = useState('general');
+  const [siteName, setSiteName] = useState('Trenning LMS');
+  const [supportEmail, setSupportEmail] = useState('support@trenning.com');
+  const [allowReg, setAllowReg] = useState(true);
+  const [maintMode, setMaintMode] = useState(false);
+  const [maintMsg, setMaintMsg] = useState('Platform under maintenance.');
+
+  const tabs = [
+    { id: 'general', label: 'General', icon: Settings },
+    { id: 'email', label: 'Email Templates', icon: Mail },
+    { id: 'grading', label: 'Grading Scales', icon: Award },
+    { id: 'academic', label: 'Academic Years', icon: Calendar },
+    { id: 'maintenance', label: 'Maintenance', icon: AlertCircle },
+  ];
+
+  const emailTemplates = [
+    { type: 'WELCOME', subject: 'Welcome to {{siteName}}', active: true },
+    { type: 'PASSWORD_RESET', subject: 'Reset your password', active: true },
+    { type: 'ASSIGNMENT_GRADED', subject: 'Assignment graded: {{title}}', active: true },
+    { type: 'QUIZ_GRADED', subject: 'Quiz results: {{title}}', active: true },
+    { type: 'COURSE_COMPLETED', subject: 'Congratulations! {{title}}', active: true },
+    { type: 'ANNOUNCEMENT', subject: '{{title}}', active: true },
+  ];
+
+  const gradingScales = [
+    { name: 'Standard A-F', type: 'percentage', isDefault: true, grades: 'A (90-100), B (80-89), C (70-79), D (60-69), F (0-59)' },
+    { name: 'GPA 4.0 Scale', type: 'gpa', isDefault: false, grades: 'A (4.0), B (3.0), C (2.0), D (1.0), F (0.0)' },
+  ];
+
+  const academicYears = [
+    { name: '2025-2026', start: 'Sep 2025', end: 'Jun 2026', current: true, status: 'Active' },
+    { name: '2024-2025', start: 'Sep 2024', end: 'Jun 2025', current: false, status: 'Archived' },
+  ];
+
+  return (
+    <main className="mx-auto max-w-5xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Settings</span>
+      </div>
+
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">Platform Settings</h1>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-4">
+        {/* Tab Sidebar */}
+        <div className="sm:col-span-1">
+          <Card className="border border-slate-200 p-2 shadow-sm">
+            {tabs.map((tab) => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors', activeTab === tab.id ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100')}>
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            ))}
+          </Card>
+        </div>
+
+        {/* Tab Content */}
+        <div className="sm:col-span-3">
+          {activeTab === 'general' && (
+            <Card className="border border-slate-200 p-6 shadow-sm">
+              <h2 className="mb-4 text-base font-semibold text-slate-900">General Settings</h2>
+              <div className="space-y-4">
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Site Name</Label>
+                  <Input value={siteName} onChange={(e) => setSiteName(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Support Email</Label>
+                  <Input type="email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Allow Self-Registration</p>
+                    <p className="text-xs text-slate-500">Allow new users to create accounts</p>
+                  </div>
+                  <button onClick={() => setAllowReg(!allowReg)} className={cn('relative h-6 w-11 rounded-full transition-colors', allowReg ? 'bg-indigo-600' : 'bg-slate-300')}>
+                    <div className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', allowReg ? 'translate-x-5' : 'translate-x-0.5')} />
+                  </button>
+                </div>
+                <div className="flex justify-end">
+                  <Button className="bg-indigo-600 text-white hover:bg-indigo-700">Save Changes</Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'email' && (
+            <Card className="border border-slate-200 p-6 shadow-sm">
+              <h2 className="mb-4 text-base font-semibold text-slate-900">Email Templates</h2>
+              <div className="space-y-2">
+                {emailTemplates.map((tpl) => (
+                  <div key={tpl.type} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50"><Mail className="h-4 w-4 text-indigo-600" /></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900">{tpl.type.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-slate-400">{tpl.subject}</p>
+                    </div>
+                    <Badge className={cn('rounded-full', tpl.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400')}>
+                      {tpl.active ? 'Active' : 'Inactive'}
+                    </Badge>
+                    <button className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'grading' && (
+            <Card className="border border-slate-200 p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-slate-900">Grading Scales</h2>
+                <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Scale</Button>
+              </div>
+              <div className="space-y-3">
+                {gradingScales.map((scale) => (
+                  <div key={scale.name} className="rounded-lg border border-slate-200 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-900">{scale.name}</p>
+                        {scale.isDefault && <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">Default</Badge>}
+                      </div>
+                      <Badge className="bg-slate-100 text-slate-500">{scale.type}</Badge>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">{scale.grades}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'academic' && (
+            <Card className="border border-slate-200 p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-slate-900">Academic Years</h2>
+                <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Year</Button>
+              </div>
+              <div className="space-y-2">
+                {academicYears.map((year) => (
+                  <div key={year.name} className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-900">{year.name}</p>
+                        {year.current && <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">Current</Badge>}
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-400">{year.start} — {year.end}</p>
+                    </div>
+                    <Badge className={cn('rounded-full', year.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400')}>{year.status}</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'maintenance' && (
+            <Card className="border border-slate-200 p-6 shadow-sm">
+              <h2 className="mb-4 text-base font-semibold text-slate-900">Maintenance Mode</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Enable Maintenance Mode</p>
+                    <p className="text-xs text-slate-500">Block all non-admin access to the platform</p>
+                  </div>
+                  <button onClick={() => setMaintMode(!maintMode)} className={cn('relative h-6 w-11 rounded-full transition-colors', maintMode ? 'bg-red-500' : 'bg-slate-300')}>
+                    <div className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', maintMode ? 'translate-x-5' : 'translate-x-0.5')} />
+                  </button>
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Maintenance Message</Label>
+                  <textarea value={maintMsg} onChange={(e) => setMaintMsg(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                </div>
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                    <p className="text-xs text-amber-700">When enabled, only whitelisted IPs can access the platform. All other users see the maintenance message.</p>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button className="bg-indigo-600 text-white hover:bg-indigo-700">Save Settings</Button>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState<View>('login');
@@ -1877,6 +2069,7 @@ export default function App() {
         {view === 'users' && <UsersView onNavigate={handleNavigate} />}
         {view === 'gamification' && <GamificationView onNavigate={handleNavigate} />}
         {view === 'course-create' && <CourseCreateView onNavigate={handleNavigate} />}
+        {view === 'settings' && <SettingsView onNavigate={handleNavigate} />}
       </div>
     </div>
   );
