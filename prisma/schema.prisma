@@ -31,6 +31,9 @@ model User {
   refreshTokens RefreshToken[] @relation("userRefreshTokens")
   courses       Course[]        @relation("courseCreator")
   enrollments   Enrollment[]
+  quizzes       Quiz[]          @relation("quizCreator")
+  quizAttempts  QuizAttempt[]
+  manualGrading ManualGrading[]
 }
 
 model RefreshToken {
@@ -119,9 +122,13 @@ model Content {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
+  // Quiz / Assignment relations will be added in a future step
+  // (the ContentType enum reserves QUIZ and ASSIGNMENT for forward compat).
+
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   progress Progress[]
+  quiz     Quiz?
 }
 
 model AuditLog {
@@ -169,6 +176,7 @@ model Enrollment {
   user     User       @relation(fields: [userId], references: [id])
   course   Course     @relation(fields: [courseId], references: [id])
   progress Progress[]
+  attempts QuizAttempt[]
 
   @@unique([userId, courseId])
 }
@@ -202,4 +210,143 @@ model AutoEnrollmentRule {
   updatedAt  DateTime @updatedAt
 
   course Course @relation(fields: [courseId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Quiz & Assessment Engine (Step 7)
+// ---------------------------------------------------------------------------
+
+enum QuestionType {
+  MULTIPLE_CHOICE_SINGLE
+  MULTIPLE_CHOICE_MULTIPLE
+  TRUE_FALSE
+  FILL_IN_BLANK
+  MATCHING
+  SORTING
+  SHORT_ANSWER
+  ESSAY
+  FILE_UPLOAD
+  HOTSPOT
+}
+
+enum QuizStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  TIMED_OUT
+  ABANDONED
+}
+
+model Quiz {
+  id                 String      @id @default(auto()) @map("_id") @db.ObjectId
+  contentId          String?     @unique @db.ObjectId
+  title              String
+  description        String?
+  instructions       String?
+  timeLimit          Int?
+  passingScore       Float       @default(70)
+  maxAttempts        Int         @default(1)
+  shuffleQuestions   Boolean     @default(false)
+  shuffleAnswers     Boolean     @default(false)
+  showFeedback       Boolean     @default(true)
+  showCorrectAnswers Boolean     @default(false)
+  status             QuizStatus  @default(DRAFT)
+  createdBy          String      @db.ObjectId
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  creator   User         @relation("quizCreator", fields: [createdBy], references: [id])
+  content   Content?     @relation(fields: [contentId], references: [id])
+  questions Question[]
+  attempts  QuizAttempt[]
+}
+
+model Question {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  quizId        String       @db.ObjectId
+  type          QuestionType
+  questionText  String
+  questionImage String?
+  explanation   String?
+  options       Json?
+  correctAnswer Json?
+  points        Int          @default(1)
+  order         Int          @default(0)
+  isRequired    Boolean      @default(true)
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  quiz    Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers Answer[]
+  manualGrading ManualGrading[]
+}
+
+model QuizAttempt {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  quizId           String        @db.ObjectId
+  userId           String        @db.ObjectId
+  enrollmentId     String        @db.ObjectId
+  attemptNumber    Int           @default(1)
+  status           AttemptStatus @default(NOT_STARTED)
+  startTime        DateTime?
+  endTime          DateTime?
+  timeSpent        Int           @default(0)
+  score            Float?
+  maxPossibleScore Float?
+  scorePercentage  Float?
+  passed           Boolean?
+  answers          Json?
+  gradedAt         DateTime?
+  gradedBy         String?       @db.ObjectId
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  quiz        Quiz           @relation(fields: [quizId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
+  enrollment  Enrollment     @relation(fields: [enrollmentId], references: [id])
+  answers_rel Answer[]
+  grading     ManualGrading[]
+}
+
+model ManualGrading {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  attemptId      String   @db.ObjectId
+  questionId     String   @db.ObjectId
+  pointsAwarded  Float
+  pointsPossible Float
+  feedback       String?
+  gradedBy       String   @db.ObjectId
+  gradedAt       DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+  grader   User        @relation(fields: [gradedBy], references: [id])
+
+  @@unique([attemptId, questionId])
+}
+
+model Answer {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  attemptId     String   @db.ObjectId
+  questionId    String   @db.ObjectId
+  answer        Json
+  isCorrect     Boolean?
+  pointsAwarded Float?
+  feedback      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
 }
