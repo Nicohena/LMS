@@ -1,9 +1,11 @@
 import dotenv from 'dotenv';
+import { createServer } from 'node:http';
 import app from './app';
 import { prisma } from './lib/prisma';
 import { setupQueues } from './common/services/queue-setup';
 import { closeQueues } from './common/services/queue.service';
 import { closeCache } from './common/services/cache.service';
+import { initSocketIO, closeSocketIO } from './socket';
 
 // Load environment variables from .env (override any pre-set env to ensure
 // the project's .env wins — important in shared/dev environments).
@@ -15,11 +17,22 @@ setupQueues();
 const PORT = Number(process.env.PORT) || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-const server = app.listen(PORT, HOST, () => {
+// Create a single HTTP server that both Express and Socket.io attach to.
+const server = createServer(app);
+
+// Initialize Socket.io on the same HTTP server (so /socket.io/ and /api/v1/*
+// share the same port — simpler for dev + reverse-proxy-friendly for prod).
+initSocketIO(server);
+
+server.listen(PORT, HOST, () => {
   // eslint-disable-next-line no-console
   console.log(`🚀 LMS Backend running in ${process.env.NODE_ENV ?? 'development'} mode`);
   // eslint-disable-next-line no-console
-  console.log(`   Health check: http://localhost:${PORT}/api/v1/health`);
+  console.log(`   HTTP + Socket.io: http://localhost:${PORT}`);
+  // eslint-disable-next-line no-console
+  console.log(`   Health check:     http://localhost:${PORT}/api/v1/health`);
+  // eslint-disable-next-line no-console
+  console.log(`   Socket.io path:   ws://localhost:${PORT}/socket.io/`);
 });
 
 // --- Graceful shutdown ---
@@ -35,11 +48,21 @@ async function shutdown(signal: string) {
       process.exit(1);
     }
     // eslint-disable-next-line no-console
-    console.log('Server closed. Process exiting.');
+    console.log('HTTP server closed. Process exiting.');
     process.exit(0);
   });
 
-  // Close background-job queues (stop workers, disconnect from Redis)
+  // Close Socket.io + Redis adapter
+  try {
+    await closeSocketIO();
+    // eslint-disable-next-line no-console
+    console.log('Socket.io closed.');
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Error closing Socket.io:', e);
+  }
+
+  // Close background-job queues
   try {
     await closeQueues();
     // eslint-disable-next-line no-console
@@ -49,7 +72,7 @@ async function shutdown(signal: string) {
     console.error('Error closing queues:', e);
   }
 
-  // Close cache (disconnect from Redis if connected)
+  // Close cache
   try {
     await closeCache();
     // eslint-disable-next-line no-console
