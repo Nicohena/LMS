@@ -8,6 +8,9 @@ import {
   getTeacherDashboardController,
   getStudentDashboardController,
   getCourseDashboardController,
+  getAdminAlertsController,
+  getRecentActivityController,
+  getAdminDashboardSummaryController,
   createTemplateController,
   getTemplatesController,
   getTemplateController,
@@ -38,6 +41,9 @@ export const dashboardRouter = Router();
 dashboardRouter.use(authenticate);
 
 dashboardRouter.get('/platform', authorize('ADMIN'), getPlatformDashboardController);
+dashboardRouter.get('/alerts', authorize('ADMIN'), getAdminAlertsController);
+dashboardRouter.get('/activity', authorize('ADMIN'), getRecentActivityController);
+dashboardRouter.get('/summary', authorize('ADMIN'), getAdminDashboardSummaryController);
 dashboardRouter.get('/teacher', authorize('TEACHER', 'ADMIN'), getTeacherDashboardController);
 dashboardRouter.get('/student', getStudentDashboardController);
 dashboardRouter.get('/courses/:courseId', authorize('ADMIN', 'TEACHER'), getCourseDashboardController);

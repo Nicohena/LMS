@@ -171,6 +171,34 @@ export async function triggerScheduleController(req: Request, res: Response, nex
 // Error handler
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Admin dashboard endpoints (Step 10)
+// ---------------------------------------------------------------------------
+
+import { getAdminAlerts, getRecentActivity, getAdminDashboardSummary } from './admin-dashboard.service';
+
+export async function getAdminAlertsController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const alerts = await getAdminAlerts();
+    res.status(200).json(alerts);
+  } catch (err) { next(err); }
+}
+
+export async function getRecentActivityController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const activity = await getRecentActivity(limit);
+    res.status(200).json({ data: activity });
+  } catch (err) { next(err); }
+}
+
+export async function getAdminDashboardSummaryController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const summary = await getAdminDashboardSummary();
+    res.status(200).json(summary);
+  } catch (err) { next(err); }
+}
+
 export function reportErrorHandler(err: unknown, _req: Request, res: Response, next: NextFunction): void {
   if (isHttpError(err)) { res.status(err.statusCode).json({ message: err.message, code: err.code }); return; }
   next(err);

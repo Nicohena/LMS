@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -4258,6 +4258,96 @@ function EscalationsSection() {
   );
 }
 
+// ─── Admin Alerts Bar (real-time alerts) ─────────────────────────────────
+function AdminAlertsBar() {
+  const { data: alerts } = useAdminAlerts();
+  if (!alerts || alerts.total === 0) return null;
+
+  const items = [
+    { label: 'Escalations', value: alerts.pendingEscalations, color: 'text-amber-600 bg-amber-50', icon: AlertCircle },
+    { label: 'Flagged', value: alerts.flaggedContent, color: 'text-red-600 bg-red-50', icon: AlertCircle },
+    { label: 'Low Quality', value: alerts.lowQualityCourses, color: 'text-red-600 bg-red-50', icon: TrendingUp },
+    { label: 'At-Risk Students', value: alerts.atRiskStudents, color: 'text-amber-600 bg-amber-50', icon: Users },
+    { label: 'Grade Disputes', value: alerts.openGradeDisputes, color: 'text-amber-600 bg-amber-50', icon: FileQuestion },
+  ].filter(i => i.value > 0);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+      <span className="mr-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+        <AlertCircle className="h-4 w-4" />Active Alerts:
+      </span>
+      {items.map((item) => (
+        <div key={item.label} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium', item.color)}>
+          <item.icon className="h-3.5 w-3.5" />
+          {item.value} {item.label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Recent Activity Feed ────────────────────────────────────────────────
+function ActivityFeed() {
+  const { data, isLoading } = useRecentActivity(10);
+  const activities = (data?.data ?? []) as any[];
+
+  const iconForType = (type: string) => {
+    switch (type) {
+      case 'user_registered': return { icon: UserPlus, color: 'text-emerald-600 bg-emerald-50' };
+      case 'course_created': return { icon: Plus, color: 'text-purple-600 bg-purple-50' };
+      case 'enrollment': return { icon: GraduationCap, color: 'text-blue-600 bg-blue-50' };
+      case 'submission': return { icon: FileText, color: 'text-amber-600 bg-amber-50' };
+      case 'certificate_issued': return { icon: Award, color: 'text-purple-600 bg-purple-50' };
+      default: return { icon: Bell, color: 'text-slate-600 bg-slate-50' };
+    }
+  };
+
+  const labelForType = (type: string, data: any) => {
+    switch (type) {
+      case 'user_registered': return `New user: ${data.name} (${data.role})`;
+      case 'course_created': return `New course: ${data.title}`;
+      case 'enrollment': return `${data.student} enrolled in ${data.course}`;
+      case 'submission': return `${data.student} submitted ${data.assignment}`;
+      case 'certificate_issued': return `Certificate issued: ${data.student} — ${data.course}`;
+      default: return type;
+    }
+  };
+
+  return (
+    <Card className="border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Recent Activity</h2>
+          <p className="text-xs text-slate-400">Live feed · Auto-refresh 30s</p>
+        </div>
+        <span className="flex items-center gap-1 text-xs text-emerald-600">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Live
+        </span>
+      </div>
+      {isLoading && <div className="p-4 text-center text-sm text-slate-500">Loading activity…</div>}
+      {!isLoading && activities.length === 0 && <p className="text-sm text-slate-400">No recent activity.</p>}
+      <div className="space-y-2">
+        {activities.slice(0, 8).map((a: any, idx: number) => {
+          const { icon: Icon, color } = iconForType(a.type);
+          return (
+            <div key={idx} className="flex items-start gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
+              <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', color)}>
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-slate-700">{labelForType(a.type, a.data)}</p>
+                <p className="text-xs text-slate-400">{timeAgo(a.timestamp)}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 // ─── Admin Dashboard View ─────────────────────────────────────────────────
 function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { data: platformData, isLoading } = usePlatformDashboard();
@@ -4307,13 +4397,19 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-500">Platform overview · Last updated just now</p>
+          <p className="mt-1 text-sm text-slate-500">Platform overview · <span className="text-purple-600">●</span> Live (auto-refresh 30s)</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => downloadCSV('platform-stats.csv', platformStats.map((s: any) => ({ Label: s.label, Value: s.value, Trend: s.trend })), ['Label', 'Value', 'Trend'])} className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export</Button>
-          <Button onClick={() => onNavigate('users')} className="bg-purple-600 text-white hover:bg-purple-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
+          <Button variant="outline" onClick={() => onNavigate('users')} className="border-slate-200 text-slate-600"><UserPlus className="mr-1.5 h-4 w-4" />Users</Button>
+          <Button variant="outline" onClick={() => onNavigate('course-create')} className="border-slate-200 text-slate-600"><Plus className="mr-1.5 h-4 w-4" />Course</Button>
+          <Button variant="outline" onClick={() => onNavigate('settings')} className="border-slate-200 text-slate-600"><Settings className="mr-1.5 h-4 w-4" />Settings</Button>
+          <Button variant="outline" onClick={() => onNavigate('audit')} className="border-slate-200 text-slate-600"><FileText className="mr-1.5 h-4 w-4" />Audit</Button>
         </div>
       </div>
+
+      {/* Real-time alerts bar */}
+      <AdminAlertsBar />
 
       {/* Stats Grid */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -4452,6 +4548,8 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
               ))}
             </div>
           </Card>
+          {/* Recent Activity Feed */}
+          <ActivityFeed />
         </div>
       </div>
 

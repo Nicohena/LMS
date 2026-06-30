@@ -1354,6 +1354,31 @@ export function usePlatformDashboard() {
       return res.data;
     },
     enabled: !!useAuthStore.getState().isAuthenticated,
+    refetchInterval: 30000, // Auto-refresh every 30s
+  });
+}
+
+export function useAdminAlerts() {
+  return useQuery({
+    queryKey: ['admin-alerts'],
+    queryFn: async () => {
+      const res = await api.get('/dashboards/alerts');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+    refetchInterval: 30000,
+  });
+}
+
+export function useRecentActivity(limit: number = 15) {
+  return useQuery({
+    queryKey: ['recent-activity', limit],
+    queryFn: async () => {
+      const res = await api.get('/dashboards/activity', { params: { limit } });
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+    refetchInterval: 30000,
   });
 }
 
