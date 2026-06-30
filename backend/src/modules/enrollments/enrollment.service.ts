@@ -5,6 +5,7 @@ import { NotFoundError, ForbiddenError, ConflictError, ValidationError } from '.
 import { cacheDelete, cacheDeleteByPrefix, cacheGet, cacheSet } from '../../common/services/cache.service';
 import { enqueue } from '../../common/services/queue.service';
 import { logAction } from '../../common/services/audit.service';
+import { gamificationEvents } from '../gamification/event-listener.service';
 import {
   recalculateOverallProgress,
   getNextContentId,
@@ -477,6 +478,30 @@ export async function updateProgress(
 
   // Recalculate overall progress (also handles COMPLETED transition)
   const updatedEnrollment = await recalculateOverallProgress(enrollmentId);
+
+  // Emit course.completed event if the enrollment just transitioned to COMPLETED
+  if (updatedEnrollment.status === 'COMPLETED') {
+    // Fetch enrollment details for the event
+    const enrollmentDetails = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      select: { userId: true, courseId: true },
+    }).catch(() => null);
+
+    if (enrollmentDetails) {
+      const course = await prisma.course.findUnique({
+        where: { id: enrollmentDetails.courseId },
+        select: { title: true },
+      }).catch(() => null);
+
+      gamificationEvents.emit('course.completed', {
+        userId: enrollmentDetails.userId,
+        courseId: enrollmentDetails.courseId,
+        courseTitle: course?.title,
+      });
+      // eslint-disable-next-line no-console
+      console.log(`[enrollment] Course completed: user=${enrollmentDetails.userId}, course=${enrollmentDetails.courseId}`);
+    }
+  }
 
   // Invalidate caches
   await cacheDelete(CACHE_KEYS.studentDashboard(enrollment.userId));

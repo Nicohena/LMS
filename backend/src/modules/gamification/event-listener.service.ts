@@ -42,6 +42,47 @@ export function initGamificationEvents(): void {
     await invalidateLeaderboardCache();
     // eslint-disable-next-line no-console
     console.log(`[gamification] course.completed: ${data.userId} +XP`);
+
+    // Auto-generate certificate on course completion
+    try {
+      const { issueCertificate } = await import('../certificates/certificate.service');
+      const { prisma } = await import('../../lib/prisma');
+      const templates = await prisma.certificateTemplate.findMany({ take: 1 });
+      if (templates.length > 0) {
+        await issueCertificate({
+          templateId: templates[0].id,
+          userId: data.userId,
+          courseId: data.courseId,
+        }, 'ADMIN' as any);
+        // eslint-disable-next-line no-console
+        console.log(`[certificates] Auto-generated certificate for user=${data.userId}, course=${data.courseId}`);
+
+        // Send email notification
+        try {
+          const { sendEmail } = await import('../notifications/email.service');
+          const user = await prisma.user.findUnique({ where: { id: data.userId }, select: { email: true, firstName: true } });
+          if (user) {
+            await sendEmail({
+              to: user.email,
+              subject: `Certificate Earned: ${data.courseTitle ?? 'Course Completed'}!`,
+              template: 'generic',
+              data: {
+                title: 'Certificate Earned!',
+                content: `Congratulations ${user.firstName}! You have successfully completed "${data.courseTitle ?? 'the course'}" and earned a certificate. You can download it from your profile page.`,
+                link: `${process.env.CLIENT_URL || 'http://localhost:3000'}/profile`,
+              },
+            });
+          }
+        } catch (emailErr) {
+          // eslint-disable-next-line no-console
+          console.warn('[certificates] Failed to send certificate email:', (emailErr as Error).message);
+        }
+      }
+    } catch (certErr) {
+      // Don't fail the course completion if certificate generation fails
+      // eslint-disable-next-line no-console
+      console.warn('[certificates] Auto-generation failed:', (certErr as Error).message);
+    }
   });
 
   // --- Quiz passed ---
