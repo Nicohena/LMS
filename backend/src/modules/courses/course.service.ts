@@ -62,6 +62,8 @@ function toCourseResponse(
     status: any;
     createdBy: string;
     academicYearId: string | null;
+    qualityScore?: number | null;
+    qualityFlags?: string[];
     createdAt: Date;
     updatedAt: Date;
     creator: { id: string; firstName: string; lastName: string; email: string; role: Role };
@@ -81,6 +83,8 @@ function toCourseResponse(
     language: course.language,
     status: course.status,
     academicYearId: course.academicYearId,
+    qualityScore: course.qualityScore ?? 0,
+    qualityFlags: course.qualityFlags ?? [],
     // Replace the raw createdBy string with the populated creator summary.
     createdBy: toCreatorSummary(course.creator),
     createdAt: course.createdAt,

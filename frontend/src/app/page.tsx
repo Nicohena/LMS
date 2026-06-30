@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -3761,6 +3761,113 @@ function GradeDisputesSection() {
   );
 }
 
+// ─── Quality Monitoring Section (admin) ──────────────────────────────────
+function QualityMonitoringSection() {
+  const { data, isLoading } = useQualityReport();
+  const recalcMut = useRecalculateQuality();
+  const flagMut = useFlagCourse();
+  const unflagMut = useUnflagCourse();
+
+  const summary = data?.summary;
+  const courses = (data?.courses ?? []) as any[];
+
+  const scoreColor = (score: number) => {
+    if (score >= 70) return 'text-emerald-600';
+    if (score >= 40) return 'text-amber-600';
+    return 'text-red-600';
+  };
+
+  const scoreBg = (score: number) => {
+    if (score >= 70) return 'bg-emerald-500';
+    if (score >= 40) return 'bg-amber-500';
+    return 'bg-red-500';
+  };
+
+  return (
+    <Card className="mt-6 border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Course Quality Monitoring</h2>
+          <p className="text-xs text-slate-400">Automated quality scores, flags, and teacher performance</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => recalcMut.mutate()} disabled={recalcMut.isPending} className="border-purple-200 text-purple-700 hover:bg-purple-50">
+          <TrendingUp className="mr-1 h-3.5 w-3.5" />{recalcMut.isPending ? 'Recalculating…' : 'Recalculate All'}
+        </Button>
+      </div>
+
+      {/* Summary stats */}
+      {summary && (
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border border-slate-100 p-3 text-center">
+            <p className="text-2xl font-bold text-slate-900">{summary.totalCourses}</p>
+            <p className="text-xs text-slate-400">Total Courses</p>
+          </div>
+          <div className="rounded-lg border border-red-100 bg-red-50/30 p-3 text-center">
+            <p className="text-2xl font-bold text-red-600">{summary.lowQualityCount}</p>
+            <p className="text-xs text-slate-400">Low Quality (&lt;40)</p>
+          </div>
+          <div className="rounded-lg border border-amber-100 bg-amber-50/30 p-3 text-center">
+            <p className="text-2xl font-bold text-amber-600">{summary.flaggedCount}</p>
+            <p className="text-xs text-slate-400">Flagged</p>
+          </div>
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/30 p-3 text-center">
+            <p className="text-2xl font-bold text-emerald-600">{summary.goodQualityCount}</p>
+            <p className="text-xs text-slate-400">Good Quality (70+)</p>
+          </div>
+        </div>
+      )}
+
+      {isLoading && <div className="p-4 text-center text-sm text-slate-500">Loading quality report…</div>}
+
+      {!isLoading && courses.length === 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-4">
+          <CheckCircle2 className="h-5 w-5 text-slate-400" />
+          <p className="text-sm text-slate-500">No courses found. Click "Recalculate All" to generate quality scores.</p>
+        </div>
+      )}
+
+      {courses.length > 0 && (
+        <div className="space-y-2">
+          {courses.slice(0, 10).map((c: any) => (
+            <div key={c.id} className="group flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-900">{c.title}</p>
+                <p className="text-xs text-slate-400">
+                  Teacher: {c.teacher?.firstName ?? '?'} {c.teacher?.lastName ?? ''} · {c.enrollmentCount} enrolled · {c.completedCount} completed
+                </p>
+                {c.qualityFlags?.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {c.qualityFlags.map((f: string) => (
+                      <Badge key={f} className="bg-red-50 text-red-600 text-[10px] hover:bg-red-50">{f.replace(/_/g, ' ').toLowerCase()}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Score bar */}
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100">
+                  <div className={cn('h-full rounded-full', scoreBg(c.qualityScore ?? 0))} style={{ width: `${c.qualityScore ?? 0}%` }} />
+                </div>
+                <span className={cn('text-sm font-bold', scoreColor(c.qualityScore ?? 0))}>{Math.round(c.qualityScore ?? 0)}</span>
+              </div>
+              {/* Flag/unflag */}
+              {c.qualityFlags?.length > 0 ? (
+                <button onClick={() => unflagMut.mutate({ courseId: c.id, flag: 'LOW_QUALITY' })} className="rounded p-1 text-slate-300 opacity-0 hover:bg-emerald-50 hover:text-emerald-600 group-hover:opacity-100" title="Unflag">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </button>
+              ) : (
+                <button onClick={() => flagMut.mutate({ courseId: c.id, flag: 'ADMIN_REVIEW' })} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100" title="Flag for review">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ─── Auto-Enrollment Rules Section (admin) ───────────────────────────────
 function AutoEnrollmentRulesSection() {
   const { data: rulesData, isLoading } = useAutoEnrollRules();
@@ -4208,6 +4315,9 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {/* Auto-Enrollment Rules Section */}
       <AutoEnrollmentRulesSection />
+
+      {/* Quality Monitoring Section */}
+      <QualityMonitoringSection />
     </main>
   );
 }

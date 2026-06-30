@@ -352,6 +352,58 @@ export function useModerateContent() {
   });
 }
 
+// ─── Quality Monitoring (Step 8) ─────────────────────────────────────────
+
+export function useQualityReport() {
+  return useQuery({
+    queryKey: ['quality-report'],
+    queryFn: async () => {
+      const res = await api.get('/admin/quality/reports');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useRecalculateQuality() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/admin/quality/recalculate', {});
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quality-report'] });
+    },
+  });
+}
+
+export function useFlagCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ courseId, flag }: { courseId: string; flag: string }) => {
+      const res = await api.patch(`/admin/quality/courses/${courseId}/flag`, { flag });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quality-report'] });
+    },
+  });
+}
+
+export function useUnflagCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ courseId, flag }: { courseId: string; flag: string }) => {
+      const res = await api.patch(`/admin/quality/courses/${courseId}/unflag`, { flag });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quality-report'] });
+    },
+  });
+}
+
 // ─── Enrollments ─────────────────────────────────────────────────────────
 
 export function useStudentDashboard() {

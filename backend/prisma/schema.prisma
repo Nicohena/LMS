@@ -126,6 +126,8 @@ model Course {
   status      CourseStatus   @default(DRAFT)
   createdBy   String         @db.ObjectId
   academicYearId String?     @db.ObjectId
+  qualityScore  Float?         @default(0)
+  qualityFlags  String[]       @default([])
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 

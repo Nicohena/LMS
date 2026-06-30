@@ -1,4 +1,4 @@
-import express, { type Request, type Response, type NextFunction } from 'express';
+import express, { type Request, type Response, type NextFunction, Router } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -131,6 +131,25 @@ contentModerationRouter.get('/flagged', getFlaggedContentController);
 contentModerationRouter.patch('/:id/moderate', moderateContentController);
 contentModerationRouter.post('/:id/moderate/run', runModerationController);
 app.use('/api/v1/content', contentModerationRouter);
+
+// --- Quality Monitoring (Step 8) ---
+import {
+  getQualityReportController,
+  getQualityReportsController,
+  flagCourseController,
+  unflagCourseController,
+  recalculateQualityController,
+  calculateSingleQualityController,
+} from './modules/courses/quality-monitoring.controller';
+const qualityRouter = Router();
+qualityRouter.use(authenticate, authorize('ADMIN'));
+qualityRouter.get('/courses', getQualityReportController);
+qualityRouter.get('/reports', getQualityReportsController);
+qualityRouter.patch('/courses/:id/flag', flagCourseController);
+qualityRouter.patch('/courses/:id/unflag', unflagCourseController);
+qualityRouter.post('/recalculate', recalculateQualityController);
+qualityRouter.post('/courses/:id/calculate', calculateSingleQualityController);
+app.use('/api/v1/admin/quality', qualityRouter);
 
 // --- Enrollments module ---
 app.use('/api/v1/enrollments', enrollmentRouter);
