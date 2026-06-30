@@ -25,6 +25,8 @@ model User {
   profilePicture     String?
   bio                String?
   lastLogin          DateTime?
+  passwordResetToken     String?
+  passwordResetExpires   DateTime?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
@@ -57,6 +59,7 @@ model User {
   platformSettings     PlatformSetting[]
   emailTemplates       EmailTemplate[]
   gradingScales        GradingScale[]
+  favorites            Favorite[]
 }
 
 model RefreshToken {
@@ -119,6 +122,7 @@ model Course {
   certificates Certificate[]
   leaderboardSnapshots LeaderboardSnapshot[]
   academicYear AcademicYear? @relation(fields: [academicYearId], references: [id])
+  favorites    Favorite[]
 }
 
 model Module {
@@ -1026,4 +1030,17 @@ model AcademicYear {
   updatedAt DateTime           @updatedAt
 
   courses Course[]
+}
+
+model Favorite {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  courseId  String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
 }

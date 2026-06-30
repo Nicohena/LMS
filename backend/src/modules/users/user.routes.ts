@@ -96,6 +96,12 @@ router.patch(
 );
 router.delete('/:id', authorize('ADMIN'), deleteUserController);
 
+// --- Favorites (any authenticated user) ---
+import { getFavoritesController, addFavoriteController, removeFavoriteController } from './favorite.controller';
+router.get('/me/favorites', getFavoritesController);
+router.post('/me/favorites/:courseId', addFavoriteController);
+router.delete('/me/favorites/:courseId', removeFavoriteController);
+
 // Service error handler — converts UserServiceError to HTTP responses.
 router.use(userServiceErrorHandler);
 

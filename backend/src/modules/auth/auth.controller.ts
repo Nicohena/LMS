@@ -5,6 +5,9 @@ import {
   refresh as refreshService,
   logout as logoutService,
   changePassword as changePasswordService,
+  register as registerService,
+  forgotPassword as forgotPasswordService,
+  resetPassword as resetPasswordService,
   AuthError,
 } from './auth.service';
 import {
@@ -117,6 +120,50 @@ export async function changePasswordController(
     // After password change, all refresh tokens are revoked. Clear cookies.
     clearAuthCookies(res);
 
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/register — self-registration (public, checks allowRegistration setting)
+// ---------------------------------------------------------------------------
+export async function registerController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email, password, firstName, lastName } = req.body;
+    const result = await registerService({ email, password, firstName, lastName });
+    // Set auth cookies on registration (auto-login)
+    setAuthCookies(res, result.tokens.accessToken, result.tokens.refreshToken);
+    res.status(201).json({
+      message: 'Registration successful.',
+      user: result.user,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/forgot-password — request password reset email (public)
+// ---------------------------------------------------------------------------
+export async function forgotPasswordController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email } = req.body;
+    const result = await forgotPasswordService(email);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/reset-password — reset password with token (public)
+// ---------------------------------------------------------------------------
+export async function resetPasswordController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { token, newPassword } = req.body;
+    const result = await resetPasswordService(token, newPassword);
     res.status(200).json(result);
   } catch (err) {
     next(err);

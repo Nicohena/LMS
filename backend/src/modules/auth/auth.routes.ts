@@ -5,11 +5,14 @@ import {
   refreshController,
   logoutController,
   changePasswordController,
+  registerController,
+  forgotPasswordController,
+  resetPasswordController,
   authErrorHandler,
 } from './auth.controller';
 import { authenticate } from '../../common/middlewares/auth.middleware';
 import { validate } from '../../common/middlewares/validation.middleware';
-import { loginSchema, changePasswordSchema, refreshSchema } from './auth.schemas';
+import { loginSchema, changePasswordSchema, refreshSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.schemas';
 
 const router = Router();
 
@@ -33,6 +36,27 @@ router.post('/refresh', validate({ body: refreshSchema }), refreshController);
  * Public endpoint (always succeeds; clears cookies regardless).
  */
 router.post('/logout', logoutController);
+
+/**
+ * POST /api/v1/auth/register
+ * Body: { email, password, firstName, lastName }
+ * Public endpoint. Respects the `allowRegistration` platform setting.
+ */
+router.post('/register', validate({ body: registerSchema }), registerController);
+
+/**
+ * POST /api/v1/auth/forgot-password
+ * Body: { email }
+ * Public endpoint. Sends a password reset email if the account exists.
+ */
+router.post('/forgot-password', validate({ body: forgotPasswordSchema }), forgotPasswordController);
+
+/**
+ * POST /api/v1/auth/reset-password
+ * Body: { token, newPassword }
+ * Public endpoint. Resets the password using a valid reset token.
+ */
+router.post('/reset-password', validate({ body: resetPasswordSchema }), resetPasswordController);
 
 /**
  * POST /api/v1/auth/change-password
