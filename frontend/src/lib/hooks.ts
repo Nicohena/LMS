@@ -517,6 +517,59 @@ export function useResolveDispute() {
   });
 }
 
+// ─── Escalations (Step 6) ────────────────────────────────────────────────
+
+export function useEscalations(params?: { status?: string; page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ['escalations', params],
+    queryFn: async () => {
+      const res = await api.get('/escalations', { params });
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useCreateEscalation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { submissionId?: string; attemptId?: string; reason: string }) => {
+      const url = data.submissionId ? `/submissions/${data.submissionId}/escalate` : '/escalations';
+      const res = await api.post(url, { reason: data.reason });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['escalations'] });
+    },
+  });
+}
+
+export function useTeacherResolveEscalation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ escalationId, action, notes, newGrade }: { escalationId: string; action: 'RESOLVE' | 'FORWARD'; notes: string; newGrade?: number }) => {
+      const res = await api.patch(`/escalations/${escalationId}/resolve`, { action, notes, newGrade });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['escalations'] });
+    },
+  });
+}
+
+export function useAdminResolveEscalation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ escalationId, resolution, newGrade }: { escalationId: string; resolution: string; newGrade?: number }) => {
+      const res = await api.patch(`/escalations/${escalationId}/admin-resolve`, { resolution, newGrade });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['escalations'] });
+    },
+  });
+}
+
 // ─── Assignments ─────────────────────────────────────────────────────────
 
 export function useAssignments(params?: { page?: number; limit?: number; search?: string; status?: string; contentId?: string }) {

@@ -92,6 +92,31 @@ inviteRouter.get('/invites', getInvitesController);
 inviteRouter.patch('/users/:id/role', changeUserRoleController);
 app.use('/api/v1/admin', inviteRouter);
 
+// --- Escalation workflow (Step 6) ---
+import {
+  escalateSubmissionController,
+  teacherResolveController,
+  adminResolveController,
+  getEscalationsController,
+} from './modules/escalations/escalation.controller';
+import { Router as EscalationRouter } from 'express';
+
+// Student escalates a submission
+app.post('/api/v1/submissions/:id/escalate', authenticate, escalateSubmissionController);
+
+// Escalation management (teacher + admin)
+const escalationRouter = EscalationRouter();
+escalationRouter.use(authenticate);
+// Teacher resolves or forwards
+escalationRouter.patch('/:id/resolve', authorize('ADMIN', 'TEACHER'), teacherResolveController);
+// Admin final resolution
+escalationRouter.patch('/:id/admin-resolve', authorize('ADMIN'), adminResolveController);
+// List escalations (role-based: students see own, teachers see assigned, admins see all)
+escalationRouter.get('/', getEscalationsController);
+app.use('/api/v1/escalations', escalationRouter);
+// Admin-specific alias
+app.get('/api/v1/admin/escalations', authenticate, authorize('ADMIN'), getEscalationsController);
+
 // --- Courses module ---
 app.use('/api/v1/courses', courseRouter);
 

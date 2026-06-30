@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -3761,6 +3761,111 @@ function GradeDisputesSection() {
   );
 }
 
+// ─── Escalations Section (Student → Teacher → Admin workflow) ────────────
+function EscalationsSection() {
+  const authUser = useAuthStore((s) => s.user);
+  const isAdmin = authUser?.role === 'ADMIN';
+  const isTeacher = authUser?.role === 'TEACHER' || isAdmin;
+  const { data, isLoading } = useEscalations({ limit: 10 });
+  const teacherResolveMut = useTeacherResolveEscalation();
+  const adminResolveMut = useAdminResolveEscalation();
+  const escalations = (data?.data ?? []) as any[];
+
+  const handleTeacherAction = (escalationId: string, action: 'RESOLVE' | 'FORWARD') => {
+    const notes = prompt(`Notes for ${action === 'RESOLVE' ? 'resolving' : 'forwarding'} this escalation:`) || '';
+    const newGradeStr = action === 'RESOLVE' ? prompt('New grade (leave empty for no change):') : '';
+    const newGrade = newGradeStr && !isNaN(Number(newGradeStr)) ? Number(newGradeStr) : undefined;
+    teacherResolveMut.mutate({ escalationId, action, notes, newGrade });
+  };
+
+  const handleAdminResolve = (escalationId: string) => {
+    const resolution = prompt('Admin resolution notes:') || '';
+    const newGradeStr = prompt('New grade (leave empty for no change):') || '';
+    const newGrade = newGradeStr && !isNaN(Number(newGradeStr)) ? Number(newGradeStr) : undefined;
+    adminResolveMut.mutate({ escalationId, resolution, newGrade });
+  };
+
+  const statusColors: Record<string, string> = {
+    OPEN: 'bg-amber-50 text-amber-600',
+    TEACHER_REVIEW: 'bg-blue-50 text-blue-600',
+    FORWARDED_TO_ADMIN: 'bg-red-50 text-red-600',
+    RESOLVED: 'bg-emerald-50 text-emerald-600',
+    ESCALATED: 'bg-red-50 text-red-600',
+  };
+
+  return (
+    <Card className="mt-6 border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Escalations</h2>
+          <p className="text-xs text-slate-400">Student → Teacher → Admin escalation workflow</p>
+        </div>
+        <Badge className={cn('hover:opacity-90', escalations.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600')}>
+          {escalations.length} {escalations.length === 1 ? 'item' : 'items'}
+        </Badge>
+      </div>
+
+      {isLoading && <div className="p-4 text-center text-sm text-slate-500">Loading escalations…</div>}
+
+      {!isLoading && escalations.length === 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-4">
+          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+          <p className="text-sm text-emerald-700">No open escalations.</p>
+        </div>
+      )}
+
+      {escalations.length > 0 && (
+        <div className="space-y-3">
+          {escalations.map((e: any) => (
+            <div key={e.id} className="rounded-lg border border-slate-200 p-4">
+              <div className="flex items-start gap-3">
+                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', statusColors[e.status] || statusColors.OPEN)}>
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{e.user?.firstName} {e.user?.lastName}</p>
+                    <Badge className={cn('hover:opacity-90', statusColors[e.status] || statusColors.OPEN)}>{e.status.replace(/_/g, ' ')}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">{e.reason}</p>
+                  {e.submission && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Assignment: {e.submission.assignment?.title ?? 'Unknown'} · Grade: {e.submission.grade ?? 'Not graded'}
+                    </p>
+                  )}
+                  {e.teacherNotes && <p className="mt-1 text-xs italic text-blue-600">Teacher notes: {e.teacherNotes}</p>}
+                  {e.adminNotes && <p className="mt-1 text-xs italic text-red-600">Admin notes: {e.adminNotes}</p>}
+                  <p className="mt-1 text-xs text-slate-400">{timeAgo(e.createdAt)}</p>
+
+                  <div className="mt-3 flex gap-2">
+                    {/* Teacher actions */}
+                    {isTeacher && e.status !== 'RESOLVED' && e.status !== 'FORWARDED_TO_ADMIN' && (
+                      <>
+                        <Button size="sm" onClick={() => handleTeacherAction(e.id, 'RESOLVE')} disabled={teacherResolveMut.isPending} className="bg-emerald-500 text-white hover:bg-emerald-600">
+                          <CheckCircle2 className="mr-1 h-3.5 w-3.5" />Resolve
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleTeacherAction(e.id, 'FORWARD')} disabled={teacherResolveMut.isPending} className="border-red-200 text-red-600 hover:bg-red-50">
+                          Forward to Admin
+                        </Button>
+                      </>
+                    )}
+                    {/* Admin actions */}
+                    {isAdmin && e.status === 'FORWARDED_TO_ADMIN' && (
+                      <Button size="sm" onClick={() => handleAdminResolve(e.id)} disabled={adminResolveMut.isPending} className="bg-purple-600 text-white hover:bg-purple-700">
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />Admin Resolve
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ─── Admin Dashboard View ─────────────────────────────────────────────────
 function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { data: platformData, isLoading } = usePlatformDashboard();
@@ -3963,6 +4068,9 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {/* Grade Disputes Section */}
       <GradeDisputesSection />
+
+      {/* Escalations Section (Student → Teacher → Admin) */}
+      <EscalationsSection />
     </main>
   );
 }

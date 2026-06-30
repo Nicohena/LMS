@@ -67,6 +67,9 @@ model User {
   inviteCodesCreated   InviteCode[]  @relation("inviteCreator")
   inviteUsedBy         InviteCode?   @relation("inviteUsedBy")
   gradeDisputes        GradeDispute[]
+  escalationsFiled     Escalation[]   @relation("escalationUser")
+  escalationsHandled   Escalation[]   @relation("escalationTeacher")
+  escalationsAdmin     Escalation[]   @relation("escalationAdmin")
 }
 
 model RefreshToken {
@@ -512,6 +515,7 @@ model Submission {
   grader              User?         @relation("submissionGrader", fields: [gradedBy], references: [id])
   peerReviewsReceived PeerReview[]  @relation("peerReviewSubmission")
   gradeHistory        GradeHistory[]
+  escalations         Escalation[]
 }
 
 model PeerReview {
@@ -1110,6 +1114,36 @@ model GradeDispute {
 enum DisputeStatus {
   OPEN
   UNDER_REVIEW
+  RESOLVED
+  ESCALATED
+}
+
+model Escalation {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId String?          @db.ObjectId
+  attemptId    String?          @db.ObjectId
+  userId       String           @db.ObjectId
+  teacherId    String?          @db.ObjectId
+  adminId      String?          @db.ObjectId
+  reason       String
+  status       EscalationStatus @default(OPEN)
+  teacherNotes String?
+  adminNotes   String?
+  resolution   String?
+  resolvedBy   String?          @db.ObjectId
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user       User         @relation("escalationUser", fields: [userId], references: [id], onDelete: Cascade)
+  teacher    User?        @relation("escalationTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  admin      User?        @relation("escalationAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  submission Submission?  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+enum EscalationStatus {
+  OPEN
+  TEACHER_REVIEW
+  FORWARDED_TO_ADMIN
   RESOLVED
   ESCALATED
 }
