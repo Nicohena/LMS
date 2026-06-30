@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -43,23 +43,30 @@ interface Module {
 }
 
 // ─── Mock Data ─────────────────────────────────────────────────────────────
-const navItems = [
-  { label: 'Home', icon: LayoutDashboard, view: 'dashboard' as View },
-  { label: 'My Learning', icon: BookOpen, view: 'dashboard' as View },
-  { label: 'Catalog', icon: Layers, view: 'catalog' as View },
-  { label: 'Favorites', icon: Star },
-  { label: 'Assignments', icon: FileText, badge: 3, view: 'assignment' as View },
-  { label: 'Quizzes', icon: FileQuestion, view: 'quiz' as View },
-  { label: 'Certificates', icon: Award, view: 'gamification' as View },
-  { label: 'Discussions', icon: MessageSquare, badge: 5, view: 'discussions' as View },
-  { label: 'Announcements', icon: Bell, view: 'announcements' as View },
-  { label: 'Messages', icon: MessageSquare, badge: 3, view: 'messages' as View },
-  { label: 'Admin Panel', icon: BarChart3, view: 'admin' as View },
-  { label: 'Audit Logs', icon: FileText, view: 'audit' as View },
-  { label: 'User Management', icon: Users, view: 'users' as View },
-  { label: 'Create Course', icon: Plus, view: 'course-create' as View },
-  { label: 'Settings', icon: Settings, view: 'settings' as View },
-  { label: 'Calendar', icon: Calendar },
+type Role = 'ADMIN' | 'TEACHER' | 'STUDENT';
+interface NavItem {
+  label: string;
+  icon: typeof LayoutDashboard;
+  view?: View;
+  roles: Role[]; // which roles can see this item
+}
+const navItems: NavItem[] = [
+  { label: 'Home', icon: LayoutDashboard, view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'My Learning', icon: BookOpen, view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'Catalog', icon: Layers, view: 'catalog', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'Assignments', icon: FileText, view: 'assignment', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'Quizzes', icon: FileQuestion, view: 'quiz', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'Certificates', icon: Award, view: 'gamification', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'Discussions', icon: MessageSquare, view: 'discussions', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'Announcements', icon: Bell, view: 'announcements', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'Messages', icon: MessageSquare, view: 'messages', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  // Teacher + Admin only
+  { label: 'Create Course', icon: Plus, view: 'course-create', roles: ['ADMIN', 'TEACHER'] },
+  // Admin only
+  { label: 'Admin Panel', icon: BarChart3, view: 'admin', roles: ['ADMIN'] },
+  { label: 'Audit Logs', icon: FileText, view: 'audit', roles: ['ADMIN'] },
+  { label: 'User Management', icon: Users, view: 'users', roles: ['ADMIN'] },
+  { label: 'Settings', icon: Settings, view: 'settings', roles: ['ADMIN'] },
 ];
 
 const stats = [
@@ -158,14 +165,10 @@ function downloadCSV(filename: string, rows: Record<string, any>[], headers?: st
 // ─── Sidebar ──────────────────────────────────────────────────────────────
 function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; onClose: () => void; currentView: View; onNavigate: (v: View) => void }) {
   const user = useAuthStore((s) => s.user);
-  const role = user?.role ?? 'STUDENT';
-  // Filter nav items by role — admin/teacher see admin entries, students don't
-  const visibleNavItems = navItems.filter((item) => {
-    if (item.label === 'Admin Panel' || item.label === 'Audit Logs' || item.label === 'User Management' || item.label === 'Create Course') {
-      return role === 'ADMIN' || role === 'TEACHER';
-    }
-    return true;
-  });
+  const role = (user?.role ?? 'STUDENT') as Role;
+  const logoutMutation = useLogout();
+  // Filter nav items by role — each item has a `roles` array
+  const visibleNavItems = navItems.filter((item) => item.roles.includes(role));
   return (
     <>
       {open && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={onClose} />}
@@ -181,14 +184,15 @@ function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; on
               (item.view === currentView) ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900')}>
               <item.icon className="h-4 w-4" />
               {item.label}
-              {item.badge && <span className={cn('ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold', (item.view === currentView) ? 'bg-white/20 text-white' : 'bg-red-500 text-white')}>{item.badge}</span>}
             </button>
           ))}
         </nav>
         <div className="absolute bottom-0 left-0 right-0 border-t border-slate-200 p-4">
           <button onClick={() => onNavigate('profile')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><Users className="h-4 w-4" />My Profile</button>
-          <button onClick={() => onNavigate('settings')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><Settings className="h-4 w-4" />Settings</button>
-          <button onClick={() => onNavigate('login')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><LogOut className="h-4 w-4" />Logout</button>
+          {role === 'ADMIN' && (
+            <button onClick={() => onNavigate('settings')} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><Settings className="h-4 w-4" />Settings</button>
+          )}
+          <button onClick={() => { logoutMutation.mutate(); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-slate-900"><LogOut className="h-4 w-4" />Logout</button>
         </div>
       </aside>
     </>
@@ -198,6 +202,7 @@ function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; on
 // ─── Header ───────────────────────────────────────────────────────────────
 function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMenuClick: () => void; onNavigate: (v: View) => void; currentView: View; onSelectCourse: (id: string) => void }) {
   const user = useAuthStore((s) => s.user);
+  const role = (user?.role ?? 'STUDENT') as Role;
   const logoutMutation = useLogout();
   const queryClient = useQueryClient();
   const { data: notifData } = useNotifications({ limit: 20 });
@@ -210,12 +215,13 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
   const searchResults = ((searchData?.data ?? []) as any[]).slice(0, 5);
   const allNotifications = (notifData?.data ?? []) as any[];
   const unreadCount = allNotifications.filter((n: any) => !n.isRead).length;
-  const headerLinks = [
-    { label: 'Home', view: 'dashboard' as View },
-    { label: 'My Learning', view: 'dashboard' as View },
-    { label: 'Catalog', view: 'catalog' as View },
-    { label: 'Favorites', view: 'dashboard' as View },
+  const headerLinks: { label: string; view: View; roles: Role[] }[] = [
+    { label: 'Home', view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+    { label: 'Catalog', view: 'catalog', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+    { label: 'Create Course', view: 'course-create', roles: ['ADMIN', 'TEACHER'] },
+    { label: 'Admin', view: 'admin', roles: ['ADMIN'] },
   ];
+  const visibleHeaderLinks = headerLinks.filter((l) => l.roles.includes(role));
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'Guest';
   const initials = user ? getInitials(displayName) : 'G';
   const roleLabel = user?.role.toLowerCase() ?? 'visitor';
@@ -251,7 +257,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-4 lg:px-6">
       <button onClick={onMenuClick} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"><Menu className="h-5 w-5" /></button>
       <nav className="hidden items-center gap-1 md:flex">
-        {headerLinks.map((link) => (
+        {visibleHeaderLinks.map((link) => (
           <button key={link.label} onClick={() => onNavigate(link.view)} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-colors', link.view === currentView ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-100')}>{link.label}</button>
         ))}
       </nav>
@@ -663,7 +669,14 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
 // ─── Dashboard View ──────────────────────────────────────────────────────
 function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const user = useAuthStore((s) => s.user);
-  const isStudent = user?.role === 'STUDENT';
+  const role = (user?.role ?? 'STUDENT') as Role;
+  const isStudent = role === 'STUDENT';
+  const isAdmin = role === 'ADMIN';
+  const isTeacher = role === 'TEACHER';
+  // Role-based dashboard data:
+  // - Students: student dashboard (enrollments + progress)
+  // - Teachers: platform dashboard (course stats — the backend authorizes TEACHER for /dashboards/platform)
+  // - Admins: platform dashboard (full platform stats)
   const { data: studentData, isLoading: studentLoading } = useStudentDashboard();
   const { data: platformData, isLoading: platformLoading } = usePlatformDashboard();
   const { data: leaderboardData } = useLeaderboard({ limit: 5 });
@@ -5344,6 +5357,8 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const userRole = (authUser?.role ?? 'STUDENT') as Role;
   const [view, setView] = useState<View>(isAuthenticated ? 'dashboard' : 'login');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
@@ -5352,7 +5367,24 @@ export default function App() {
   const [selectedDiscussionId, setSelectedDiscussionId] = useState<string>('');
   const [lastAttemptId, setLastAttemptId] = useState<string>('');
 
+  // Role-based access control map: which views require which roles
+  const viewRoles: Partial<Record<View, Role[]>> = {
+    'admin': ['ADMIN'],
+    'audit': ['ADMIN'],
+    'users': ['ADMIN'],
+    'settings': ['ADMIN'],
+    'course-create': ['ADMIN', 'TEACHER'],
+  };
+
   const handleNavigate = (v: View) => {
+    // Guard: if the view requires specific roles and the user doesn't have one, redirect to dashboard
+    const requiredRoles = viewRoles[v];
+    if (requiredRoles && !requiredRoles.includes(userRole)) {
+      setView('dashboard');
+      setSidebarOpen(false);
+      window.scrollTo(0, 0);
+      return;
+    }
     setView(v);
     setSidebarOpen(false);
     window.scrollTo(0, 0);
@@ -5396,6 +5428,12 @@ export default function App() {
   // Login view — no sidebar/header
   if (view === 'login' || !isAuthenticated) {
     return <LoginPage onLogin={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
+  }
+
+  // Role guard: if current view requires a role the user doesn't have, redirect to dashboard
+  const currentViewRoles = viewRoles[view];
+  if (currentViewRoles && !currentViewRoles.includes(userRole)) {
+    setView('dashboard');
   }
 
   // All other views — with sidebar + header
