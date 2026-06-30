@@ -745,6 +745,107 @@ export function useCreateDiscussion() {
   });
 }
 
+export function useDiscussion(discussionId: string | null) {
+  return useQuery({
+    queryKey: ['discussion', discussionId],
+    queryFn: async () => {
+      const res = await api.get(`/discussions/${discussionId}`);
+      return res.data;
+    },
+    enabled: !!discussionId,
+  });
+}
+
+export function useCreateReply() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discussionId, content, parentId }: { discussionId: string; content: string; parentId?: string }) => {
+      const res = await api.post(`/discussions/${discussionId}/replies`, { content, parentId });
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['discussion', variables.discussionId] });
+      queryClient.invalidateQueries({ queryKey: ['discussions'] });
+    },
+  });
+}
+
+export function useUpvoteDiscussion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (discussionId: string) => {
+      const res = await api.post(`/discussions/${discussionId}/upvote`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['discussions'] });
+      queryClient.invalidateQueries({ queryKey: ['discussion'] });
+    },
+  });
+}
+
+export function useDeleteDiscussion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (discussionId: string) => {
+      await api.delete(`/discussions/${discussionId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['discussions'] });
+    },
+  });
+}
+
+export function useMarkBestAnswer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discussionId, replyId }: { discussionId: string; replyId: string }) => {
+      const res = await api.post(`/discussions/${discussionId}/best-answer/${replyId}`);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['discussion', variables.discussionId] });
+    },
+  });
+}
+
+// ─── Auth: Change Password ───────────────────────────────────────────────
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) => {
+      const res = await api.post('/auth/change-password', { oldPassword, newPassword });
+      return res.data;
+    },
+  });
+}
+
+// ─── Audit Logs ──────────────────────────────────────────────────────────
+
+export function useAuditLogs(params?: { page?: number; limit?: number; action?: string }) {
+  return useQuery({
+    queryKey: ['audit-logs', params],
+    queryFn: async () => {
+      const res = await api.get('/audit/logs', { params });
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+// ─── Quiz Analytics ──────────────────────────────────────────────────────
+
+export function useQuizAnalytics(quizId: string | null) {
+  return useQuery({
+    queryKey: ['quiz-analytics', quizId],
+    queryFn: async () => {
+      const res = await api.get(`/quizzes/${quizId}/analytics`);
+      return res.data;
+    },
+    enabled: !!quizId,
+  });
+}
+
 // ─── Messages ────────────────────────────────────────────────────────────
 
 export function useConversations() {
@@ -904,17 +1005,6 @@ export function usePlatformDashboard() {
     queryKey: ['platform-dashboard'],
     queryFn: async () => {
       const res = await api.get('/dashboards/platform');
-      return res.data;
-    },
-    enabled: !!useAuthStore.getState().isAuthenticated,
-  });
-}
-
-export function useAuditLogs(params?: { page?: number; limit?: number; entityType?: string }) {
-  return useQuery({
-    queryKey: ['audit-logs', params],
-    queryFn: async () => {
-      const res = await api.get('/audit/logs', { params });
       return res.data;
     },
     enabled: !!useAuthStore.getState().isAuthenticated,

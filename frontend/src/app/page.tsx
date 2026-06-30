@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'announcements' | 'admin' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
+type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
 
 interface Course {
   id: string; title: string; description: string; instructor: string;
@@ -55,6 +55,7 @@ const navItems = [
   { label: 'Announcements', icon: Bell, view: 'announcements' as View },
   { label: 'Messages', icon: MessageSquare, badge: 3, view: 'messages' as View },
   { label: 'Admin Panel', icon: BarChart3, view: 'admin' as View },
+  { label: 'Audit Logs', icon: FileText, view: 'audit' as View },
   { label: 'User Management', icon: Users, view: 'users' as View },
   { label: 'Create Course', icon: Plus, view: 'course-create' as View },
   { label: 'Settings', icon: Settings, view: 'settings' as View },
@@ -138,7 +139,7 @@ function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; on
   const role = user?.role ?? 'STUDENT';
   // Filter nav items by role — admin/teacher see admin entries, students don't
   const visibleNavItems = navItems.filter((item) => {
-    if (item.label === 'Admin Panel' || item.label === 'User Management' || item.label === 'Create Course') {
+    if (item.label === 'Admin Panel' || item.label === 'Audit Logs' || item.label === 'User Management' || item.label === 'Create Course') {
       return role === 'ADMIN' || role === 'TEACHER';
     }
     return true;
@@ -1590,8 +1591,11 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSubmitted: (attemptId: string) => void }) {
   const { data: quizData, isLoading } = useQuiz(quizId || null);
   const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
+  const { data: analyticsData } = useQuizAnalytics(quizId || null);
   const startAttempt = useStartQuizAttempt();
   const submitAttempt = useSubmitQuizAttempt();
+  const authUser = useAuthStore((s) => s.user);
+  const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
 
   const quiz = (quizData as any)?.quiz;
   const questions = ((quizData as any)?.questions ?? []) as any[];
@@ -1718,10 +1722,57 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
               </div>
             )}
             {error && <div className="mt-4 w-full rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-            <Button onClick={handleStart} disabled={startAttempt.isPending || !matchingEnrollment} className="mt-6 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
-              {startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}
-            </Button>
-            {!matchingEnrollment && <p className="mt-2 text-xs text-amber-600">You need an active enrollment to take this quiz.</p>}
+            {!isTeacher && (
+              <Button onClick={handleStart} disabled={startAttempt.isPending || !matchingEnrollment} className="mt-6 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                {startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}
+              </Button>
+            )}
+            {!matchingEnrollment && !isTeacher && <p className="mt-2 text-xs text-amber-600">You need an active enrollment to take this quiz.</p>}
+
+            {/* Teacher Analytics Panel */}
+            {isTeacher && analyticsData && (
+              <div className="mt-6 w-full border-t border-slate-200 pt-4 text-left">
+                <h3 className="mb-3 text-sm font-semibold text-slate-900">Quiz Analytics</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-slate-100 p-3 text-center">
+                    <p className="text-2xl font-bold text-indigo-600">{(analyticsData as any)?.totalAttempts ?? 0}</p>
+                    <p className="text-xs text-slate-400">Total Attempts</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-100 p-3 text-center">
+                    <p className="text-2xl font-bold text-emerald-600">{(analyticsData as any)?.passRate != null ? `${(analyticsData as any).passRate}%` : '—'}</p>
+                    <p className="text-xs text-slate-400">Pass Rate</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-100 p-3 text-center">
+                    <p className="text-2xl font-bold text-amber-600">{(analyticsData as any)?.averageScore != null ? `${(analyticsData as any).averageScore}%` : '—'}</p>
+                    <p className="text-xs text-slate-400">Avg Score</p>
+                  </div>
+                </div>
+                {(analyticsData as any)?.questionStats?.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Per-Question Breakdown</p>
+                    {(analyticsData as any).questionStats.map((qs: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 rounded-lg border border-slate-100 p-2.5">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">{i + 1}</div>
+                        <div className="flex-1 overflow-hidden">
+                          <p className="truncate text-xs font-medium text-slate-700">{qs.questionText ?? qs.questionId}</p>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="text-slate-400">{qs.correctCount ?? 0}/{qs.totalResponses ?? 0} correct</span>
+                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
+                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${qs.totalResponses > 0 ? ((qs.correctCount / qs.totalResponses) * 100) : 0}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {quiz?.status === 'DRAFT' && (
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                    ⚠️ This quiz is a <strong>Draft</strong>. Students cannot see it until you publish it. Use the Quiz Editor to change the status.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </Card>
       </main>
@@ -2735,7 +2786,7 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
 }
 
 // ─── Discussions View ─────────────────────────────────────────────────────
-function DiscussionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
+function DiscussionsView({ onNavigate, onSelectDiscussion }: { onNavigate: (v: View) => void; onSelectDiscussion: (id: string) => void }) {
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
@@ -2790,7 +2841,7 @@ function DiscussionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
       {/* Thread List */}
       <div className="space-y-3">
         {threads.map((thread) => (
-          <Card key={thread.id} className="cursor-pointer border border-slate-200 p-4 shadow-sm transition-all hover:shadow-md">
+          <Card key={thread.id} className="cursor-pointer border border-slate-200 p-4 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectDiscussion(thread.id)}>
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{thread.avatar}</div>
               <div className="flex-1">
@@ -2838,6 +2889,230 @@ function DiscussionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
               </div>
             </div>
           </Card>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ─── Discussion Detail View ──────────────────────────────────────────────
+function DiscussionDetailView({ discussionId, onNavigate }: { discussionId: string; onNavigate: (v: View) => void }) {
+  const authUser = useAuthStore((s) => s.user);
+  const { data, isLoading } = useDiscussion(discussionId || null);
+  const createReply = useCreateReply();
+  const upvoteDiscussion = useUpvoteDiscussion();
+  const markBestAnswer = useMarkBestAnswer();
+  const deleteDiscussion = useDeleteDiscussion();
+  const [replyText, setReplyText] = useState('');
+  const [error, setError] = useState('');
+
+  const discussion = (data as any)?.discussion;
+  const replies = ((data as any)?.replies ?? []) as any[];
+
+  const handleReply = () => {
+    setError('');
+    if (!replyText.trim()) { setError('Reply cannot be empty.'); return; }
+    createReply.mutate(
+      { discussionId, content: replyText },
+      {
+        onSuccess: () => { setReplyText(''); },
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to post reply.'),
+      },
+    );
+  };
+
+  const handleDelete = () => {
+    if (!confirm('Delete this discussion and all replies?')) return;
+    deleteDiscussion.mutate(discussionId, {
+      onSuccess: () => onNavigate('discussions'),
+    });
+  };
+
+  if (isLoading) {
+    return <main className="mx-auto max-w-4xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading discussion…</div></main>;
+  }
+  if (!discussion) {
+    return <main className="mx-auto max-w-4xl p-4 lg:p-6"><div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center text-sm text-amber-700">Discussion not found.</div></main>;
+  }
+
+  const authorName = discussion.author ? `${discussion.author.firstName} ${discussion.author.lastName}` : 'Unknown';
+  const isAuthor = authUser?.id === discussion.authorId;
+  const canMarkBestAnswer = isAuthor || authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
+
+  return (
+    <main className="mx-auto max-w-4xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('discussions')} className="hover:text-slate-700">Discussions</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700 truncate">{discussion.title}</span>
+      </div>
+
+      {/* Thread header */}
+      <Card className="mb-6 border border-slate-200 p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-base font-semibold text-indigo-600">{getInitials(authorName)}</div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              {discussion.pinned && <Pin className="h-4 w-4 text-indigo-500" />}
+              <h1 className="text-xl font-bold text-slate-900">{discussion.title}</h1>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">By {authorName} · {timeAgo(discussion.createdAt)} · {discussion.views} views</p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{discussion.content}</p>
+            <div className="mt-4 flex items-center gap-4">
+              <button onClick={() => upvoteDiscussion.mutate(discussionId)} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-600">
+                <Star className="h-3.5 w-3.5" />{discussion.upvotes ?? 0} upvotes
+              </button>
+              <span className="text-xs text-slate-400">{replies.length} repl{replies.length !== 1 ? 'ies' : 'y'}</span>
+              {(isAuthor || authUser?.role === 'ADMIN') && (
+                <button onClick={handleDelete} className="ml-auto text-xs text-red-500 hover:text-red-600">Delete</button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Replies */}
+      <div className="mb-6 space-y-3">
+        <h2 className="text-base font-semibold text-slate-900">Replies ({replies.length})</h2>
+        {replies.length === 0 && <p className="text-sm text-slate-400">No replies yet. Be the first to respond!</p>}
+        {replies.map((reply: any) => {
+          const replyAuthor = reply.author ? `${reply.author.firstName} ${reply.author.lastName}` : 'Unknown';
+          const isReplyAuthor = authUser?.id === reply.authorId;
+          return (
+            <Card key={reply.id} className={cn('border p-4 shadow-sm', reply.isBestAnswer ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-200')}>
+              {reply.isBestAnswer && (
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+                  <BadgeCheck className="h-4 w-4" />Best Answer
+                </div>
+              )}
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{getInitials(replyAuthor)}</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{replyAuthor}</p>
+                    {reply.author?.role === 'TEACHER' && <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">Teacher</Badge>}
+                    <span className="text-xs text-slate-400">· {timeAgo(reply.createdAt)}</span>
+                  </div>
+                  <p className="mt-1.5 text-sm text-slate-700 whitespace-pre-wrap">{reply.content}</p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <button className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600">
+                      <Star className="h-3 w-3" />{reply.upvotes ?? 0}
+                    </button>
+                    {canMarkBestAnswer && !reply.isBestAnswer && (
+                      <button onClick={() => markBestAnswer.mutate({ discussionId, replyId: reply.id })} className="text-xs text-emerald-600 hover:text-emerald-700">
+                        Mark as best answer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Reply form */}
+      <Card className="border border-slate-200 p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">Post a Reply</h3>
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          rows={4}
+          placeholder="Write your reply..."
+          className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+        {error && <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{error}</div>}
+        <div className="mt-3 flex justify-end">
+          <Button onClick={handleReply} disabled={createReply.isPending || !replyText.trim()} className="bg-indigo-600 text-white hover:bg-indigo-700">
+            {createReply.isPending ? 'Posting…' : 'Post Reply'}
+          </Button>
+        </div>
+      </Card>
+    </main>
+  );
+}
+
+// ─── Audit Logs View ─────────────────────────────────────────────────────
+function AuditLogsView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [page, setPage] = useState(1);
+  const [actionFilter, setActionFilter] = useState('');
+  const { data, isLoading } = useAuditLogs({ page, limit: 25, action: actionFilter || undefined });
+  const logs = (data?.data ?? []) as any[];
+  const pagination = data?.pagination;
+
+  const actionColors: Record<string, string> = {
+    USER_CREATE: 'bg-emerald-50 text-emerald-600',
+    USER_UPDATE: 'bg-blue-50 text-blue-600',
+    USER_DELETE: 'bg-red-50 text-red-600',
+    COURSE_CREATE: 'bg-emerald-50 text-emerald-600',
+    COURSE_UPDATE: 'bg-blue-50 text-blue-600',
+    COURSE_DELETE: 'bg-red-50 text-red-600',
+    SUBMISSION_CREATE: 'bg-amber-50 text-amber-600',
+    LOGIN: 'bg-slate-100 text-slate-600',
+    LOGOUT: 'bg-slate-100 text-slate-600',
+  };
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('admin')} className="hover:text-slate-700">Admin</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Audit Logs</span>
+      </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
+        <p className="mt-1 text-sm text-slate-500">{pagination?.total ?? 0} total events · GDPR-compliant activity trail</p>
+      </div>
+
+      {/* Filter */}
+      <Card className="mb-4 border border-slate-200 p-3 shadow-sm">
+        <div className="flex gap-2">
+          <Input placeholder="Filter by action (e.g. USER_CREATE)" value={actionFilter} onChange={(e) => { setActionFilter(e.target.value); setPage(1); }} className="text-sm" />
+        </div>
+      </Card>
+
+      {/* Logs table */}
+      <Card className="border border-slate-200 shadow-sm">
+        {isLoading ? (
+          <div className="p-8 text-center text-sm text-slate-500">Loading audit logs…</div>
+        ) : logs.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-500">No audit logs found.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
+                  <th className="px-4 py-3 text-left font-medium">Action</th>
+                  <th className="px-4 py-3 text-left font-medium">User</th>
+                  <th className="px-4 py-3 text-left font-medium">Entity</th>
+                  <th className="px-4 py-3 text-left font-medium">Time</th>
+                  <th className="px-4 py-3 text-left font-medium">IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log: any) => (
+                  <tr key={log.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                    <td className="px-4 py-3">
+                      <Badge className={cn('hover:opacity-90', actionColors[log.action] || 'bg-slate-100 text-slate-500')}>{log.action}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{log.userId ? log.userId.slice(-8) : 'system'}</td>
+                    <td className="px-4 py-3 text-slate-600">{log.entityType ?? '—'}{log.entityId ? ` (${log.entityId.slice(-6)})` : ''}</td>
+                    <td className="px-4 py-3 text-xs text-slate-400">{timeAgo(log.createdAt)}</td>
+                    <td className="px-4 py-3 text-xs text-slate-400">{log.context?.ip ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)} className="border-slate-200 text-slate-600">Previous</Button>
+          <span className="text-sm text-slate-500">Page {page} of {pagination.totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page >= pagination.totalPages} onClick={() => setPage(page + 1)} className="border-slate-200 text-slate-600">Next</Button>
         </div>
       )}
     </main>
@@ -4479,6 +4754,13 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   // Edit profile state
   const [showEdit, setShowEdit] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+  const changePasswordMut = useChangePassword();
   const [editFirst, setEditFirst] = useState(me?.firstName ?? '');
   const [editLast, setEditLast] = useState(me?.lastName ?? '');
   const [editBio, setEditBio] = useState((me as any)?.bio ?? '');
@@ -4575,7 +4857,10 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </div>
               </div>
             </div>
-            <Button onClick={() => setShowEdit(true)} variant="outline" className="border-slate-200 text-slate-600"><Edit className="mr-1.5 h-4 w-4" />Edit Profile</Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowChangePassword(true)} variant="outline" className="border-slate-200 text-slate-600"><Lock className="mr-1.5 h-4 w-4" />Change Password</Button>
+              <Button onClick={() => setShowEdit(true)} variant="outline" className="border-slate-200 text-slate-600"><Edit className="mr-1.5 h-4 w-4" />Edit Profile</Button>
+            </div>
           </div>
         </div>
       </Card>
@@ -4731,6 +5016,60 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
           </Card>
         </div>
       )}
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md border-0 p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Change Password</h2>
+              <button onClick={() => { setShowChangePassword(false); setOldPassword(''); setNewPassword(''); setConfirmPassword(''); setPwError(''); setPwSuccess(''); }} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Current Password</Label>
+                <Input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="Enter your current password" />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">New Password</Label>
+                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="At least 6 characters" />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Confirm New Password</Label>
+                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter new password" />
+              </div>
+              {pwError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{pwError}</div>}
+              {pwSuccess && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{pwSuccess}</div>}
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => { setShowChangePassword(false); setOldPassword(''); setNewPassword(''); setConfirmPassword(''); setPwError(''); setPwSuccess(''); }} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+                <Button
+                  onClick={() => {
+                    setPwError(''); setPwSuccess('');
+                    if (!oldPassword || !newPassword || !confirmPassword) { setPwError('All fields are required.'); return; }
+                    if (newPassword.length < 6) { setPwError('New password must be at least 6 characters.'); return; }
+                    if (newPassword !== confirmPassword) { setPwError('Passwords do not match.'); return; }
+                    changePasswordMut.mutate(
+                      { oldPassword, newPassword },
+                      {
+                        onSuccess: () => {
+                          setPwSuccess('Password changed successfully!');
+                          setOldPassword(''); setNewPassword(''); setConfirmPassword('');
+                          setTimeout(() => { setShowChangePassword(false); setPwSuccess(''); }, 2000);
+                        },
+                        onError: (err: any) => setPwError(err.response?.data?.message || 'Failed to change password.'),
+                      },
+                    );
+                  }}
+                  disabled={changePasswordMut.isPending}
+                  className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {changePasswordMut.isPending ? 'Changing…' : 'Change Password'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </main>
   );
 }
@@ -4743,6 +5082,7 @@ export default function App() {
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedQuizId, setSelectedQuizId] = useState<string>('');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
+  const [selectedDiscussionId, setSelectedDiscussionId] = useState<string>('');
   const [lastAttemptId, setLastAttemptId] = useState<string>('');
 
   const handleNavigate = (v: View) => {
@@ -4769,6 +5109,12 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
+  const handleSelectDiscussion = (id: string) => {
+    setSelectedDiscussionId(id);
+    setView('discussion-detail');
+    window.scrollTo(0, 0);
+  };
+
   const handleQuizSubmitted = (attemptId: string) => {
     setLastAttemptId(attemptId);
     setView('quiz-results');
@@ -4792,9 +5138,11 @@ export default function App() {
         {view === 'quiz' && <QuizView quizId={selectedQuizId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSubmitted={handleQuizSubmitted} />}
         {view === 'quiz-results' && <QuizResultsView attemptId={lastAttemptId} onNavigate={handleNavigate} />}
         {view === 'assignment' && <AssignmentView assignmentId={selectedAssignmentId} onNavigate={handleNavigate} onSelectAssignment={handleSelectAssignment} />}
-        {view === 'discussions' && <DiscussionsView onNavigate={handleNavigate} />}
+        {view === 'discussions' && <DiscussionsView onNavigate={handleNavigate} onSelectDiscussion={handleSelectDiscussion} />}
+        {view === 'discussion-detail' && <DiscussionDetailView discussionId={selectedDiscussionId} onNavigate={handleNavigate} />}
         {view === 'announcements' && <AnnouncementsView onNavigate={handleNavigate} />}
         {view === 'admin' && <AdminView onNavigate={handleNavigate} />}
+        {view === 'audit' && <AuditLogsView onNavigate={handleNavigate} />}
         {view === 'users' && <UsersView onNavigate={handleNavigate} />}
         {view === 'gamification' && <GamificationView onNavigate={handleNavigate} />}
         {view === 'course-create' && <CourseCreateView onNavigate={handleNavigate} />}
