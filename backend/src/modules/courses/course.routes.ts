@@ -41,6 +41,10 @@ const router = Router();
 router.get('/', optionalAuth, validate({ query: courseQuerySchema }), getCoursesController);
 router.get('/:id', optionalAuth, getCourseController);
 
+// --- Self-Service: Student self-enrollment (must be before the ADMIN/TEACHER guard) ---
+import { selfEnrollController } from './self-service.controller';
+router.post('/:courseId/self-enroll', authenticate, selfEnrollController);
+
 // All write operations require authentication + ADMIN or TEACHER role.
 router.use(authenticate, authorize('ADMIN', 'TEACHER'));
 
@@ -65,6 +69,23 @@ router.delete('/modules/:moduleId', deleteModuleController);
 router.post('/modules/:moduleId/contents', validate({ body: createContentSchema }), addContentController);
 router.patch('/contents/:contentId', validate({ body: updateContentSchema }), updateContentController);
 router.delete('/contents/:contentId', deleteContentController);
+
+// --- Self-Service: Publish / Archive / Override (Phase 1) ---
+import {
+  publishCourseController,
+  archiveCourseController,
+  overrideCourseController,
+  checkSlotLimitController,
+} from './self-service.controller';
+
+// Teachers publish their own courses instantly (no admin approval)
+router.patch('/:id/publish', publishCourseController);
+// Teachers archive their own courses
+router.patch('/:id/archive', archiveCourseController);
+// Admin override (exception cases only)
+router.patch('/:id/override', authorize('ADMIN'), overrideCourseController);
+// Check teacher's course slot limit
+router.get('/me/slot-limit', checkSlotLimitController);
 
 // Service error handler
 router.use(courseErrorHandler);

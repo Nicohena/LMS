@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -1165,6 +1165,10 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
   const { data: courseData, isLoading } = useCourse(courseId || null);
   const authUser = useAuthStore((s) => s.user);
   const canAuthor = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
+  const isStudent = authUser?.role === 'STUDENT';
+  const publishMut = usePublishCourse();
+  const archiveMut = useArchiveCourse();
+  const selfEnrollMut = useSelfEnroll();
   const createModuleMut = useCreateModule(courseId || null);
   const deleteModuleMut = useDeleteModule(courseId || null);
   const createContentMut = useCreateContent(courseId || null);
@@ -1328,6 +1332,23 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
             <Button variant="outline" onClick={() => setIsFavorite(!isFavorite)} className={cn('border-white/30 text-white hover:bg-white/10', isFavorite && 'bg-white/20')}>
               {isFavorite ? <><Star className="mr-1.5 h-4 w-4 fill-amber-300 text-amber-300" />Favorited</> : <><Star className="mr-1.5 h-4 w-4" />Add to Favorites</>}
             </Button>
+            {/* Self-service: teachers can publish/archive their own courses */}
+            {canAuthor && (apiCourse?.course?.status ?? apiCourse?.status) === 'DRAFT' && (
+              <Button onClick={() => publishMut.mutate(courseId)} disabled={publishMut.isPending} className="bg-amber-500 text-white hover:bg-amber-600">
+                {publishMut.isPending ? 'Publishing…' : 'Publish Now'}
+              </Button>
+            )}
+            {canAuthor && (apiCourse?.course?.status ?? apiCourse?.status) === 'PUBLISHED' && (
+              <Button onClick={() => { if (confirm('Archive this course? Students will no longer see it.')) archiveMut.mutate(courseId); }} disabled={archiveMut.isPending} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+                {archiveMut.isPending ? 'Archiving…' : 'Archive'}
+              </Button>
+            )}
+            {/* Students can self-enroll */}
+            {!canAuthor && !isStudent && (
+              <Button onClick={() => selfEnrollMut.mutate(courseId)} disabled={selfEnrollMut.isPending} className="bg-emerald-500 text-white hover:bg-emerald-600">
+                {selfEnrollMut.isPending ? 'Enrolling…' : 'Enroll Now'}
+              </Button>
+            )}
           </div>
           {course.progress !== undefined && (
             <div className="mt-4 max-w-xs">

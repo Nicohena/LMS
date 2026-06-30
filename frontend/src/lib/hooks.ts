@@ -185,6 +185,50 @@ export function useCreateCourse() {
   });
 }
 
+// ─── Self-Service: Publish / Archive / Self-Enroll ───────────────────────
+
+export function usePublishCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      const res = await api.patch(`/courses/${courseId}/publish`);
+      return res.data;
+    },
+    onSuccess: (_data, courseId) => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+    },
+  });
+}
+
+export function useArchiveCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      const res = await api.patch(`/courses/${courseId}/archive`);
+      return res.data;
+    },
+    onSuccess: (_data, courseId) => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+    },
+  });
+}
+
+export function useSelfEnroll() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      const res = await api.post(`/courses/${courseId}/self-enroll`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+    },
+  });
+}
+
 // ─── Modules & Content (course authoring) ────────────────────────────────
 
 export function useCreateModule(courseId: string | null) {

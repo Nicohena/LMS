@@ -60,6 +60,7 @@ model User {
   emailTemplates       EmailTemplate[]
   gradingScales        GradingScale[]
   favorites            Favorite[]
+  teacherPermission    TeacherPermission?
 }
 
 model RefreshToken {
@@ -1043,4 +1044,17 @@ model Favorite {
 
   @@unique([userId, courseId])
   @@index([userId])
+}
+
+model TeacherPermission {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @unique @db.ObjectId
+  autoPublish     Boolean  @default(true)
+  maxCourseSlots  Int      @default(10)
+  canEnrollStudents Boolean @default(true)
+  qualityScore    Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
