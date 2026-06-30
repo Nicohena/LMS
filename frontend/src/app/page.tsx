@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -132,6 +132,28 @@ const catalogCourses: Course[] = [
 
 const categories = ['All', 'Design', 'Programming', 'Business', 'Data Science', 'Marketing'];
 const difficulties = ['All Levels', 'Beginner', 'Intermediate', 'Advanced'];
+
+// ─── Helper: download data as CSV ────────────────────────────────────────
+function downloadCSV(filename: string, rows: Record<string, any>[], headers?: string[]) {
+  if (rows.length === 0) { alert('No data to export.'); return; }
+  const cols = headers ?? Object.keys(rows[0]);
+  const csv = [
+    cols.join(','),
+    ...rows.map((r) => cols.map((c) => {
+      const v = r[c];
+      if (v == null) return '';
+      const s = String(v).replace(/"/g, '""');
+      return s.includes(',') || s.includes('\n') || s.includes('"') ? `"${s}"` : s;
+    }).join(',')),
+  ].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────
 function Sidebar({ open, onClose, currentView, onNavigate }: { open: boolean; onClose: () => void; currentView: View; onNavigate: (v: View) => void }) {
@@ -583,7 +605,7 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-sm font-medium text-slate-700">Password</Label>
-                <button type="button" className="text-xs font-medium text-indigo-600 hover:text-indigo-700">Forgot password?</button>
+                <button type="button" onClick={() => alert('Password reset: Please contact your administrator to reset your password, or use the "Change Password" feature from your Profile page after logging in.')} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">Forgot password?</button>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -624,7 +646,7 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
           </div>
         </Card>
         <p className="mt-6 text-center text-sm text-slate-500">
-          Don&apos;t have an account? <button className="font-semibold text-indigo-600 hover:text-indigo-700">Sign up free</button>
+          Don&apos;t have an account? <button onClick={() => alert('Self-registration: Please contact your administrator to create an account. If self-registration is enabled in Settings, an admin can enable it for new sign-ups.')} className="font-semibold text-indigo-600 hover:text-indigo-700">Sign up free</button>
         </p>
         {onNavigate && (
           <p className="mt-3 text-center text-xs text-slate-400">
@@ -645,10 +667,10 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { data: studentData, isLoading: studentLoading } = useStudentDashboard();
   const { data: platformData, isLoading: platformLoading } = usePlatformDashboard();
   const { data: leaderboardData } = useLeaderboard({ limit: 5 });
-  const SectionHeader = ({ title, action }: { title: string; action?: string }) => (
+  const SectionHeader = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => (
     <div className="mb-4 flex items-center justify-between">
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-      {action && <button className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">{action}<ChevronRight className="h-3.5 w-3.5" /></button>}
+      {action && <button onClick={onAction} className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">{action}<ChevronRight className="h-3.5 w-3.5" /></button>}
     </div>
   );
 
@@ -727,7 +749,7 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <SectionHeader title={isStudent ? "Continue learning" : "Most issued content"} action="View all" />
+            <SectionHeader title={isStudent ? "Continue learning" : "Most issued content"} action="View all" onAction={() => onNavigate('catalog')} />
             <div className="space-y-1">
               {(liveMostIssued.length > 0 ? liveMostIssued : mostIssuedContent).map((item, idx) => (
                 <div key={item.id} className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-slate-50">
@@ -778,7 +800,7 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
         </div>
         <div className="space-y-6">
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <SectionHeader title="Top Learner" action="See all" />
+            <SectionHeader title="Top Learner" action="See all" onAction={() => onNavigate('gamification')} />
             <div className="space-y-1">
               {(liveTopLearners.length > 0 ? liveTopLearners : topLearners).map((learner) => (
                 <div key={learner.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
@@ -794,12 +816,12 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
             <div className="relative z-10">
               <div className="mb-3 flex items-center gap-2"><Crown className="h-5 w-5 text-amber-300" /><span className="text-sm font-semibold text-white">Upgrade to PRO</span></div>
               <p className="mb-4 text-xs text-indigo-100">Unlock unlimited courses, advanced analytics, certificates, and priority support.</p>
-              <Button className="w-full bg-white text-indigo-600 hover:bg-indigo-50"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Upgrade Now</Button>
+              <Button onClick={() => alert('Upgrade to PRO: This is a demo feature. In production, this would redirect to a billing page.')} className="w-full bg-white text-indigo-600 hover:bg-indigo-50"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Upgrade Now</Button>
             </div>
             <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10" /><div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-white/5" />
           </Card>
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <SectionHeader title="Quiz Grading" action="View all" />
+            <SectionHeader title="Quiz Grading" action="View all" onAction={() => onNavigate('quiz')} />
             <div className="space-y-3">
               {quizGrading.map((quiz) => (
                 <div key={quiz.id} className="rounded-lg border border-slate-100 p-3 hover:border-slate-200">
@@ -811,7 +833,7 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   </div>
                   <div className="flex items-center justify-between">
                     {quiz.pending > 0 && <Badge className="bg-amber-50 text-amber-600 hover:bg-amber-50">{quiz.pending} pending</Badge>}
-                    <Button size="sm" className="ml-auto bg-indigo-600 text-white hover:bg-indigo-700">Grade Now<ChevronRight className="ml-1 h-3.5 w-3.5" /></Button>
+                    <Button size="sm" onClick={() => onNavigate('quiz')} className="ml-auto bg-indigo-600 text-white hover:bg-indigo-700">Grade Now<ChevronRight className="ml-1 h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               ))}
@@ -1111,6 +1133,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
     })),
   } : catalogCourses[0];
   const [activeLesson, setActiveLesson] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [activeModule, setActiveModule] = useState(0);
 
   const lessonTypeIcons: Record<string, typeof Video> = {
@@ -1216,7 +1239,9 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
               const activeLessonObj = course.modules?.[activeModule]?.lessons?.[activeLesson];
               if (activeLessonObj) handleLessonClick(activeModule, activeLesson, activeLessonObj);
             }} className="bg-white text-indigo-600 hover:bg-white/90"><PlayCircle className="mr-2 h-4 w-4" />Continue Learning</Button>
-            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">Add to Favorites</Button>
+            <Button variant="outline" onClick={() => setIsFavorite(!isFavorite)} className={cn('border-white/30 text-white hover:bg-white/10', isFavorite && 'bg-white/20')}>
+              {isFavorite ? <><Star className="mr-1.5 h-4 w-4 fill-amber-300 text-amber-300" />Favorited</> : <><Star className="mr-1.5 h-4 w-4" />Add to Favorites</>}
+            </Button>
           </div>
           {course.progress !== undefined && (
             <div className="mt-4 max-w-xs">
@@ -3526,7 +3551,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <p className="mt-1 text-sm text-slate-500">Platform overview · Last updated just now</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export</Button>
+          <Button variant="outline" onClick={() => downloadCSV('platform-stats.csv', platformStats.map((s: any) => ({ Label: s.label, Value: s.value, Trend: s.trend })), ['Label', 'Value', 'Trend'])} className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export</Button>
           <Button onClick={() => onNavigate('users')} className="bg-indigo-600 text-white hover:bg-indigo-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
         </div>
       </div>
@@ -3584,7 +3609,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <Card className="border border-slate-200 p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900">Top Performing Courses</h2>
-              <Button variant="ghost" size="sm" className="text-indigo-600 hover:bg-indigo-50">View all</Button>
+              <Button variant="ghost" size="sm" onClick={() => onNavigate('catalog')} className="text-indigo-600 hover:bg-indigo-50">View all</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -3792,7 +3817,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <p className="mt-1 text-sm text-slate-500">{isLoading ? 'Loading…' : `${filtered.length} users · ${apiUsers.filter(u => u.status === 'Active').length} active`}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export CSV</Button>
+          <Button variant="outline" onClick={() => downloadCSV('users.csv', apiUsers.map((u: any) => ({ Name: u.name, Email: u.email, Role: u.role, Status: u.status, Joined: u.joined })), ['Name', 'Email', 'Role', 'Status', 'Joined'])} className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export CSV</Button>
           <Button onClick={openCreate} className="bg-indigo-600 text-white hover:bg-indigo-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
         </div>
       </div>
@@ -4080,8 +4105,12 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     <p className="mt-0.5 text-[10px] font-mono text-slate-400">{cert.ref}</p>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="outline" size="sm" className="border-slate-200 text-slate-600"><Download className="mr-1 h-3.5 w-3.5" />PDF</Button>
-                    <Button variant="ghost" size="sm" className="text-indigo-600 hover:bg-indigo-50">Verify</Button>
+                    {(cert as any).certificateUrl && (
+                      <a href={(cert as any).certificateUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="border-slate-200 text-slate-600"><Download className="mr-1 h-3.5 w-3.5" />PDF</Button>
+                      </a>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => onNavigate('verify-certificate')} className="text-indigo-600 hover:bg-indigo-50">Verify</Button>
                   </div>
                 </div>
               ))}
@@ -4371,6 +4400,9 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [activeTab, setActiveTab] = useState('general');
   const { data: settingsData } = useSettings();
   const batchUpdate = useBatchUpdateSettings();
+  const enableMaintenance = useEnableMaintenance();
+  const disableMaintenance = useDisableMaintenance();
+  const { data: maintenanceStatus } = useMaintenanceStatus();
   const settings = (settingsData?.settings ?? []) as any[];
   const getSetting = (key: string) => settings.find((s: any) => s.key === key)?.value ?? '';
   const [siteName, setSiteName] = useState(getSetting('siteName') || 'Trenning LMS');
@@ -4506,7 +4538,21 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     <Badge className={cn('rounded-full', tpl.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400')}>
                       {tpl.active ? 'Active' : 'Inactive'}
                     </Badge>
-                    <button className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
+                    <button onClick={() => {
+                      import('@/lib/api').then(async ({ default: api }) => {
+                        try {
+                          const res = await api.get(`/email-templates/${tpl.type}`);
+                          const template = res.data?.template ?? res.data;
+                          const newSubject = prompt(`Edit subject for ${tpl.type.replace(/_/g, ' ')}:`, template?.subject ?? tpl.subject);
+                          if (newSubject && newSubject !== (template?.subject ?? tpl.subject)) {
+                            await api.patch(`/email-templates/${tpl.type}`, { subject: newSubject });
+                            alert('Template updated! Refresh the page to see changes.');
+                          }
+                        } catch (err: any) {
+                          alert('Failed to load template: ' + (err.response?.data?.message || err.message));
+                        }
+                      });
+                    }} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
                   </div>
                 ))}
               </div>
@@ -4517,7 +4563,16 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
             <Card className="border border-slate-200 p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-slate-900">Grading Scales</h2>
-                <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Scale</Button>
+                <Button size="sm" onClick={() => {
+                  const name = prompt('Enter grading scale name (e.g., "Standard A-F"):');
+                  if (!name) return;
+                  import('@/lib/api').then(async ({ default: api }) => {
+                    try {
+                      await api.post('/grading-scales', { name, type: 'PERCENTAGE', grades: [{ letter: 'A', minPercentage: 90 }, { letter: 'B', minPercentage: 80 }, { letter: 'C', minPercentage: 70 }, { letter: 'D', minPercentage: 60 }, { letter: 'F', minPercentage: 0 }] });
+                      alert('Grading scale created!');
+                    } catch (err: any) { alert('Failed: ' + (err.response?.data?.message || err.message)); }
+                  });
+                }} className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Scale</Button>
               </div>
               <div className="space-y-3">
                 {gradingScales.map((scale) => (
@@ -4540,7 +4595,20 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
             <Card className="border border-slate-200 p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-slate-900">Academic Years</h2>
-                <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Year</Button>
+                <Button size="sm" onClick={() => {
+                  const name = prompt('Enter academic year name (e.g., "2026-2027"):');
+                  if (!name) return;
+                  const start = prompt('Start date (YYYY-MM-DD):', '2026-09-01');
+                  if (!start) return;
+                  const end = prompt('End date (YYYY-MM-DD):', '2027-06-30');
+                  if (!end) return;
+                  import('@/lib/api').then(async ({ default: api }) => {
+                    try {
+                      await api.post('/academic-years', { name, startDate: start, endDate: end });
+                      alert('Academic year created!');
+                    } catch (err: any) { alert('Failed: ' + (err.response?.data?.message || err.message)); }
+                  });
+                }} className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Year</Button>
               </div>
               <div className="space-y-2">
                 {academicYears.map((year) => (
@@ -4583,7 +4651,15 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <Button className="bg-indigo-600 text-white hover:bg-indigo-700">Save Settings</Button>
+                  <Button onClick={() => {
+                    if (maintMode) {
+                      enableMaintenance.mutate({ message: maintMsg });
+                    } else {
+                      disableMaintenance.mutate();
+                    }
+                  }} disabled={enableMaintenance.isPending || disableMaintenance.isPending} className="bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                    {enableMaintenance.isPending || disableMaintenance.isPending ? 'Saving…' : 'Save Settings'}
+                  </Button>
                 </div>
               </div>
             </Card>

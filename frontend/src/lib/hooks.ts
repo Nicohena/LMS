@@ -1049,6 +1049,42 @@ export function useUpdateSetting() {
   });
 }
 
+export function useMaintenanceStatus() {
+  return useQuery({
+    queryKey: ['maintenance-status'],
+    queryFn: async () => {
+      const res = await api.get('/maintenance/status');
+      return res.data;
+    },
+  });
+}
+
+export function useEnableMaintenance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { message: string; whitelist?: string[] }) => {
+      const res = await api.post('/maintenance/enable', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maintenance-status'] });
+    },
+  });
+}
+
+export function useDisableMaintenance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/maintenance/disable');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maintenance-status'] });
+    },
+  });
+}
+
 export function useEmailTemplates() {
   return useQuery({
     queryKey: ['email-templates'],
