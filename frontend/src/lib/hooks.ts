@@ -352,6 +352,81 @@ export function useModerateContent() {
   });
 }
 
+// ─── Admin Sub-Roles (Step 9) ────────────────────────────────────────────
+
+export function useAdminRoles() {
+  return useQuery({
+    queryKey: ['admin-roles'],
+    queryFn: async () => {
+      const res = await api.get('/admin/roles');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useCreateAdminRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { name: string; description?: string; permissions: string[] }) => {
+      const res = await api.post('/admin/roles', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
+    },
+  });
+}
+
+export function useDeleteAdminRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (roleId: string) => {
+      await api.delete(`/admin/roles/${roleId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
+    },
+  });
+}
+
+export function useAssignAdminRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, roleId }: { userId: string; roleId: string }) => {
+      const res = await api.post(`/admin/users/${userId}/role`, { roleId });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-admins'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
+    },
+  });
+}
+
+export function useAdmins() {
+  return useQuery({
+    queryKey: ['admin-admins'],
+    queryFn: async () => {
+      const res = await api.get('/admin/admins');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useRemoveAdminRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.delete(`/admin/users/${userId}/role`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-admins'] });
+    },
+  });
+}
+
 // ─── Quality Monitoring (Step 8) ─────────────────────────────────────────
 
 export function useQualityReport() {

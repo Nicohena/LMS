@@ -70,6 +70,7 @@ model User {
   escalationsFiled     Escalation[]   @relation("escalationUser")
   escalationsHandled   Escalation[]   @relation("escalationTeacher")
   escalationsAdmin     Escalation[]   @relation("escalationAdmin")
+  adminAssignment      Admin?
 }
 
 model RefreshToken {
@@ -1148,4 +1149,44 @@ enum EscalationStatus {
   FORWARDED_TO_ADMIN
   RESOLVED
   ESCALATED
+}
+
+enum AdminPermission {
+  USERS_VIEW
+  USERS_CREATE
+  USERS_DELETE
+  USERS_ROLE_CHANGE
+  CONTENT_MODERATE
+  COURSE_QUALITY_MANAGE
+  ANALYTICS_VIEW
+  ANALYTICS_EXPORT
+  SUPPORT_IMPERSONATE
+  SYSTEM_CONFIG
+  SYSTEM_MAINTENANCE
+  ADMIN_ROLES_MANAGE
+  ALL_ACCESS
+}
+
+model AdminRole {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  name        String          @unique
+  description String?
+  permissions AdminPermission[]
+  isDefault   Boolean         @default(false)
+  isSystem    Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  admins Admin[]
+}
+
+model Admin {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique @db.ObjectId
+  roleId    String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role AdminRole @relation(fields: [roleId], references: [id])
 }

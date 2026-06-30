@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -3761,6 +3761,157 @@ function GradeDisputesSection() {
   );
 }
 
+// ─── Admin Sub-Roles Section (delegation) ────────────────────────────────
+function AdminSubRolesSection() {
+  const { data: rolesData, isLoading: rolesLoading } = useAdminRoles();
+  const { data: adminsData } = useAdmins();
+  const createRoleMut = useCreateAdminRole();
+  const deleteRoleMut = useDeleteAdminRole();
+  const assignMut = useAssignAdminRole();
+  const removeMut = useRemoveAdminRole();
+  const [showCreate, setShowCreate] = useState(false);
+  const [roleName, setRoleName] = useState('');
+  const [roleDesc, setRoleDesc] = useState('');
+  const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignRoleId, setAssignRoleId] = useState('');
+  const [error, setError] = useState('');
+
+  const roles = (rolesData?.data ?? []) as any[];
+  const admins = (adminsData?.data ?? []) as any[];
+
+  const allPermissions = [
+    'USERS_VIEW', 'USERS_CREATE', 'USERS_DELETE', 'USERS_ROLE_CHANGE',
+    'CONTENT_MODERATE', 'COURSE_QUALITY_MANAGE',
+    'ANALYTICS_VIEW', 'ANALYTICS_EXPORT',
+    'SUPPORT_IMPERSONATE', 'SYSTEM_CONFIG', 'SYSTEM_MAINTENANCE',
+    'ADMIN_ROLES_MANAGE', 'ALL_ACCESS',
+  ];
+
+  const handleCreate = () => {
+    setError('');
+    if (!roleName.trim()) { setError('Name required.'); return; }
+    createRoleMut.mutate(
+      { name: roleName, description: roleDesc, permissions: selectedPerms },
+      { onSuccess: () => { setRoleName(''); setRoleDesc(''); setSelectedPerms([]); setShowCreate(false); }, onError: (err: any) => setError(err.response?.data?.message || 'Failed') },
+    );
+  };
+
+  const togglePerm = (perm: string) => {
+    setSelectedPerms(prev => prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]);
+  };
+
+  const handleAssign = () => {
+    setError('');
+    if (!assignUserId || !assignRoleId) { setError('Select user and role.'); return; }
+    assignMut.mutate({ userId: assignUserId, roleId: assignRoleId }, { onError: (err: any) => setError(err.response?.data?.message || 'Failed') });
+  };
+
+  return (
+    <Card className="mt-6 border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Admin Sub-Roles</h2>
+          <p className="text-xs text-slate-400">Granular admin permissions — delegate responsibilities</p>
+        </div>
+        <Button size="sm" onClick={() => setShowCreate(!showCreate)} className="bg-purple-600 text-white hover:bg-purple-700">
+          <Plus className="mr-1 h-3.5 w-3.5" />New Role
+        </Button>
+      </div>
+
+      {error && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{error}</div>}
+
+      {/* Create role form */}
+      {showCreate && (
+        <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50/30 p-4">
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <Label className="mb-1.5 block text-xs font-medium text-slate-600">Role Name</Label>
+              <Input value={roleName} onChange={(e) => setRoleName(e.target.value)} placeholder="e.g., Reports Manager" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-medium text-slate-600">Description</Label>
+              <Input value={roleDesc} onChange={(e) => setRoleDesc(e.target.value)} placeholder="What can this role do?" />
+            </div>
+          </div>
+          <Label className="mb-2 block text-xs font-medium text-slate-600">Permissions</Label>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {allPermissions.map(p => (
+              <button key={p} type="button" onClick={() => togglePerm(p)} className={cn('rounded-md border px-2 py-1 text-[10px] font-medium transition-colors', selectedPerms.includes(p) ? 'border-purple-500 bg-purple-50 text-purple-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50')}>
+                {p.replace(/_/g, ' ')}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleCreate} disabled={createRoleMut.isPending} className="bg-purple-600 text-white hover:bg-purple-700">
+              {createRoleMut.isPending ? 'Creating…' : 'Create Role'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowCreate(false)} className="border-slate-200 text-slate-600">Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Roles list */}
+      {rolesLoading && <div className="p-4 text-center text-sm text-slate-500">Loading roles…</div>}
+      <div className="space-y-2">
+        {roles.map((r: any) => (
+          <div key={r.id} className="group rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-slate-900">{r.name}</p>
+                {r.isSystem && <Badge className="bg-slate-100 text-slate-400 text-[10px]">System</Badge>}
+                <Badge className="bg-purple-50 text-purple-600 text-[10px]">{r._count?.admins ?? 0} admin(s)</Badge>
+              </div>
+              {!r.isSystem && (
+                <button onClick={() => { if (confirm(`Delete role "${r.name}"?`)) deleteRoleMut.mutate(r.id); }} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {r.description && <p className="mt-0.5 text-xs text-slate-400">{r.description}</p>}
+            <div className="mt-1 flex flex-wrap gap-1">
+              {(r.permissions ?? []).map((p: string) => (
+                <span key={p} className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500">{p.replace(/_/g, ' ').toLowerCase()}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Assign role to user */}
+      <div className="mt-4 border-t border-slate-100 pt-4">
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">Assign Sub-Role to Admin User</h3>
+        <div className="flex gap-2">
+          <Input value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)} placeholder="User ID" className="flex-1 text-xs" />
+          <select value={assignRoleId} onChange={(e) => setAssignRoleId(e.target.value)} className="rounded-lg border border-slate-200 bg-white p-2 text-xs">
+            <option value="">Select role…</option>
+            {roles.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <Button size="sm" onClick={handleAssign} disabled={assignMut.isPending} className="bg-purple-600 text-white hover:bg-purple-700">
+            {assignMut.isPending ? 'Assigning…' : 'Assign'}
+          </Button>
+        </div>
+
+        {/* Assigned admins */}
+        {admins.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            {admins.map((a: any) => (
+              <div key={a.id} className="flex items-center gap-2 rounded-lg border border-slate-100 p-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-[10px] font-semibold text-purple-600">{getInitials(`${a.user?.firstName} ${a.user?.lastName}`)}</div>
+                <span className="flex-1 text-xs text-slate-700">{a.user?.firstName} {a.user?.lastName} ({a.user?.email})</span>
+                <Badge className="bg-purple-50 text-purple-600 text-[10px]">{a.role?.name}</Badge>
+                <button onClick={() => removeMut.mutate(a.userId)} className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 // ─── Quality Monitoring Section (admin) ──────────────────────────────────
 function QualityMonitoringSection() {
   const { data, isLoading } = useQualityReport();
@@ -4318,6 +4469,9 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {/* Quality Monitoring Section */}
       <QualityMonitoringSection />
+
+      {/* Admin Sub-Roles Section */}
+      <AdminSubRolesSection />
     </main>
   );
 }

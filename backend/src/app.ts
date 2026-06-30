@@ -151,6 +151,32 @@ qualityRouter.post('/recalculate', recalculateQualityController);
 qualityRouter.post('/courses/:id/calculate', calculateSingleQualityController);
 app.use('/api/v1/admin/quality', qualityRouter);
 
+// --- Admin Sub-Roles (Step 9) ---
+import {
+  createRoleController,
+  listRolesController,
+  updateRoleController,
+  deleteRoleController,
+  assignRoleController,
+  listAdminsController,
+  removeRoleController,
+} from './modules/admin-roles/admin-role.controller';
+import { seedDefaultAdminRoles } from './modules/admin-roles/admin-role.service';
+
+const adminRoleRouter = Router();
+adminRoleRouter.use(authenticate, authorize('ADMIN'));
+adminRoleRouter.post('/roles', createRoleController);
+adminRoleRouter.get('/roles', listRolesController);
+adminRoleRouter.patch('/roles/:id', updateRoleController);
+adminRoleRouter.delete('/roles/:id', deleteRoleController);
+adminRoleRouter.post('/users/:id/role', assignRoleController);
+adminRoleRouter.delete('/users/:id/role', removeRoleController);
+adminRoleRouter.get('/admins', listAdminsController);
+app.use('/api/v1/admin', adminRoleRouter);
+
+// Seed default admin roles on startup
+seedDefaultAdminRoles().catch((err) => console.error('[admin-roles] Failed to seed:', err));
+
 // --- Enrollments module ---
 app.use('/api/v1/enrollments', enrollmentRouter);
 
