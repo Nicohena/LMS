@@ -516,6 +516,172 @@ export function useRequestRevision() {
   });
 }
 
+// ─── Peer Reviews ────────────────────────────────────────────────────────
+
+export function useMyPeerReviews() {
+  return useQuery({
+    queryKey: ['peer-reviews-my'],
+    queryFn: async () => {
+      const res = await api.get('/assignments/peer-reviews/my');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useReceivedPeerReviews(assignmentId: string | null) {
+  return useQuery({
+    queryKey: ['peer-reviews-received', assignmentId],
+    queryFn: async () => {
+      const res = await api.get(`/assignments/${assignmentId}/peer-reviews/my-received`);
+      return res.data;
+    },
+    enabled: !!assignmentId,
+  });
+}
+
+export function useAssignPeerReviews() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ assignmentId }: { assignmentId: string }) => {
+      const res = await api.post(`/assignments/${assignmentId}/peer-reviews/assign`, {});
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['peer-reviews-my'] });
+    },
+  });
+}
+
+export function useSubmitPeerReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ reviewId, data }: { reviewId: string; data: { score?: number; feedback?: string; comments?: Record<string, unknown> } }) => {
+      const res = await api.patch(`/assignments/peer-reviews/${reviewId}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['peer-reviews-my'] });
+    },
+  });
+}
+
+// ─── Quiz Authoring (teacher) ────────────────────────────────────────────
+
+export function useCreateQuiz() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      title: string;
+      description?: string;
+      contentId?: string;
+      timeLimit?: number;
+      passingScore?: number;
+      maxAttempts?: number;
+      shuffleQuestions?: boolean;
+      showFeedback?: boolean;
+      showCorrectAnswers?: boolean;
+      status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    }) => {
+      const res = await api.post('/quizzes', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+    },
+  });
+}
+
+export function useUpdateQuiz() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ quizId, data }: { quizId: string; data: Record<string, unknown> }) => {
+      const res = await api.patch(`/quizzes/${quizId}`, data);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+      queryClient.invalidateQueries({ queryKey: ['quiz', variables.quizId] });
+    },
+  });
+}
+
+export function useDeleteQuiz() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (quizId: string) => {
+      await api.delete(`/quizzes/${quizId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+    },
+  });
+}
+
+export function useAddQuestion(quizId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      type: 'MULTIPLE_CHOICE_SINGLE' | 'MULTIPLE_CHOICE_MULTIPLE' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'SHORT_ANSWER' | 'ESSAY';
+      questionText: string;
+      points?: number;
+      options?: any;
+      correctAnswer?: any;
+      explanation?: string;
+    }) => {
+      const res = await api.post(`/quizzes/${quizId}/questions`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      if (quizId) queryClient.invalidateQueries({ queryKey: ['quiz', quizId] });
+    },
+  });
+}
+
+export function useDeleteQuestion(quizId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (questionId: string) => {
+      await api.delete(`/quizzes/questions/${questionId}`);
+    },
+    onSuccess: () => {
+      if (quizId) queryClient.invalidateQueries({ queryKey: ['quiz', quizId] });
+    },
+  });
+}
+
+// ─── Notification Preferences ────────────────────────────────────────────
+
+export function useNotificationPreferences() {
+  return useQuery({
+    queryKey: ['notification-preferences'],
+    queryFn: async () => {
+      const res = await api.get('/notifications/preferences');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useUpdateNotificationPreference() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      type: string;
+      channel: 'IN_APP' | 'EMAIL' | 'PUSH' | 'SMS';
+      enabled: boolean;
+      quietHoursStart?: string | null;
+      quietHoursEnd?: string | null;
+    }) => {
+      const res = await api.patch('/notifications/preferences', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+    },
+  });
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────
 
 export function useNotifications(params?: { page?: number; limit?: number; unreadOnly?: boolean }) {

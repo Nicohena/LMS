@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -1296,8 +1296,19 @@ function QuizView({ quizId, onNavigate, onSelectQuiz, onSubmitted }: { quizId: s
 
 // ─── Quiz List View ──────────────────────────────────────────────────────
 function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => void; onSelectQuiz: (id: string) => void }) {
-  const { data, isLoading } = useQuizzes({ limit: 50, status: 'PUBLISHED' });
+  const authUser = useAuthStore((s) => s.user);
+  const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
+  // Teachers see all quizzes (including drafts); students only see PUBLISHED
+  const { data, isLoading } = useQuizzes({ limit: 50, status: isTeacher ? undefined : 'PUBLISHED' });
+  const deleteQuizMut = useDeleteQuiz();
+  const [showCreate, setShowCreate] = useState(false);
   const quizzes = (data?.data ?? []) as any[];
+
+  const handleDelete = (e: React.MouseEvent, quizId: string) => {
+    e.stopPropagation();
+    if (!confirm('Delete this quiz and all its questions? This cannot be undone.')) return;
+    deleteQuizMut.mutate(quizId);
+  };
 
   return (
     <main className="mx-auto max-w-5xl p-4 lg:p-6">
@@ -1306,20 +1317,39 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="font-medium text-slate-700">Quizzes</span>
       </div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Available Quizzes</h1>
-        <p className="mt-1 text-sm text-slate-500">{quizzes.length} published quizzes · Test your knowledge</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{isTeacher ? 'All Quizzes' : 'Available Quizzes'}</h1>
+          <p className="mt-1 text-sm text-slate-500">{quizzes.length} {isTeacher ? 'total' : 'published'} quizzes · {isTeacher ? 'Manage your quiz library' : 'Test your knowledge'}</p>
+        </div>
+        {isTeacher && (
+          <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">
+            <Plus className="mr-1.5 h-4 w-4" />Create Quiz
+          </Button>
+        )}
       </div>
       {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quizzes…</div>}
       {!isLoading && quizzes.length === 0 && (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No quizzes available yet.</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+          {isTeacher ? 'No quizzes yet. Click "Create Quiz" to get started.' : 'No quizzes available yet.'}
+        </div>
       )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {quizzes.map((q: any) => (
-          <Card key={q.id} className="cursor-pointer border border-slate-200 p-5 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectQuiz(q.id)}>
+          <Card key={q.id} className="group cursor-pointer border border-slate-200 p-5 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectQuiz(q.id)}>
             <div className="mb-2 flex items-center justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50"><FileQuestion className="h-5 w-5 text-emerald-600" /></div>
-              <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">{q.questionCount ?? 0} Q</Badge>
+              <div className="flex items-center gap-2">
+                {isTeacher && q.status && (
+                  <Badge className={cn('hover:opacity-90', q.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500')}>{q.status}</Badge>
+                )}
+                <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">{q.questionCount ?? 0} Q</Badge>
+                {isTeacher && (
+                  <button onClick={(e) => handleDelete(e, q.id)} title="Delete quiz" className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
             <h3 className="text-sm font-semibold text-slate-900">{q.title}</h3>
             {q.description && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{q.description}</p>}
@@ -1331,7 +1361,228 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
           </Card>
         ))}
       </div>
+
+      {/* Create Quiz Modal */}
+      {showCreate && (
+        <QuizEditorModal onClose={() => setShowCreate(false)} />
+      )}
     </main>
+  );
+}
+
+// ─── Quiz Editor Modal (create quiz + add questions) ─────────────────────
+function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => void; quizId?: string }) {
+  const createQuiz = useCreateQuiz();
+  const addQuestion = useAddQuestion(existingQuizId ?? null);
+  const deleteQuestion = useDeleteQuestion(existingQuizId ?? null);
+  const { data: existingQuizData } = useQuiz(existingQuizId ?? null);
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [timeLimit, setTimeLimit] = useState('15');
+  const [passingScore, setPassingScore] = useState('60');
+  const [maxAttempts, setMaxAttempts] = useState('3');
+  const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
+  const [error, setError] = useState('');
+  const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
+
+  // Question form state
+  const [qType, setQType] = useState<'MULTIPLE_CHOICE_SINGLE' | 'TRUE_FALSE'>('MULTIPLE_CHOICE_SINGLE');
+  const [qText, setQText] = useState('');
+  const [qOptions, setQOptions] = useState<string[]>(['', '', '', '']);
+  const [qCorrectIdx, setQCorrectIdx] = useState(0);
+  const [qPoints, setQPoints] = useState('1');
+  const [qError, setQError] = useState('');
+
+  const isEditing = !!createdQuizId;
+  const quiz = (existingQuizData as any)?.quiz;
+  const existingQuestions = ((existingQuizData as any)?.questions ?? []) as any[];
+
+  const handleCreate = () => {
+    setError('');
+    if (!title.trim()) { setError('Title is required.'); return; }
+    createQuiz.mutate(
+      {
+        title,
+        description: description.trim() || undefined,
+        timeLimit: Number(timeLimit) || 15,
+        passingScore: Number(passingScore) || 60,
+        maxAttempts: Number(maxAttempts) || 3,
+        status,
+      },
+      {
+        onSuccess: (data: any) => {
+          setCreatedQuizId(data?.quiz?.id ?? data?.id ?? null);
+        },
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to create quiz.'),
+      },
+    );
+  };
+
+  const handleAddQuestion = () => {
+    setQError('');
+    if (!qText.trim()) { setQError('Question text is required.'); return; }
+    if (!createdQuizId) { setQError('Create the quiz first.'); return; }
+
+    let options: any;
+    let correctAnswer: any;
+
+    if (qType === 'TRUE_FALSE') {
+      options = [{ text: 'True', isCorrect: qCorrectIdx === 0 }, { text: 'False', isCorrect: qCorrectIdx === 1 }];
+      correctAnswer = qCorrectIdx === 0;
+    } else {
+      const filled = qOptions.filter((o) => o.trim());
+      if (filled.length < 2) { setQError('Provide at least 2 options.'); return; }
+      options = qOptions.map((text, idx) => ({ text: text.trim(), isCorrect: idx === qCorrectIdx }));
+      correctAnswer = qOptions[qCorrectIdx]?.trim();
+    }
+
+    addQuestion.mutate(
+      {
+        type: qType,
+        questionText: qText,
+        points: Number(qPoints) || 1,
+        options,
+        correctAnswer,
+      },
+      {
+        onSuccess: () => {
+          setQText(''); setQOptions(['', '', '', '']); setQCorrectIdx(0); setQError('');
+        },
+        onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add question.'),
+      },
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <Card className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border-0 p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">{isEditing ? 'Edit Quiz' : 'Create New Quiz'}</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+        </div>
+
+        {/* Quiz details form */}
+        {!isEditing ? (
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Title *</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., UI Design Principles Quiz" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
+              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of what the quiz covers" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Time Limit (min)</Label>
+                <Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Passing Score (%)</Label>
+                <Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Max Attempts</Label>
+                <Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Status</Label>
+                <select value={status} onChange={(e) => setStatus(e.target.value as 'DRAFT' | 'PUBLISHED')} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
+                  <option value="DRAFT">Draft (not visible to students)</option>
+                  <option value="PUBLISHED">Published (visible to students)</option>
+                </select>
+              </div>
+            </div>
+            {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+            <Button onClick={handleCreate} disabled={createQuiz.isPending} className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
+              {createQuiz.isPending ? 'Creating…' : 'Create Quiz'}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+              ✓ Quiz created! Now add questions below. {quiz?.title && `(${quiz.title})`}
+            </div>
+
+            {/* Existing questions */}
+            {existingQuestions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Existing Questions ({existingQuestions.length})</p>
+                {existingQuestions.map((q: any, idx: number) => (
+                  <div key={q.id} className="group flex items-start gap-3 rounded-lg border border-slate-100 p-3">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">{idx + 1}</div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900">{q.questionText}</p>
+                      <p className="text-xs text-slate-400">{q.type.replace(/_/g, ' ')} · {q.points} pt</p>
+                    </div>
+                    <button onClick={() => deleteQuestion.mutate(q.id)} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add question form */}
+            <div className="rounded-lg border-2 border-dashed border-slate-200 p-4">
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">Add Question</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Type</Label>
+                  <select value={qType} onChange={(e) => { setQType(e.target.value as any); if (e.target.value === 'TRUE_FALSE') setQCorrectIdx(0); }} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-700">
+                    <option value="MULTIPLE_CHOICE_SINGLE">Multiple Choice (single answer)</option>
+                    <option value="TRUE_FALSE">True / False</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Text *</Label>
+                  <textarea value={qText} onChange={(e) => setQText(e.target.value)} rows={2} placeholder="Type the question..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                </div>
+                {qType === 'MULTIPLE_CHOICE_SINGLE' && (
+                  <div>
+                    <Label className="mb-1.5 block text-xs font-medium text-slate-600">Options (select the correct one)</Label>
+                    <div className="space-y-1.5">
+                      {qOptions.map((opt, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <button type="button" onClick={() => setQCorrectIdx(idx)} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold', idx === qCorrectIdx ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>
+                            {idx === qCorrectIdx ? '✓' : String.fromCharCode(65 + idx)}
+                          </button>
+                          <Input value={opt} onChange={(e) => { const next = [...qOptions]; next[idx] = e.target.value; setQOptions(next); }} placeholder={`Option ${String.fromCharCode(65 + idx)}`} className="text-sm" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {qType === 'TRUE_FALSE' && (
+                  <div>
+                    <Label className="mb-1.5 block text-xs font-medium text-slate-600">Correct Answer</Label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setQCorrectIdx(0)} className={cn('rounded-lg border px-4 py-2 text-sm font-medium', qCorrectIdx === 0 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-600')}>True</button>
+                      <button type="button" onClick={() => setQCorrectIdx(1)} className={cn('rounded-lg border px-4 py-2 text-sm font-medium', qCorrectIdx === 1 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-600')}>False</button>
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <Label className="mb-1.5 block text-xs font-medium text-slate-600">Points</Label>
+                  <Input type="number" min="1" max="100" value={qPoints} onChange={(e) => setQPoints(e.target.value)} className="w-24" />
+                </div>
+                {qError && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{qError}</div>}
+                <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
+                  {addQuestion.isPending ? 'Adding…' : 'Add Question'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={onClose} className="bg-emerald-600 text-white hover:bg-emerald-700">Done</Button>
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }
 
@@ -1809,11 +2060,141 @@ function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v
   );
 }
 
+// ─── Peer Review Panel (shown in AssignmentRunner for students) ──────────
+function PeerReviewPanel({ assignmentId }: { assignmentId: string }) {
+  const { data: myReviewsData, isLoading } = useMyPeerReviews();
+  const submitReview = useSubmitPeerReview();
+  const [selectedReviewId, setSelectedReviewId] = useState<string>('');
+  const [score, setScore] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Filter peer reviews for this assignment
+  const allReviews = (myReviewsData?.data ?? myReviewsData?.reviews ?? []) as any[];
+  const myAssignedReviews = allReviews.filter((r: any) => r.assignmentId === assignmentId || r.submission?.assignmentId === assignmentId);
+  const selectedReview = myAssignedReviews.find((r: any) => r.id === selectedReviewId) ?? myAssignedReviews[0];
+
+  useEffect(() => {
+    if (selectedReview) {
+      setScore(selectedReview.score != null ? String(selectedReview.score) : '');
+      setFeedback(selectedReview.feedback ?? '');
+      setError(''); setSuccess('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedReviewId, selectedReview?.id]);
+
+  const handleSubmit = () => {
+    if (!selectedReview) return;
+    setError(''); setSuccess('');
+    const data: any = { feedback: feedback.trim() || undefined };
+    if (score.trim()) {
+      const scoreNum = Number(score);
+      if (isNaN(scoreNum) || scoreNum < 0) { setError('Score must be a valid number.'); return; }
+      data.score = scoreNum;
+    }
+    if (!data.feedback && data.score === undefined) {
+      setError('Please provide a score or feedback.');
+      return;
+    }
+    submitReview.mutate(
+      { reviewId: selectedReview.id, data },
+      {
+        onSuccess: () => setSuccess('Peer review submitted!'),
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to submit review.'),
+      },
+    );
+  };
+
+  if (isLoading) return <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">Loading peer reviews…</div>;
+  if (myAssignedReviews.length === 0) {
+    return (
+      <Card className="border border-slate-200 p-6 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50"><Users className="h-5 w-5 text-purple-600" /></div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Peer Reviews</h3>
+            <p className="text-xs text-slate-400">No peer reviews assigned to you for this assignment yet.</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50"><Users className="h-5 w-5 text-purple-600" /></div>
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Peer Reviews ({myAssignedReviews.length})</h2>
+          <p className="text-xs text-slate-400">Review your classmates' submissions</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Review list */}
+        <div className="space-y-2 lg:col-span-1">
+          {myAssignedReviews.map((r: any) => {
+            const isSelected = (selectedReview?.id) === r.id;
+            const author = r.submission?.user ?? r.reviewee;
+            const authorName = author ? `${author.firstName} ${author.lastName}` : 'Unknown';
+            return (
+              <button key={r.id} onClick={() => setSelectedReviewId(r.id)} className={cn('flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors', isSelected ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:bg-slate-50')}>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-600">{getInitials(authorName)}</div>
+                <div className="flex-1 overflow-hidden">
+                  <p className="truncate text-sm font-medium text-slate-900">{authorName}</p>
+                  <p className="text-xs text-slate-400">{r.status === 'COMPLETED' ? 'Reviewed' : 'Pending'}</p>
+                </div>
+                {r.status === 'COMPLETED' && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
+              </button>
+            );
+          })}
+        </div>
+        {/* Review form */}
+        {selectedReview && (
+          <div className="space-y-4 lg:col-span-2">
+            <Card className="border border-slate-100 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Submission to Review</p>
+              {selectedReview.submission?.content?.text && (
+                <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">{selectedReview.submission.content.text}</div>
+              )}
+              {selectedReview.submission?.content?.files?.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {selectedReview.submission.content.files.map((f: any, i: number) => (
+                    <a key={i} href={f.secure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 p-2 text-xs text-slate-700 hover:bg-slate-50">
+                      <File className="h-3.5 w-3.5 text-indigo-500" /><span className="flex-1 truncate">{f.original_filename}</span><Download className="h-3.5 w-3.5 text-slate-400" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </Card>
+            <div className="space-y-3">
+              <div>
+                <Label className="mb-1.5 block text-xs font-medium text-slate-600">Score (optional, 0-100)</Label>
+                <Input type="number" min="0" max="100" value={score} onChange={(e) => setScore(e.target.value)} placeholder="e.g. 85" />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-xs font-medium text-slate-600">Feedback</Label>
+                <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={4} placeholder="Provide constructive feedback..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" />
+              </div>
+              {error && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{error}</div>}
+              {success && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700">{success}</div>}
+              <Button onClick={handleSubmit} disabled={submitReview.isPending} className="bg-purple-600 text-white hover:bg-purple-700">
+                {submitReview.isPending ? 'Submitting…' : 'Submit Review'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 // ─── Teacher Grading Panel (shown in AssignmentRunner for ADMIN/TEACHER) ──
 function TeacherGradingPanel({ assignmentId, assignment }: { assignmentId: string; assignment: any }) {
   const { data: submissionsData, isLoading } = useSubmissions(assignmentId || null);
   const gradeMut = useGradeSubmission();
   const revisionMut = useRequestRevision();
+  const assignPeerReviewsMut = useAssignPeerReviews();
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>('');
   const [grade, setGrade] = useState<string>('');
   const [feedback, setFeedback] = useState('');
@@ -1901,6 +2282,14 @@ function TeacherGradingPanel({ assignmentId, assignment }: { assignmentId: strin
             <h2 className="text-base font-semibold text-slate-900">Submissions ({submissions.length})</h2>
             <p className="text-xs text-slate-400">Grade and provide feedback on student work</p>
           </div>
+          {assignment.allowPeerReview && (
+            <Button onClick={() => {
+              if (!confirm('Automatically assign peer reviews to all students who submitted?')) return;
+              assignPeerReviewsMut.mutate({ assignmentId });
+            }} disabled={assignPeerReviewsMut.isPending} variant="outline" size="sm" className="border-purple-200 text-purple-700 hover:bg-purple-50">
+              <Users className="mr-1.5 h-3.5 w-3.5" />{assignPeerReviewsMut.isPending ? 'Assigning…' : 'Assign Peer Reviews'}
+            </Button>
+          )}
         </div>
 
         {submissions.length === 0 ? (
@@ -2170,6 +2559,7 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
       {isTeacher ? (
         <TeacherGradingPanel assignmentId={assignmentId} assignment={assignment} />
       ) : (
+      <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Main Content */}
         <div className="space-y-6 lg:col-span-2">
@@ -2333,6 +2723,12 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
           </Card>
         </div>
       </div>
+
+      {/* Peer Review panel for students */}
+      {assignment.allowPeerReview && (
+        <PeerReviewPanel assignmentId={assignmentId} />
+      )}
+      </>
       )}
     </main>
   );
@@ -3547,6 +3943,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
     { id: 'grading', label: 'Grading Scales', icon: Award },
     { id: 'academic', label: 'Academic Years', icon: Calendar },
     { id: 'maintenance', label: 'Maintenance', icon: AlertCircle },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
   ];
 
   const emailTemplates = [
@@ -3725,9 +4122,119 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
               </div>
             </Card>
           )}
+
+          {activeTab === 'notifications' && <NotificationPreferencesTab />}
         </div>
       </div>
     </main>
+  );
+}
+
+// ─── Notification Preferences Tab ────────────────────────────────────────
+function NotificationPreferencesTab() {
+  const { data: prefsData, isLoading } = useNotificationPreferences();
+  const updatePref = useUpdateNotificationPreference();
+  const [saveStatus, setSaveStatus] = useState<{ type: 'idle' | 'success' | 'error'; msg?: string }>({ type: 'idle' });
+
+  // Preferences come as an array of { type, channel, enabled, quietHoursStart, quietHoursEnd }
+  const prefs = (prefsData?.data ?? prefsData?.preferences ?? []) as any[];
+
+  const notificationTypes = [
+    { type: 'ASSIGNMENT_GRADED', label: 'Assignment Graded', desc: 'When your assignment is graded' },
+    { type: 'QUIZ_GRADED', label: 'Quiz Graded', desc: 'When your quiz attempt is graded' },
+    { type: 'ASSIGNMENT_POSTED', label: 'Assignment Posted', desc: 'When a new assignment is created' },
+    { type: 'ASSIGNMENT_DUE', label: 'Assignment Due Soon', desc: 'Before an assignment is due' },
+    { type: 'COURSE_COMPLETED', label: 'Course Completed', desc: 'When you complete a course' },
+    { type: 'DISCUSSION_REPLY', label: 'Discussion Reply', desc: 'When someone replies to your discussion' },
+    { type: 'ANNOUNCEMENT', label: 'Announcements', desc: 'New platform announcements' },
+    { type: 'PEER_REVIEW_ASSIGNED', label: 'Peer Review Assigned', desc: 'When you are assigned to review a peer' },
+    { type: 'REVISION_REQUESTED', label: 'Revision Requested', desc: 'When a teacher requests a revision' },
+    { type: 'ENROLLMENT', label: 'Enrollment Confirmation', desc: 'When you are enrolled in a course' },
+    { type: 'MENTION', label: 'Mentions', desc: 'When you are @mentioned' },
+  ];
+
+  const getPref = (type: string, channel: string) => prefs.find((p: any) => p.type === type && p.channel === channel);
+  const isEnabled = (type: string, channel: string) => {
+    const p = getPref(type, channel);
+    // If no preference is set, default to enabled for IN_APP and EMAIL
+    if (!p) return channel === 'IN_APP' || channel === 'EMAIL';
+    return p.enabled;
+  };
+
+  const handleToggle = (type: string, channel: 'IN_APP' | 'EMAIL' | 'PUSH' | 'SMS', enabled: boolean) => {
+    setSaveStatus({ type: 'idle' });
+    updatePref.mutate(
+      { type, channel, enabled },
+      {
+        onSuccess: () => setSaveStatus({ type: 'success', msg: 'Preference updated.' }),
+        onError: (err: any) => setSaveStatus({ type: 'error', msg: err.response?.data?.message || 'Failed to update.' }),
+      },
+    );
+  };
+
+  if (isLoading) {
+    return <Card className="border border-slate-200 p-6 shadow-sm"><div className="text-center text-sm text-slate-500">Loading notification preferences…</div></Card>;
+  }
+
+  return (
+    <Card className="border border-slate-200 p-6 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold text-slate-900">Notification Preferences</h2>
+        <p className="text-sm text-slate-500">Choose how you want to be notified for each event type</p>
+      </div>
+
+      {saveStatus.type === 'success' && (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{saveStatus.msg}</div>
+      )}
+      {saveStatus.type === 'error' && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{saveStatus.msg}</div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-xs text-slate-500">
+              <th className="pb-3 pr-4 text-left font-medium">Event</th>
+              <th className="pb-3 px-3 text-center font-medium">In-App</th>
+              <th className="pb-3 px-3 text-center font-medium">Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {notificationTypes.map((nt) => (
+              <tr key={nt.type} className="border-b border-slate-100">
+                <td className="py-3 pr-4">
+                  <p className="font-medium text-slate-900">{nt.label}</p>
+                  <p className="text-xs text-slate-400">{nt.desc}</p>
+                </td>
+                <td className="py-3 px-3 text-center">
+                  <button
+                    onClick={() => handleToggle(nt.type, 'IN_APP', !isEnabled(nt.type, 'IN_APP'))}
+                    className={cn('relative h-6 w-11 rounded-full transition-colors', isEnabled(nt.type, 'IN_APP') ? 'bg-indigo-600' : 'bg-slate-300')}
+                  >
+                    <div className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', isEnabled(nt.type, 'IN_APP') ? 'translate-x-5' : 'translate-x-0.5')} />
+                  </button>
+                </td>
+                <td className="py-3 px-3 text-center">
+                  <button
+                    onClick={() => handleToggle(nt.type, 'EMAIL', !isEnabled(nt.type, 'EMAIL'))}
+                    className={cn('relative h-6 w-11 rounded-full transition-colors', isEnabled(nt.type, 'EMAIL') ? 'bg-indigo-600' : 'bg-slate-300')}
+                  >
+                    <div className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', isEnabled(nt.type, 'EMAIL') ? 'translate-x-5' : 'translate-x-0.5')} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3">
+        <div className="flex items-center gap-2">
+          <Bell className="h-4 w-4 text-blue-600" />
+          <p className="text-xs text-blue-700">In-App notifications appear in the bell icon dropdown. Email notifications are sent to your registered email address. Changes save automatically.</p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
