@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -3831,7 +3831,88 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
           </Card>
         </div>
       </div>
+
+      {/* Flagged Content Section (post-moderation) */}
+      <FlaggedContentSection />
     </main>
+  );
+}
+
+// ─── Flagged Content Section (admin post-moderation) ─────────────────────
+function FlaggedContentSection() {
+  const { data, isLoading } = useFlaggedContent({ limit: 10 });
+  const moderateMut = useModerateContent();
+  const flagged = (data?.data ?? []) as any[];
+
+  const handleModerate = (contentId: string, action: 'APPROVE' | 'ARCHIVE' | 'REMOVE') => {
+    const notes = action === 'APPROVE' ? undefined : prompt(`Notes for ${action.toLowerCase()}:`) || '';
+    moderateMut.mutate({ contentId, action, notes });
+  };
+
+  return (
+    <Card className="mt-6 border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Flagged Content</h2>
+          <p className="text-xs text-slate-400">Auto-moderation flags — review and take action</p>
+        </div>
+        <Badge className={cn('hover:opacity-90', flagged.length > 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600')}>
+          {flagged.length} flagged
+        </Badge>
+      </div>
+
+      {isLoading && <div className="p-4 text-center text-sm text-slate-500">Loading flagged content…</div>}
+
+      {!isLoading && flagged.length === 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-4">
+          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+          <div>
+            <p className="text-sm font-medium text-emerald-700">All clear!</p>
+            <p className="text-xs text-emerald-600">No content has been flagged by the moderation system.</p>
+          </div>
+        </div>
+      )}
+
+      {flagged.length > 0 && (
+        <div className="space-y-3">
+          {flagged.map((c: any) => (
+            <div key={c.id} className="rounded-lg border border-amber-200 bg-amber-50/30 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
+                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{c.title}</p>
+                    <Badge className="bg-slate-100 text-slate-500">{c.type}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-amber-700">
+                    <span className="font-medium">Flag reason:</span> {c.flagReason || 'Unknown'}
+                  </p>
+                  {c.qualityScore != null && (
+                    <p className="text-xs text-slate-400">Quality score: {c.qualityScore}/100</p>
+                  )}
+                  <p className="mt-1 text-xs text-slate-400">
+                    Course: {c.module?.course?.title ?? 'Unknown'} · Module: {c.module?.title ?? 'Unknown'}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Button size="sm" onClick={() => handleModerate(c.id, 'APPROVE')} disabled={moderateMut.isPending} className="bg-emerald-500 text-white hover:bg-emerald-600">
+                      <CheckCircle2 className="mr-1 h-3.5 w-3.5" />Approve
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleModerate(c.id, 'ARCHIVE')} disabled={moderateMut.isPending} className="border-amber-200 text-amber-700 hover:bg-amber-50">
+                      Archive
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleModerate(c.id, 'REMOVE')} disabled={moderateMut.isPending} className="border-red-200 text-red-600 hover:bg-red-50">
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />Remove
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 

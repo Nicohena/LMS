@@ -326,6 +326,32 @@ export function useUpdateContent(courseId: string | null) {
   });
 }
 
+// ─── Content Moderation (admin post-moderation) ──────────────────────────
+
+export function useFlaggedContent(params?: { type?: string; page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ['flagged-content', params],
+    queryFn: async () => {
+      const res = await api.get('/content/flagged', { params });
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useModerateContent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ contentId, action, notes }: { contentId: string; action: 'APPROVE' | 'ARCHIVE' | 'REMOVE'; notes?: string }) => {
+      const res = await api.patch(`/content/${contentId}/moderate`, { action, notes });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['flagged-content'] });
+    },
+  });
+}
+
 // ─── Enrollments ─────────────────────────────────────────────────────────
 
 export function useStudentDashboard() {

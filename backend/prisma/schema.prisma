@@ -98,6 +98,12 @@ enum ContentType {
   EXTERNAL_LINK
 }
 
+enum ContentStatus {
+  PUBLISHED
+  FLAGGED
+  ARCHIVED
+}
+
 model Course {
   id          String         @id @default(auto()) @map("_id") @db.ObjectId
   title       String
@@ -142,20 +148,25 @@ model Module {
 }
 
 model Content {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  moduleId    String      @db.ObjectId
-  type        ContentType
-  title       String
-  description String?
-  contentJson Json?
-  videoUrl    String?
-  fileUrl     String?
-  externalUrl String?
-  duration    Int?
-  order       Int
-  isPublished Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  moduleId      String        @db.ObjectId
+  type          ContentType
+  title         String
+  description   String?
+  contentJson   Json?
+  videoUrl      String?
+  fileUrl       String?
+  externalUrl   String?
+  duration      Int?
+  order         Int
+  isPublished   Boolean       @default(true)
+  status        ContentStatus @default(PUBLISHED)
+  flagReason    String?
+  qualityScore  Float?
+  moderatedAt   DateTime?
+  moderatedBy   String?       @db.ObjectId
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   // Quiz / Assignment relations will be added in a future step
   // (the ContentType enum reserves QUIZ and ASSIGNMENT for forward compat).

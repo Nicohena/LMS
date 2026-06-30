@@ -68,6 +68,18 @@ app.use('/api/v1/users', userRouter);
 // --- Courses module ---
 app.use('/api/v1/courses', courseRouter);
 
+// --- Content moderation module (admin-only, post-moderation) ---
+import { Router as ModerationRouter } from 'express';
+import { authenticate as modAuth, } from './common/middlewares/auth.middleware';
+import { authorize as modAuthz } from './common/middlewares/rbac.middleware';
+import { getFlaggedContentController, moderateContentController, runModerationController } from './modules/courses/moderation.controller';
+const contentModerationRouter = ModerationRouter();
+contentModerationRouter.use(modAuth, modAuthz('ADMIN'));
+contentModerationRouter.get('/flagged', getFlaggedContentController);
+contentModerationRouter.patch('/:id/moderate', moderateContentController);
+contentModerationRouter.post('/:id/moderate/run', runModerationController);
+app.use('/api/v1/content', contentModerationRouter);
+
 // --- Enrollments module ---
 app.use('/api/v1/enrollments', enrollmentRouter);
 

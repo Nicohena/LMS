@@ -254,6 +254,14 @@ export async function addContentController(req: Request, res: Response, next: Ne
       context: auditCtx(req),
     });
 
+    // Fire-and-forget: run background moderation (virus scan, quality, plagiarism)
+    import('./moderation.service').then(({ moderateContent }) => {
+      moderateContent(content.id).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[moderation] Background moderation failed for ${content.id}:`, (err as Error).message);
+      });
+    }).catch(() => {});
+
     res.status(201).json({ message: 'Content added.', content });
   } catch (err) {
     next(err);
