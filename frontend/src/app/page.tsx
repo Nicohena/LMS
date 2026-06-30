@@ -29,7 +29,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
+type View = 'login' | 'verify-certificate' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
 
 interface Course {
   id: string; title: string; description: string; instructor: string;
@@ -356,8 +356,192 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
   );
 }
 
+// ─── Certificate Verification View (public, no auth required) ────────────
+function CertificateVerificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [certNumber, setCertNumber] = useState('');
+  const [result, setResult] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const api = require('@/lib/api').default;
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!certNumber.trim()) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const res = await api.get('/certificates/verify', { params: { referenceNumber: certNumber.trim() } });
+      setResult(res.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to verify certificate. Make sure the backend is running.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-2xl">
+        {/* Header */}
+        <div className="mb-8 flex flex-col items-center">
+          <button onClick={() => onNavigate('login')} className="mb-6 flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600">
+            <ArrowLeft className="h-4 w-4" />Back to Login
+          </button>
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600">
+            <BadgeCheck className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Certificate Verification</h1>
+          <p className="mt-1 text-sm text-slate-500">Enter a certificate reference number to verify its authenticity</p>
+        </div>
+
+        {/* Search form */}
+        <Card className="border border-slate-200 p-6 shadow-sm">
+          <form onSubmit={handleVerify} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="certNumber" className="text-sm font-medium text-slate-700">Certificate Reference Number</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  id="certNumber"
+                  type="text"
+                  placeholder="e.g., CERT-2026-3826"
+                  value={certNumber}
+                  onChange={(e) => setCertNumber(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+              <p className="text-xs text-slate-400">The reference number appears on the certificate (format: CERT-YYYY-XXXX)</p>
+            </div>
+            <Button type="submit" disabled={loading || !certNumber.trim()} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+              {loading ? 'Verifying…' : 'Verify Certificate'}
+            </Button>
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+            )}
+          </form>
+        </Card>
+
+        {/* Result */}
+        {result && (
+          <Card className={cn('mt-6 border-2 p-6 shadow-sm', result.valid ? 'border-emerald-300' : 'border-red-300')}>
+            <div className="flex flex-col items-center text-center">
+              {/* Status icon */}
+              <div className={cn('mb-4 flex h-16 w-16 items-center justify-center rounded-full', result.valid ? 'bg-emerald-100' : 'bg-red-100')}>
+                {result.valid ? (
+                  <CheckCircle2 className="h-9 w-9 text-emerald-600" />
+                ) : (
+                  <X className="h-9 w-9 text-red-500" />
+                )}
+              </div>
+
+              {/* Status text */}
+              <h2 className={cn('text-xl font-bold', result.valid ? 'text-emerald-700' : 'text-red-600')}>
+                {result.valid ? 'Certificate Verified ✓' : 'Verification Failed'}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">{result.reason}</p>
+
+              {/* Certificate details */}
+              {result.certificate && (
+                <div className="mt-6 w-full space-y-3 text-left">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-lg border border-slate-100 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Recipient</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {result.certificate.user?.firstName} {result.certificate.user?.lastName}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-100 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Course</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {result.certificate.course?.title ?? result.certificate.quiz?.title ?? '—'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-100 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Reference Number</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-slate-900">{result.certificate.referenceNumber}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-100 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Issue Date</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {result.certificate.issuedAt ? formatDate(result.certificate.issuedAt) : '—'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-100 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Status</p>
+                      <p className="mt-1">
+                        <Badge className={cn(
+                          'hover:opacity-90',
+                          result.certificate.status === 'ISSUED' ? 'bg-emerald-50 text-emerald-600' :
+                          result.certificate.status === 'REVOKED' ? 'bg-red-50 text-red-600' :
+                          'bg-slate-100 text-slate-500'
+                        )}>
+                          {result.certificate.status}
+                        </Badge>
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-100 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Expiry Date</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {result.certificate.expiryDate ? formatDate(result.certificate.expiryDate) : 'No expiry'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* View certificate link */}
+                  {result.certificate.certificateUrl && result.certificate.certificateUrl.startsWith('http') && (
+                    <a
+                      href={result.certificate.certificateUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
+                    >
+                      <Download className="h-4 w-4" />
+                      View / Download Certificate
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Verification footer */}
+              <div className="mt-6 flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-400">
+                <BadgeCheck className="h-4 w-4 text-indigo-400" />
+                Verified via Trenning LMS Certificate Verification System
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Info section */}
+        {!result && !loading && (
+          <div className="mt-6 rounded-lg border border-blue-100 bg-blue-50 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                <BadgeCheck className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-900">About Certificate Verification</p>
+                <p className="mt-1 text-xs text-blue-700">
+                  Every certificate issued by Trenning LMS has a unique reference number (e.g., CERT-2026-3826).
+                  Enter it above to verify that the certificate is authentic, valid, and has not been revoked.
+                  This public verification page can be used by employers, institutions, or anyone who needs to
+                  confirm a certificate's authenticity.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Login Page ──────────────────────────────────────────────────────────
-function LoginPage({ onLogin }: { onLogin: () => void }) {
+function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: (v: View) => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('admin@lms.com');
   const [password, setPassword] = useState('Admin123!');
@@ -442,6 +626,13 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
         <p className="mt-6 text-center text-sm text-slate-500">
           Don&apos;t have an account? <button className="font-semibold text-indigo-600 hover:text-indigo-700">Sign up free</button>
         </p>
+        {onNavigate && (
+          <p className="mt-3 text-center text-xs text-slate-400">
+            <button onClick={() => onNavigate('verify-certificate')} className="text-slate-500 hover:text-indigo-600">
+              🔍 Verify a Certificate
+            </button>
+          </p>
+        )}
       </div>
     </div>
   );
@@ -5121,9 +5312,14 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
+  // Verify certificate view — public, no auth required
+  if (view === 'verify-certificate') {
+    return <CertificateVerificationView onNavigate={handleNavigate} />;
+  }
+
   // Login view — no sidebar/header
   if (view === 'login' || !isAuthenticated) {
-    return <LoginPage onLogin={() => handleNavigate('dashboard')} />;
+    return <LoginPage onLogin={() => handleNavigate('dashboard')} onNavigate={handleNavigate} />;
   }
 
   // All other views — with sidebar + header
