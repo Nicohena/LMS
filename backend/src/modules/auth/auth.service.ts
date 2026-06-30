@@ -331,6 +331,15 @@ export async function register(data: {
   // eslint-disable-next-line no-console
   console.log(`[auth] Self-registration: ${user.email} (role=${user.role})`);
 
+  // Apply auto-enrollment rules (fire-and-forget)
+  try {
+    const { applyRules } = await import('../enrollments/auto-enrollment.service');
+    applyRules(user.id, user.id, user.role).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn(`[auth] Auto-enrollment failed for ${user.email}:`, (err as Error).message);
+    });
+  } catch { /* ignore */ }
+
   return { user: toPublicUser(user), tokens };
 }
 

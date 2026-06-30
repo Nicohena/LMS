@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -3761,6 +3761,140 @@ function GradeDisputesSection() {
   );
 }
 
+// ─── Auto-Enrollment Rules Section (admin) ───────────────────────────────
+function AutoEnrollmentRulesSection() {
+  const { data: rulesData, isLoading } = useAutoEnrollRules();
+  const createRuleMut = useCreateAutoEnrollRule();
+  const deleteRuleMut = useDeleteAutoEnrollRule();
+  const triggerMut = useTriggerAutoEnroll();
+  const { data: coursesData } = useCourses({ limit: 100 });
+  const [showCreate, setShowCreate] = useState(false);
+  const [ruleName, setRuleName] = useState('');
+  const [ruleType, setRuleType] = useState('ROLE');
+  const [ruleValue, setRuleValue] = useState('STUDENT');
+  const [courseId, setCourseId] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const rules = (rulesData?.data ?? rulesData ?? []) as any[];
+  const courses = (coursesData?.data ?? []) as any[];
+
+  const handleCreate = () => {
+    setError(''); setSuccess('');
+    if (!ruleName.trim() || !courseId) { setError('Name and course are required.'); return; }
+    createRuleMut.mutate(
+      {
+        name: ruleName,
+        ruleType,
+        ruleConfig: ruleType === 'ROLE' ? { role: ruleValue } : { value: ruleValue },
+        courseId,
+      },
+      {
+        onSuccess: () => { setRuleName(''); setCourseId(''); setShowCreate(false); setSuccess('Rule created!'); },
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to create rule.'),
+      },
+    );
+  };
+
+  return (
+    <Card className="mt-6 border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Auto-Enrollment Rules</h2>
+          <p className="text-xs text-slate-400">Automatically enroll students based on role, department, or cohort</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => { triggerMut.mutate(); setSuccess('Rules triggered for all users!'); }} disabled={triggerMut.isPending} className="border-purple-200 text-purple-700 hover:bg-purple-50">
+            <Zap className="mr-1 h-3.5 w-3.5" />{triggerMut.isPending ? 'Triggering…' : 'Trigger All'}
+          </Button>
+          <Button size="sm" onClick={() => setShowCreate(!showCreate)} className="bg-purple-600 text-white hover:bg-purple-700">
+            <Plus className="mr-1 h-3.5 w-3.5" />New Rule
+          </Button>
+        </div>
+      </div>
+
+      {success && <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700">{success}</div>}
+      {error && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{error}</div>}
+
+      {showCreate && (
+        <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50/30 p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="mb-1.5 block text-xs font-medium text-slate-600">Rule Name</Label>
+              <Input value={ruleName} onChange={(e) => setRuleName(e.target.value)} placeholder="e.g., Auto-enroll all students" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-medium text-slate-600">Rule Type</Label>
+              <select value={ruleType} onChange={(e) => setRuleType(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-sm">
+                <option value="ROLE">Role (e.g., STUDENT)</option>
+                <option value="DEPARTMENT">Department</option>
+                <option value="COHORT">Cohort</option>
+              </select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-medium text-slate-600">Rule Value</Label>
+              {ruleType === 'ROLE' ? (
+                <select value={ruleValue} onChange={(e) => setRuleValue(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-sm">
+                  <option value="STUDENT">STUDENT</option>
+                  <option value="TEACHER">TEACHER</option>
+                </select>
+              ) : (
+                <Input value={ruleValue} onChange={(e) => setRuleValue(e.target.value)} placeholder={ruleType === 'DEPARTMENT' ? 'e.g., Engineering' : 'e.g., 2024-cohort'} />
+              )}
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-medium text-slate-600">Course</Label>
+              <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-sm">
+                <option value="">Select course…</option>
+                {courses.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" onClick={handleCreate} disabled={createRuleMut.isPending} className="bg-purple-600 text-white hover:bg-purple-700">
+              {createRuleMut.isPending ? 'Creating…' : 'Create Rule'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowCreate(false)} className="border-slate-200 text-slate-600">Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {isLoading && <div className="p-4 text-center text-sm text-slate-500">Loading rules…</div>}
+
+      {!isLoading && rules.length === 0 && !showCreate && (
+        <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-4">
+          <Route className="h-5 w-5 text-slate-400" />
+          <p className="text-sm text-slate-500">No auto-enrollment rules configured. Click "New Rule" to get started.</p>
+        </div>
+      )}
+
+      {rules.length > 0 && (
+        <div className="space-y-2">
+          {rules.map((r: any) => (
+            <div key={r.id} className="group flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+              <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', r.isActive ? 'bg-purple-50' : 'bg-slate-100')}>
+                <Route className={cn('h-4 w-4', r.isActive ? 'text-purple-600' : 'text-slate-400')} />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-900">{r.name}</p>
+                <p className="text-xs text-slate-400">
+                  Type: {r.ruleType} · Course: {r.course?.title ?? 'Unknown'} · {r.isActive ? 'Active' : 'Inactive'}
+                </p>
+              </div>
+              <Badge className={cn('hover:opacity-90', r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400')}>
+                {r.isActive ? 'Active' : 'Inactive'}
+              </Badge>
+              <button onClick={() => { if (confirm('Delete this rule?')) deleteRuleMut.mutate(r.id); }} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ─── Escalations Section (Student → Teacher → Admin workflow) ────────────
 function EscalationsSection() {
   const authUser = useAuthStore((s) => s.user);
@@ -4071,6 +4205,9 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {/* Escalations Section (Student → Teacher → Admin) */}
       <EscalationsSection />
+
+      {/* Auto-Enrollment Rules Section */}
+      <AutoEnrollmentRulesSection />
     </main>
   );
 }

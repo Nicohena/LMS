@@ -387,6 +387,53 @@ export function useEnrollments(params?: { page?: number; limit?: number; status?
   });
 }
 
+// ─── Auto-Enrollment Rules (Step 7) ──────────────────────────────────────
+
+export function useAutoEnrollRules() {
+  return useQuery({
+    queryKey: ['auto-enroll-rules'],
+    queryFn: async () => {
+      const res = await api.get('/admin/auto-enrollment/rules');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useCreateAutoEnrollRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { name: string; ruleType: string; ruleConfig: any; courseId: string }) => {
+      const res = await api.post('/admin/auto-enrollment/rules', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auto-enroll-rules'] });
+    },
+  });
+}
+
+export function useDeleteAutoEnrollRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ruleId: string) => {
+      await api.delete(`/admin/auto-enrollment/rules/${ruleId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auto-enroll-rules'] });
+    },
+  });
+}
+
+export function useTriggerAutoEnroll() {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/admin/auto-enrollment/trigger', {});
+      return res.data;
+    },
+  });
+}
+
 // ─── Quizzes ─────────────────────────────────────────────────────────────
 
 export function useQuizzes(params?: { page?: number; limit?: number; search?: string; status?: string; contentId?: string }) {

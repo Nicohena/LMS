@@ -162,6 +162,15 @@ export async function registerWithInvite(data: {
   // eslint-disable-next-line no-console
   console.log(`[invites] User registered with invite code: ${user.email} (role=${user.role})`);
 
+  // Apply auto-enrollment rules (fire-and-forget)
+  try {
+    const { applyRules } = await import('../enrollments/auto-enrollment.service');
+    applyRules(user.id, invite.createdBy, 'ADMIN').catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn(`[invites] Auto-enrollment failed for ${user.email}:`, (err as Error).message);
+    });
+  } catch { /* ignore */ }
+
   // Return user without passwordHash
   const { passwordHash: _, ...userWithoutHash } = user;
   return { user: userWithoutHash, tokens };
@@ -251,6 +260,15 @@ export async function teacherCreateStudent(
 
   // eslint-disable-next-line no-console
   console.log(`[invites] Teacher ${teacherId} created student: ${user.email}`);
+
+  // Apply auto-enrollment rules (fire-and-forget)
+  try {
+    const { applyRules } = await import('../enrollments/auto-enrollment.service');
+    applyRules(user.id, teacherId, 'TEACHER').catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn(`[invites] Auto-enrollment failed for ${user.email}:`, (err as Error).message);
+    });
+  } catch { /* ignore */ }
 
   const { passwordHash: _, ...userWithoutHash } = user;
   return { user: userWithoutHash, ...(temporaryPassword ? { temporaryPassword } : {}) };
