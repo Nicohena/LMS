@@ -99,12 +99,15 @@ export function initSocketIO(server: HttpServer): SocketIOServer {
   // --- Connection handler ---
   io.on('connection', (socket: Socket) => {
     const userId = socket.data.userId as string | undefined;
+    const role = socket.data.role as string | undefined;
 
     if (userId) {
       // Join the user's personal room (for direct notifications/messages)
       socket.join(`user:${userId}`);
+      // Role-based rooms (e.g. all admins get platform stat pushes)
+      if (role) socket.join(`role:${role}`);
       // eslint-disable-next-line no-console
-      console.log(`[socket.io] User connected: ${userId} (socket ${socket.id})`);
+      console.log(`[socket.io] User connected: ${userId} (role=${role}, socket ${socket.id})`);
     } else {
       // eslint-disable-next-line no-console
       console.log(`[socket.io] Anonymous connected: ${socket.id}`);
@@ -161,6 +164,32 @@ export function initSocketIO(server: HttpServer): SocketIOServer {
 export function pushNotification(userId: string, notification: unknown): void {
   if (!io) return;
   io.to(`user:${userId}`).emit('notification', notification);
+}
+
+/**
+ * Broadcast a platform-stats-update event to all connected admins.
+ * Called after any mutation that would change the platform dashboard
+ * (course/user/enrollment/submission/certificate created).
+ */
+export function broadcastPlatformStatsUpdate(payload: {
+  event: string;
+  timestamp: string;
+  summary?: Record<string, number>;
+}): void {
+  if (!io) return;
+  io.to(`role:ADMIN`).emit('platform-stats-update', payload);
+}
+
+/**
+ * Broadcast an activity-feed-update event to all connected admins.
+ */
+export function broadcastActivityUpdate(payload: {
+  type: string;
+  timestamp: string;
+  data: unknown;
+}): void {
+  if (!io) return;
+  io.to(`role:ADMIN`).emit('activity-update', payload);
 }
 
 /**

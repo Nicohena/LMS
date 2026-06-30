@@ -48,6 +48,20 @@ function paramId(req: Request): string {
 export async function createUserController(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await createUserService(req.body);
+
+    // Real-time: notify admins that a new user was created
+    const { broadcastPlatformStatsUpdate, broadcastActivityUpdate } = await import('../../socket');
+    broadcastPlatformStatsUpdate({ event: 'user_created', timestamp: new Date().toISOString() });
+    broadcastActivityUpdate({
+      type: 'user_registered',
+      timestamp: new Date().toISOString(),
+      data: {
+        name: `${result.user.firstName} ${result.user.lastName}`,
+        email: result.user.email,
+        role: result.user.role,
+      },
+    });
+
     res.status(201).json({
       message: 'User created successfully.',
       user: result.user,

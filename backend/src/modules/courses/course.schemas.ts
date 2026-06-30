@@ -47,6 +47,12 @@ export const courseQuerySchema = z.object({
   category: z.string().trim().optional(),
   difficulty: z.nativeEnum(DifficultyLevel).optional(),
   status: z.nativeEnum(CourseStatus).optional(),
+  /** When 'true' (string), return only the viewer's own courses. */
+  mine: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true' || v === '1')
+    .default(false),
   sortBy: z
     .enum(['createdAt', 'updatedAt', 'title', 'difficulty'])
     .optional()

@@ -31,6 +31,8 @@ export interface CourseFilters {
   category?: string;
   difficulty?: DifficultyLevel;
   status?: CourseStatus;
+  /** When true, return only courses owned by the current viewer (teacher/admin). */
+  mine?: boolean;
   sortBy: 'createdAt' | 'updatedAt' | 'title' | 'difficulty';
   sortOrder: 'asc' | 'desc';
 }

@@ -35,6 +35,7 @@ function toCourseFilters(query: CourseQueryInput): CourseFilters {
     category: query.category,
     difficulty: query.difficulty,
     status: query.status,
+    mine: query.mine,
     sortBy: query.sortBy,
     sortOrder: query.sortOrder,
   };
@@ -70,6 +71,15 @@ export async function createCourseController(req: Request, res: Response, next: 
       entityId: course.id,
       details: { title: course.title, status: course.status },
       context: auditCtx(req),
+    });
+
+    // Real-time: notify all admins that platform stats changed
+    const { broadcastPlatformStatsUpdate, broadcastActivityUpdate } = await import('../../socket');
+    broadcastPlatformStatsUpdate({ event: 'course_created', timestamp: new Date().toISOString() });
+    broadcastActivityUpdate({
+      type: 'course_created',
+      timestamp: new Date().toISOString(),
+      data: { title: course.title, status: course.status },
     });
 
     res.status(201).json({ message: 'Course created.', course });

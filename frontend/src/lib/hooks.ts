@@ -142,13 +142,28 @@ export function useUpdateMyProfile() {
 
 // ─── Courses ─────────────────────────────────────────────────────────────
 
-export function useCourses(params?: { page?: number; limit?: number; search?: string; category?: string; difficulty?: string; status?: string }) {
+export function useCourses(params?: { page?: number; limit?: number; search?: string; category?: string; difficulty?: string; status?: string; mine?: boolean }) {
   return useQuery({
     queryKey: ['courses', params],
     queryFn: async () => {
       const res = await api.get('/courses', { params });
       return res.data;
     },
+  });
+}
+
+/**
+ * Returns only the current viewer's own courses (requires ADMIN or TEACHER).
+ * Equivalent to useCourses({ mine: true, limit: 100 }).
+ */
+export function useMyCourses(params?: { search?: string; status?: string; limit?: number }) {
+  return useQuery({
+    queryKey: ['courses', 'mine', params],
+    queryFn: async () => {
+      const res = await api.get('/courses', { params: { mine: true, limit: params?.limit ?? 100, search: params?.search, status: params?.status } });
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
   });
 }
 

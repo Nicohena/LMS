@@ -106,7 +106,11 @@ function buildCourseWhere(
   const isAdmin = viewer && viewer.role === 'ADMIN';
   const isTeacher = viewer && viewer.role === 'TEACHER';
 
-  if (filters.status) {
+  // `mine=true` short-circuits all other visibility rules: only the viewer's
+  // own courses (any status) are returned. Requires ADMIN or TEACHER.
+  if (filters.mine && viewer && (isAdmin || isTeacher)) {
+    where.createdBy = viewer.id;
+  } else if (filters.status) {
     where.status = filters.status;
     // If a teacher filters by status, also scope to their own + PUBLISHED
     // (so they don't see other teachers' DRAFTs).

@@ -14,8 +14,9 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
+import { getSocket } from '@/lib/socket';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,7 +30,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'verify-certificate' | 'dashboard' | 'catalog' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
+type View = 'login' | 'verify-certificate' | 'dashboard' | 'catalog' | 'my-courses' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
 
 interface Course {
   id: string; title: string; description: string; instructor: string;
@@ -51,9 +52,15 @@ interface NavItem {
   roles: Role[]; // which roles can see this item
 }
 const navItems: NavItem[] = [
+  // Shared
   { label: 'Home', icon: LayoutDashboard, view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  { label: 'My Learning', icon: BookOpen, view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  // Students: catalog to find new courses. Teachers/Admins: their own courses.
   { label: 'Catalog', icon: Layers, view: 'catalog', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  // Teachers + Admins: My Courses (manage own courses)
+  { label: 'My Courses', icon: BookMarked, view: 'my-courses', roles: ['ADMIN', 'TEACHER'] },
+  // Students: their learning content
+  { label: 'My Learning', icon: BookOpen, view: 'assignment', roles: ['STUDENT'] },
+  // Shared learning content (assignments/quizzes filter server-side by role)
   { label: 'Assignments', icon: FileText, view: 'assignment', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   { label: 'Quizzes', icon: FileQuestion, view: 'quiz', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   { label: 'Certificates', icon: Award, view: 'gamification', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
@@ -739,20 +746,24 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
   );
 }
 
-// ─── Dashboard View ──────────────────────────────────────────────────────
+// ─── Dashboard View (dispatches by role) ─────────────────────────────────
 function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const user = useAuthStore((s) => s.user);
   const role = (user?.role ?? 'STUDENT') as Role;
-  const isStudent = role === 'STUDENT';
-  const isAdmin = role === 'ADMIN';
-  const isTeacher = role === 'TEACHER';
-  // Role-based dashboard data:
-  // - Students: student dashboard (enrollments + progress)
-  // - Teachers: platform dashboard (course stats — the backend authorizes TEACHER for /dashboards/platform)
-  // - Admins: platform dashboard (full platform stats)
-  const { data: studentData, isLoading: studentLoading } = useStudentDashboard();
-  const { data: platformData, isLoading: platformLoading } = usePlatformDashboard();
+  if (role === 'ADMIN') return <AdminDashboardHomeView onNavigate={onNavigate} />;
+  if (role === 'TEACHER') return <TeacherDashboardHomeView onNavigate={onNavigate} />;
+  return <StudentDashboardHomeView onNavigate={onNavigate} />;
+}
+
+// ─── Student Dashboard Home ──────────────────────────────────────────────
+function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const { data: studentData, isLoading } = useStudentDashboard();
   const { data: leaderboardData } = useLeaderboard({ limit: 5 });
+  const firstName = user?.firstName ?? 'Learner';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
   const SectionHeader = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => (
     <div className="mb-4 flex items-center justify-between">
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
@@ -760,167 +771,139 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
     </div>
   );
 
-  const firstName = user?.firstName ?? 'Learner';
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-
-  // Derive stats from real data
-  const liveStats = isStudent
-    ? [
-        { label: 'Enrolled', value: String(studentData?.stats?.totalEnrollments ?? 0), icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50', trend: '' },
-        { label: 'Active', value: String(studentData?.stats?.active ?? 0), icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', trend: '' },
-        { label: 'Completed', value: String(studentData?.stats?.completed ?? 0), icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '' },
-        { label: 'Avg Progress', value: `${Math.round(studentData?.stats?.averageProgress ?? 0)}%`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
-        { label: 'Dropped', value: String(studentData?.stats?.dropped ?? 0), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', trend: '' },
-      ]
-    : [
-        { label: 'Users', value: String(platformData?.stats?.users?.total ?? 0), icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: `+${platformData?.stats?.users?.newThisWeek ?? 0}` },
-        { label: 'Courses', value: String(platformData?.stats?.courses?.total ?? 0), icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: '' },
-        { label: 'Enrollments', value: String(platformData?.stats?.enrollments?.total ?? 0), icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `+${platformData?.stats?.enrollments?.newThisWeek ?? 0}` },
-        { label: 'Modules', value: String(platformData?.stats?.content?.totalModules ?? 0), icon: Layers, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
-        { label: 'Submissions', value: String(platformData?.stats?.engagement?.assignmentSubmissions ?? 0), icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50', trend: '' },
-      ];
-
-  // Use student recentActivity as "most issued content" for students, otherwise use quiz grading list
-  const liveMostIssued = (studentData?.recentActivity ?? []).map((a: any, i: number) => ({
-    id: a.contentId ?? i,
-    title: a.contentTitle ?? 'Untitled',
-    type: a.status === 'COMPLETED' ? 'Page' : 'Assignment',
-    views: Math.round(a.progressPercent ?? 0),
-    trend: a.progressPercent && a.progressPercent > 50 ? 5 : -2,
-  }));
+  const stats = studentData?.stats;
+  const liveStats = [
+    { label: 'Enrolled', value: String(stats?.enrollments?.total ?? 0), icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Active', value: String(stats?.enrollments?.active ?? 0), icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Completed', value: String(stats?.enrollments?.completed ?? 0), icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Avg Progress', value: `${Math.round(stats?.averageProgress ?? 0)}%`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Badges', value: String(stats?.gamification?.badges ?? 0), icon: Award, color: 'text-purple-600', bg: 'bg-purple-50' },
+  ];
 
   const liveTopLearners = (leaderboardData?.entries ?? []).map((e: any) => ({
-    id: e.userId,
-    name: e.displayName,
-    points: e.totalXP,
-    rank: e.rank,
-    avatar: getInitials(e.displayName),
-    courses: e.level,
+    id: e.userId, name: e.displayName, points: e.totalXP, rank: e.rank,
+    avatar: getInitials(e.displayName), level: e.level,
   }));
 
-  const loading = isStudent ? studentLoading : platformLoading;
-  if (loading) {
-    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading dashboard…</div></main>;
+  if (isLoading) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading your dashboard…</div></main>;
   }
+
+  const upcoming = (studentData?.upcomingDeadlines ?? []) as any[];
+  const recent = (studentData?.recentActivity ?? []) as any[];
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{greeting}, {firstName} 👋</h1>
-          <p className="mt-1 text-sm text-slate-500">{isStudent
-            ? <>You have <span className="font-semibold text-purple-600">{studentData?.stats?.active ?? 0} active courses</span> and your average progress is <span className="font-semibold text-purple-600">{Math.round(studentData?.stats?.averageProgress ?? 0)}%</span>.</>
-            : <>Your platform has <span className="font-semibold text-purple-600">{platformData?.stats?.users?.total ?? 0} users</span> and <span className="font-semibold text-purple-600">{platformData?.stats?.courses?.total ?? 0} courses</span>.</>
-          }</p>
+          <p className="mt-1 text-sm text-slate-500">
+            You have <span className="font-semibold text-purple-600">{stats?.enrollments?.active ?? 0} active courses</span> with an average progress of <span className="font-semibold text-purple-600">{Math.round(stats?.averageProgress ?? 0)}%</span>.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {[{ label: 'Browse Courses', icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50' }, { label: 'My Assignments', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' }, { label: 'Take a Quiz', icon: FileQuestion, color: 'text-emerald-600', bg: 'bg-emerald-50' }, { label: 'Certificates', icon: Award, color: 'text-purple-600', bg: 'bg-purple-50' }].map((a) => (
-            <button key={a.label} onClick={() => a.label === 'Browse Courses' && onNavigate('catalog')} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-purple-200 hover:shadow-md">
+          {[
+            { label: 'Browse Courses', icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50', view: 'catalog' as View },
+            { label: 'My Assignments', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50', view: 'assignment' as View },
+            { label: 'Take a Quiz', icon: FileQuestion, color: 'text-emerald-600', bg: 'bg-emerald-50', view: 'quiz' as View },
+            { label: 'Certificates', icon: Award, color: 'text-purple-600', bg: 'bg-purple-50', view: 'gamification' as View },
+          ].map((a) => (
+            <button key={a.label} onClick={() => onNavigate(a.view)} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-purple-200 hover:shadow-md">
               <div className={cn('flex h-6 w-6 items-center justify-center rounded', a.bg)}><a.icon className={cn('h-3.5 w-3.5', a.color)} /></div>{a.label}
             </button>
           ))}
         </div>
       </div>
+
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {liveStats.map((stat) => (
           <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center gap-3">
               <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', stat.bg)}><stat.icon className={cn('h-5 w-5', stat.color)} /></div>
-              <div><p className="text-xs font-medium text-slate-500">{stat.label}</p><div className="flex items-center gap-1.5"><p className="text-xl font-bold text-slate-900">{stat.value}</p>{stat.trend && <span className="flex items-center text-[10px] font-semibold text-emerald-600"><ArrowUpRight className="h-3 w-3" />{stat.trend}</span>}</div></div>
+              <div><p className="text-xs font-medium text-slate-500">{stat.label}</p><p className="text-xl font-bold text-slate-900">{stat.value}</p></div>
             </div>
           </Card>
         ))}
       </div>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {/* Upcoming deadlines */}
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <SectionHeader title={isStudent ? "Continue learning" : "Most issued content"} action="View all" onAction={() => onNavigate('catalog')} />
-            <div className="space-y-1">
-              {(liveMostIssued.length > 0 ? liveMostIssued : mostIssuedContent).map((item, idx) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-slate-50">
-                  <span className="w-5 text-sm font-bold text-slate-300">{idx + 1}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-900">{item.title}</p>
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <Badge className={cn('rounded-full px-2 py-0 text-[10px] font-medium', item.type === 'Page' ? 'bg-blue-50 text-blue-600' : item.type === 'Assignment' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600')}>{item.type}</Badge>
-                      <span className="text-xs text-slate-400">{item.views} views</span>
+            <SectionHeader title="Upcoming deadlines" action="View assignments" onAction={() => onNavigate('assignment')} />
+            {upcoming.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">No upcoming deadlines. You&apos;re all caught up! 🎉</p>
+            ) : (
+              <div className="space-y-2">
+                {upcoming.map((d: any) => (
+                  <div key={d.assignmentId} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50"><Clock className="h-4 w-4 text-amber-600" /></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900">{d.title}</p>
+                      <p className="text-xs text-slate-500">{d.courseTitle}</p>
                     </div>
-                  </div>
-                  <div className={cn('flex items-center gap-0.5 text-xs font-semibold', item.trend > 0 ? 'text-emerald-600' : 'text-red-500')}><TrendingUp className={cn('h-3 w-3', item.trend < 0 && 'rotate-180')} />{Math.abs(item.trend)}%</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <Card className="border border-slate-200 p-5 shadow-sm">
-              <SectionHeader title="Assignment" action="Details" />
-              <div className="grid grid-cols-2 gap-3">
-                {assignmentStats.map((stat) => (
-                  <div key={stat.name} className="rounded-lg border border-slate-100 p-3">
-                    <div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stat.color }} /><span className="text-xs font-medium text-slate-600">{stat.name}</span></div>
-                    <p className="mt-1.5 text-2xl font-bold text-slate-900">{stat.count}</p>
+                    <div className="text-right">
+                      <p className={cn('text-xs font-semibold', d.daysUntilDue <= 3 ? 'text-red-600' : 'text-slate-600')}>{d.daysUntilDue === 0 ? 'Today' : d.daysUntilDue === 1 ? 'Tomorrow' : `in ${d.daysUntilDue} days`}</p>
+                      <p className="text-[10px] text-slate-400">{formatDate(d.dueDate)}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-            </Card>
-            <Card className="border border-slate-200 p-5 shadow-sm">
-              <SectionHeader title="Learning Content" action="Details" />
-              <div className="flex items-center gap-4">
-                <div className="relative h-36 w-36 shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart><Pie data={learningContentStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={2} dataKey="value">{learningContentStatus.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}</Pie>
-                      <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '12px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center"><p className="text-2xl font-bold text-slate-900">{learningContentStatus.reduce((a, b) => a + b.value, 0)}</p><p className="text-[10px] text-slate-400">Total</p></div>
-                </div>
-                <div className="flex-1 space-y-2">
-                  {learningContentStatus.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} /><span className="text-xs text-slate-600">{item.name}</span></div><span className="text-xs font-semibold text-slate-900">{item.value}</span></div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-        <div className="space-y-6">
+            )}
+          </Card>
+
+          {/* Recent XP activity */}
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <SectionHeader title="Top Learner" action="See all" onAction={() => onNavigate('gamification')} />
+            <SectionHeader title="Recent activity" action="View all" onAction={() => onNavigate('gamification')} />
+            {recent.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">No recent activity. Start a course to earn XP!</p>
+            ) : (
+              <div className="space-y-1">
+                {recent.map((a: any, idx: number) => (
+                  <div key={idx} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50"><Zap className="h-3.5 w-3.5 text-purple-600" /></div>
+                    <div className="flex-1">
+                      <p className="text-sm text-slate-700">{a.description}</p>
+                      <p className="text-xs text-slate-400">{timeAgo(a.date)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          {/* Gamification summary */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <SectionHeader title="Your progress" action="Details" onAction={() => onNavigate('gamification')} />
+            <div className="mb-4 flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 text-2xl font-bold text-white">{stats?.gamification?.level ?? 1}</div>
+              <div>
+                <p className="text-xs font-medium text-slate-500">Level {stats?.gamification?.level ?? 1}</p>
+                <p className="text-2xl font-bold text-slate-900">{(stats?.gamification?.totalXP ?? 0).toLocaleString()} XP</p>
+                <p className="text-xs text-slate-500">{stats?.gamification?.badges ?? 0} badges earned</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-amber-50 p-3">
+              <Flame className="h-5 w-5 text-amber-500" />
+              <div>
+                <p className="text-xs font-medium text-amber-700">Current streak</p>
+                <p className="text-sm font-bold text-amber-900">{stats?.gamification?.currentStreak ?? 0} day{(stats?.gamification?.currentStreak ?? 0) === 1 ? '' : 's'}</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Top learners */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <SectionHeader title="Top learners" action="See all" onAction={() => onNavigate('gamification')} />
             <div className="space-y-1">
-              {(liveTopLearners.length > 0 ? liveTopLearners : topLearners).map((learner) => (
+              {(liveTopLearners.length > 0 ? liveTopLearners : topLearners.slice(0, 5)).map((learner) => (
                 <div key={learner.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
                   <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-amber-100 text-amber-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>{learner.rank}</div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-600">{learner.avatar}</div>
-                  <div className="flex-1"><p className="text-sm font-medium text-slate-900">{learner.name}</p><p className="text-xs text-slate-400">Level {learner.courses}</p></div>
+                  <div className="flex-1"><p className="text-sm font-medium text-slate-900">{learner.name}</p><p className="text-xs text-slate-400">Level {learner.level ?? learner.courses}</p></div>
                   <div className="text-right"><p className="text-sm font-bold text-purple-600">{learner.points.toLocaleString()}</p><p className="text-[10px] text-slate-400">XP</p></div>
-                </div>
-              ))}
-            </div>
-          </Card>
-          <Card className="relative overflow-hidden border border-purple-100 bg-gradient-to-br from-purple-600 to-purple-500 p-5 shadow-sm">
-            <div className="relative z-10">
-              <div className="mb-3 flex items-center gap-2"><Crown className="h-5 w-5 text-amber-300" /><span className="text-sm font-semibold text-white">Upgrade to PRO</span></div>
-              <p className="mb-4 text-xs text-purple-100">Unlock unlimited courses, advanced analytics, certificates, and priority support.</p>
-              <Button onClick={() => alert('Upgrade to PRO: This is a demo feature. In production, this would redirect to a billing page.')} className="w-full bg-amber-500 text-white hover:bg-amber-600"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Upgrade Now</Button>
-            </div>
-            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10" /><div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-white/5" />
-          </Card>
-          <Card className="border border-slate-200 p-5 shadow-sm">
-            <SectionHeader title="Quiz Grading" action="View all" onAction={() => onNavigate('quiz')} />
-            <div className="space-y-3">
-              {quizGrading.map((quiz) => (
-                <div key={quiz.id} className="rounded-lg border border-slate-100 p-3 hover:border-slate-200">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50"><FileQuestion className="h-4 w-4 text-emerald-600" /></div>
-                      <div><p className="text-sm font-medium text-slate-900">{quiz.title}</p><p className="text-xs text-slate-400">{quiz.questions} questions · {quiz.submissions} submissions</p></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    {quiz.pending > 0 && <Badge className="bg-amber-50 text-amber-600 hover:bg-amber-50">{quiz.pending} pending</Badge>}
-                    <Button size="sm" onClick={() => onNavigate('quiz')} className="ml-auto bg-amber-500 text-white hover:bg-amber-600">Grade Now<ChevronRight className="ml-1 h-3.5 w-3.5" /></Button>
-                  </div>
                 </div>
               ))}
             </div>
@@ -931,13 +914,476 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
   );
 }
 
-// ─── Catalog View ────────────────────────────────────────────────────────
+// ─── Teacher Dashboard Home ──────────────────────────────────────────────
+function TeacherDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const { data: teacherData, isLoading } = useTeacherDashboard();
+  const { data: myCoursesData } = useMyCourses({ limit: 5 });
+  const firstName = user?.firstName ?? 'Teacher';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  const SectionHeader = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => (
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+      {action && <button onClick={onAction} className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700">{action}<ChevronRight className="h-3.5 w-3.5" /></button>}
+    </div>
+  );
+
+  const stats = teacherData?.stats;
+  const liveStats = [
+    { label: 'My Courses', value: String(stats?.totalCourses ?? 0), icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Total Students', value: String(stats?.totalStudents ?? 0), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Avg Progress', value: `${Math.round(stats?.averageProgress ?? 0)}%`, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'At-Risk Students', value: String(stats?.atRiskStudents?.length ?? 0), icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
+  ];
+
+  if (isLoading) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading your teacher dashboard…</div></main>;
+  }
+
+  const myCourses = (myCoursesData?.data ?? []) as any[];
+  const courseStats = (stats?.courses ?? []) as any[];
+  const atRisk = (stats?.atRiskStudents ?? []) as any[];
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{greeting}, {firstName} 👋</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            You teach <span className="font-semibold text-purple-600">{stats?.totalCourses ?? 0} courses</span> with <span className="font-semibold text-purple-600">{stats?.totalStudents ?? 0} students</span> enrolled.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => onNavigate('course-create')} className="bg-purple-600 text-white hover:bg-purple-700"><Plus className="mr-1.5 h-4 w-4" />New Course</Button>
+          <Button onClick={() => onNavigate('my-courses')} variant="outline" className="border-slate-200 text-slate-600"><BookMarked className="mr-1.5 h-4 w-4" />My Courses</Button>
+          <Button onClick={() => onNavigate('assignment')} variant="outline" className="border-slate-200 text-slate-600"><FileText className="mr-1.5 h-4 w-4" />Grade</Button>
+        </div>
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {liveStats.map((stat) => (
+          <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', stat.bg)}><stat.icon className={cn('h-5 w-5', stat.color)} /></div>
+              <div><p className="text-xs font-medium text-slate-500">{stat.label}</p><p className="text-xl font-bold text-slate-900">{stat.value}</p></div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          {/* My courses performance */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <SectionHeader title="Your courses" action="Manage all" onAction={() => onNavigate('my-courses')} />
+            {courseStats.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">You haven&apos;t created any courses yet. Click &quot;New Course&quot; to get started.</p>
+            ) : (
+              <div className="space-y-2">
+                {courseStats.map((c: any) => (
+                  <div key={c.id} className="rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-medium text-slate-900">{c.title}</p>
+                      <Badge className="bg-purple-50 text-purple-600 hover:bg-purple-50">{c.enrolledCount} students</Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-500" />{c.completedCount} completed</span>
+                      <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3 text-blue-500" />{Math.round(c.averageProgress)}% avg</span>
+                      {c.atRiskCount > 0 && <span className="flex items-center gap-1 text-amber-600"><AlertCircle className="h-3 w-3" />{c.atRiskCount} at-risk</span>}
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full bg-purple-600" style={{ width: `${Math.round(c.averageProgress)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* At-risk students */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <SectionHeader title="At-risk students" />
+            {atRisk.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">No at-risk students. Everyone is making good progress! 👍</p>
+            ) : (
+              <div className="space-y-2">
+                {atRisk.slice(0, 5).map((s: any) => (
+                  <div key={s.userId + s.courseId} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700">{getInitials(`${s.firstName} ${s.lastName}`)}</div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900">{s.firstName} {s.lastName}</p>
+                      <p className="text-xs text-slate-500">{s.courseTitle} · enrolled {s.daysSinceEnrollment}d ago</p>
+                    </div>
+                    <Badge className="bg-amber-50 text-amber-600 hover:bg-amber-50">{Math.round(s.progressPercentage)}%</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          {/* Quick actions */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-slate-900">Quick actions</h2>
+            <div className="space-y-2">
+              {[
+                { label: 'Create new course', icon: Plus, view: 'course-create' as View, color: 'text-purple-600 bg-purple-50' },
+                { label: 'Manage my courses', icon: BookMarked, view: 'my-courses' as View, color: 'text-blue-600 bg-blue-50' },
+                { label: 'Create a quiz', icon: FileQuestion, view: 'quiz' as View, color: 'text-emerald-600 bg-emerald-50' },
+                { label: 'Grade assignments', icon: FileText, view: 'assignment' as View, color: 'text-amber-600 bg-amber-50' },
+                { label: 'Browse catalog', icon: Layers, view: 'catalog' as View, color: 'text-slate-600 bg-slate-100' },
+              ].map((action) => (
+                <button key={action.label} onClick={() => onNavigate(action.view)} className="flex w-full items-center gap-3 rounded-lg border border-slate-100 p-3 text-sm font-medium text-slate-700 transition-all hover:border-purple-200 hover:bg-slate-50">
+                  <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', action.color)}><action.icon className="h-4 w-4" /></div>
+                  {action.label}
+                  <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {/* Recent my courses */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <SectionHeader title="Recent courses" action="See all" onAction={() => onNavigate('my-courses')} />
+            {myCourses.length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-400">No courses yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {myCourses.slice(0, 4).map((c: any) => (
+                  <div key={c.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50"><BookOpen className="h-4 w-4 text-purple-600" /></div>
+                    <div className="flex-1"><p className="text-sm font-medium text-slate-900 line-clamp-1">{c.title}</p><p className="text-xs text-slate-400">{c.status}</p></div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ─── Admin Dashboard Home (Step 10 — Real-time) ──────────────────────────
+function AdminDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const queryClient = useQueryClient();
+  const { data: platformData, isLoading } = usePlatformDashboard();
+  const { data: alerts } = useAdminAlerts();
+  const { data: activity } = useRecentActivity(8);
+  const firstName = user?.firstName ?? 'Admin';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Real-time WebSocket: when a platform-stats-update or activity-update event
+  // arrives, invalidate the relevant queries so the dashboard refreshes
+  // immediately (no need to wait for the 30s polling interval).
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onStatsUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-alerts'] });
+      setLastUpdate(new Date());
+    };
+    const onActivityUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+      setLastUpdate(new Date());
+    };
+    socket.on('platform-stats-update', onStatsUpdate);
+    socket.on('activity-update', onActivityUpdate);
+    return () => {
+      socket.off('platform-stats-update', onStatsUpdate);
+      socket.off('activity-update', onActivityUpdate);
+    };
+  }, [queryClient]);
+
+  const SectionHeader = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => (
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+      {action && <button onClick={onAction} className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700">{action}<ChevronRight className="h-3.5 w-3.5" /></button>}
+    </div>
+  );
+
+  const stats = platformData?.stats;
+
+  const platformStats = [
+    { label: 'Total Users', value: String(stats?.users?.total ?? 0), icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: `+${stats?.users?.newThisWeek ?? 0} this week` },
+    { label: 'Courses', value: String(stats?.courses?.total ?? 0), icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: `${stats?.courses?.published ?? 0} published` },
+    { label: 'Enrollments', value: String(stats?.enrollments?.total ?? 0), icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `+${stats?.enrollments?.newThisWeek ?? 0} this week` },
+    { label: 'Certificates', value: String(stats?.engagement?.certificatesIssued ?? 0), icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
+    { label: 'Quiz Attempts', value: String(stats?.engagement?.quizAttempts ?? 0), icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', trend: '' },
+    { label: 'Submissions', value: String(stats?.engagement?.assignmentSubmissions ?? 0), icon: FileText, color: 'text-cyan-600', bg: 'bg-cyan-50', trend: '' },
+  ];
+
+  // Active users metrics (DAU/WAU/MAU)
+  const activeUsersStats = [
+    { label: 'Daily Active', value: stats?.users?.dailyActive ?? 0, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Weekly Active', value: stats?.users?.weeklyActive ?? 0, icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Monthly Active', value: stats?.users?.monthlyActive ?? 0, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+  ];
+
+  // Alerts counters
+  const alertItems = [
+    { label: 'Escalations', value: alerts?.pendingEscalations ?? 0, color: 'text-amber-600 bg-amber-50', icon: AlertCircle },
+    { label: 'Flagged', value: alerts?.flaggedContent ?? 0, color: 'text-red-600 bg-red-50', icon: AlertCircle },
+    { label: 'Low Quality', value: alerts?.lowQualityCourses ?? 0, color: 'text-red-600 bg-red-50', icon: TrendingUp },
+    { label: 'At-Risk Students', value: alerts?.atRiskStudents ?? 0, color: 'text-amber-600 bg-amber-50', icon: Users },
+    { label: 'Grade Disputes', value: alerts?.openGradeDisputes ?? 0, color: 'text-amber-600 bg-amber-50', icon: FileQuestion },
+  ].filter(i => i.value > 0);
+
+  const userDistribution = [
+    { name: 'Students', value: stats?.users?.students ?? 0, color: '#4F46E5' },
+    { name: 'Teachers', value: stats?.users?.teachers ?? 0, color: '#10B981' },
+    { name: 'Admins', value: stats?.users?.admins ?? 0, color: '#F59E0B' },
+  ];
+  const totalUsers = stats?.users?.total ?? 0;
+
+  const activities = (activity?.data ?? []) as any[];
+  const iconForType = (type: string) => {
+    switch (type) {
+      case 'user_registered': return { icon: UserPlus, color: 'text-emerald-600 bg-emerald-50' };
+      case 'course_created': return { icon: Plus, color: 'text-purple-600 bg-purple-50' };
+      case 'enrollment': return { icon: GraduationCap, color: 'text-blue-600 bg-blue-50' };
+      case 'submission': return { icon: FileText, color: 'text-amber-600 bg-amber-50' };
+      case 'certificate_issued': return { icon: Award, color: 'text-purple-600 bg-purple-50' };
+      default: return { icon: Bell, color: 'text-slate-600 bg-slate-50' };
+    }
+  };
+  const labelForType = (type: string, data: any) => {
+    switch (type) {
+      case 'user_registered': return `New user: ${data.name} (${data.role})`;
+      case 'course_created': return `New course: ${data.title}`;
+      case 'enrollment': return `${data.student} enrolled in ${data.course}`;
+      case 'submission': return `${data.student} submitted ${data.assignment}`;
+      case 'certificate_issued': return `Certificate issued: ${data.student} — ${data.course}`;
+      default: return type;
+    }
+  };
+
+  if (isLoading) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading admin dashboard…</div></main>;
+  }
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{greeting}, {firstName} 👋</h1>
+          <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+            Platform overview
+            <span className="flex items-center gap-1 text-xs text-emerald-600">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Live · updated {timeAgo(lastUpdate.toISOString())}
+            </span>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => onNavigate('users')} variant="outline" className="border-slate-200 text-slate-600"><UserPlus className="mr-1.5 h-4 w-4" />Users</Button>
+          <Button onClick={() => onNavigate('admin')} variant="outline" className="border-slate-200 text-slate-600"><BarChart3 className="mr-1.5 h-4 w-4" />Full Admin Panel</Button>
+          <Button onClick={() => onNavigate('settings')} variant="outline" className="border-slate-200 text-slate-600"><Settings className="mr-1.5 h-4 w-4" />Settings</Button>
+        </div>
+      </div>
+
+      {/* Real-time alerts */}
+      {alertItems.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+          <span className="mr-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+            <AlertCircle className="h-4 w-4" />Active alerts:
+          </span>
+          {alertItems.map((item) => (
+            <div key={item.label} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium', item.color)}>
+              <item.icon className="h-3.5 w-3.5" />{item.value} {item.label}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Stats Grid */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {platformStats.map((stat) => (
+          <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm">
+            <div className={cn('mb-2 flex h-9 w-9 items-center justify-center rounded-lg', stat.bg)}>
+              <stat.icon className={cn('h-4 w-4', stat.color)} />
+            </div>
+            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+            <p className="text-lg font-bold text-slate-900">{stat.value}</p>
+            {stat.trend && <p className="text-[10px] text-slate-400">{stat.trend}</p>}
+          </Card>
+        ))}
+      </div>
+
+      {/* Active users row */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {activeUsersStats.map((stat) => (
+          <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+                <p className="text-2xl font-bold text-slate-900">{stat.value.toLocaleString()}</p>
+              </div>
+              <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', stat.bg)}><stat.icon className={cn('h-5 w-5', stat.color)} /></div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          {/* User distribution chart */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <SectionHeader title="User distribution" action="Manage users" onAction={() => onNavigate('users')} />
+            <div className="flex items-center gap-6">
+              <div className="relative h-40 w-40 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={userDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value">
+                      {userDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '12px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-xl font-bold text-slate-900">{totalUsers.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400">Total</p>
+                </div>
+              </div>
+              <div className="flex-1 space-y-2">
+                {userDistribution.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="text-slate-600">{item.name}</span>
+                    </div>
+                    <span className="font-semibold text-slate-900">{item.value.toLocaleString()}</span>
+                  </div>
+                ))}
+                <div className="border-t border-slate-100 pt-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Active users</span>
+                    <span className="font-semibold text-emerald-600">{stats?.users?.active ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">New this month</span>
+                    <span className="font-semibold text-purple-600">+{stats?.users?.newThisMonth ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Recent activity feed */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Recent activity</h2>
+                <p className="text-xs text-slate-400">Live feed · WebSocket + 30s polling</p>
+              </div>
+              <span className="flex items-center gap-1 text-xs text-emerald-600">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Live
+              </span>
+            </div>
+            {activities.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-400">No recent activity in the last 7 days.</p>
+            ) : (
+              <div className="space-y-2">
+                {activities.slice(0, 8).map((a: any, idx: number) => {
+                  const { icon: Icon, color } = iconForType(a.type);
+                  return (
+                    <div key={idx} className="flex items-start gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
+                      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', color)}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-slate-700">{labelForType(a.type, a.data)}</p>
+                        <p className="text-xs text-slate-400">{timeAgo(a.timestamp)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          {/* Quick actions */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-slate-900">Quick actions</h2>
+            <div className="space-y-2">
+              {[
+                { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-purple-600 bg-purple-50' },
+                { label: 'Create Course', icon: Plus, view: 'course-create' as View, color: 'text-emerald-600 bg-emerald-50' },
+                { label: 'Audit Logs', icon: FileText, view: 'audit' as View, color: 'text-amber-600 bg-amber-50' },
+                { label: 'Settings', icon: Settings, view: 'settings' as View, color: 'text-slate-600 bg-slate-100' },
+                { label: 'Full Admin Panel', icon: BarChart3, view: 'admin' as View, color: 'text-purple-600 bg-purple-50' },
+              ].map((action) => (
+                <button key={action.label} onClick={() => onNavigate(action.view)} className="flex w-full items-center gap-3 rounded-lg border border-slate-100 p-3 text-sm font-medium text-slate-700 transition-all hover:border-purple-200 hover:bg-slate-50">
+                  <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', action.color)}><action.icon className="h-4 w-4" /></div>
+                  {action.label}
+                  <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {/* System status */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-slate-900">System status</h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Courses published</span>
+                <span className="font-semibold text-slate-900">{stats?.courses?.published ?? 0} / {stats?.courses?.total ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Active enrollments</span>
+                <span className="font-semibold text-emerald-600">{stats?.enrollments?.active ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Completed enrollments</span>
+                <span className="font-semibold text-slate-900">{stats?.enrollments?.completed ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Dropped enrollments</span>
+                <span className="font-semibold text-red-600">{stats?.enrollments?.dropped ?? 0}</span>
+              </div>
+              <div className="border-t border-slate-100 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Total modules</span>
+                  <span className="font-semibold text-slate-900">{stats?.content?.totalModules ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Total content items</span>
+                  <span className="font-semibold text-slate-900">{stats?.content?.totalContent ?? 0}</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+
+
+// ─── Catalog View (role-aware) ───────────────────────────────────────────
 function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: string) => void; onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const role = (user?.role ?? 'STUDENT') as Role;
+  const isStudent = role === 'STUDENT';
+  const isAdmin = role === 'ADMIN';
+  const isTeacher = role === 'TEACHER';
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All Levels');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('Popular');
-  const { data, isLoading, isError } = useCourses({ limit: 50, search: searchQuery || undefined });
+  // For students: only show PUBLISHED courses. For teachers/admins: show all visible.
+  const { data, isLoading, isError } = useCourses({ limit: 50, search: searchQuery || undefined, status: isStudent ? 'PUBLISHED' : undefined });
+  const enrollMut = useSelfEnroll();
 
   // Normalize API courses into the shape expected by the UI
   const apiCourses: Course[] = (data?.data ?? []).map((c: any) => ({
@@ -952,6 +1398,8 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
     students: 0,
     rating: 0,
     thumbnail: 'bg-gradient-to-br from-purple-500 to-purple-500',
+    status: c.status,
+    createdBy: c.createdBy?.id,
   }));
 
   const filtered = apiCourses.filter(c => {
@@ -959,6 +1407,14 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
     const diffMatch = selectedDifficulty === 'All Levels' || c.difficulty === selectedDifficulty;
     return catMatch && diffMatch;
   });
+
+  // Role-aware title/subtitle
+  const heading = isStudent ? 'Course Catalog' : isTeacher ? 'Browse Courses' : 'All Courses';
+  const subtitle = isStudent
+    ? `Discover ${apiCourses.length} courses to enroll in`
+    : isTeacher
+      ? `Browse ${apiCourses.length} courses — visit "My Courses" to manage your own`
+      : `Platform total: ${apiCourses.length} courses`;
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
@@ -970,8 +1426,18 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
       </div>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div><h1 className="text-2xl font-bold text-slate-900">Course Catalog</h1><p className="mt-1 text-sm text-slate-500">Discover {apiCourses.length} courses across {categories.length - 1} categories</p></div>
+        <div><h1 className="text-2xl font-bold text-slate-900">{heading}</h1><p className="mt-1 text-sm text-slate-500">{subtitle}</p></div>
         <div className="flex items-center gap-2">
+          {(isTeacher || isAdmin) && (
+            <Button onClick={() => onNavigate('my-courses')} variant="outline" className="border-slate-200 text-slate-600">
+              <BookMarked className="mr-1.5 h-4 w-4" />My Courses
+            </Button>
+          )}
+          {(isTeacher || isAdmin) && (
+            <Button onClick={() => onNavigate('course-create')} className="bg-purple-600 text-white hover:bg-purple-700">
+              <Plus className="mr-1.5 h-4 w-4" />New Course
+            </Button>
+          )}
           <button className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"><Filter className="h-4 w-4" />Filters</button>
           <div className="relative">
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-8 text-sm font-medium text-slate-600 focus:outline-none">
@@ -1021,7 +1487,9 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
           {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading courses…</div>}
           {isError && <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load courses. Is the backend running on port 5000?</div>}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((course) => (
+            {filtered.map((course) => {
+              const isOwn = user && (course as any).createdBy === user.id;
+              return (
               <Card key={course.id} className="group cursor-pointer overflow-hidden border border-slate-200 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectCourse(course.id)}>
                 {/* Thumbnail */}
                 <div className={cn('relative h-36', course.thumbnail)}>
@@ -1029,6 +1497,17 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90"><PlayCircle className="h-6 w-6 text-purple-600" /></div>
                   </div>
                   <Badge className="absolute left-3 top-3 bg-white/90 text-slate-700 hover:bg-white">{course.category}</Badge>
+                  {/* Role-aware status badges */}
+                  <div className="absolute right-3 top-3 flex gap-1">
+                    {(isTeacher || isAdmin) && (course as any).status && (
+                      <Badge className={cn(
+                        (course as any).status === 'PUBLISHED' ? 'bg-emerald-500 text-white hover:bg-emerald-500' :
+                        (course as any).status === 'DRAFT' ? 'bg-amber-500 text-white hover:bg-amber-500' :
+                        'bg-slate-500 text-white hover:bg-slate-500'
+                      )}>{(course as any).status}</Badge>
+                    )}
+                    {isOwn && <Badge className="bg-purple-600 text-white hover:bg-purple-600">Yours</Badge>}
+                  </div>
                   {course.progress !== undefined && (
                     <div className="absolute bottom-3 left-3 right-3">
                       <div className="mb-1 flex items-center justify-between text-[10px] font-medium text-white"><span>Progress</span><span>{course.progress}%</span></div>
@@ -1050,14 +1529,159 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
                       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-[10px] font-semibold text-purple-600">{course.instructor.split(' ').map(n => n[0]).join('')}</div>
                       <span className="text-xs text-slate-500">{course.instructor}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-slate-700">{course.rating}</span></div>
+                    {/* Role-aware actions */}
+                    {isStudent ? (
+                      <Button
+                        size="sm"
+                        disabled={enrollMut.isPending}
+                        onClick={(e) => { e.stopPropagation(); enrollMut.mutate(course.id); }}
+                        className="h-7 bg-purple-600 px-3 text-xs text-white hover:bg-purple-700"
+                      >
+                        {enrollMut.isPending ? 'Enrolling…' : 'Enroll'}
+                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-1 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-slate-700">{course.rating}</span></div>
+                    )}
                   </div>
                 </div>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
+    </main>
+  );
+}
+
+// ─── My Courses View (Teacher/Admin — manage own courses) ─────────────────
+function MyCoursesView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: string) => void; onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const role = (user?.role ?? 'STUDENT') as Role;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const { data, isLoading, isError } = useMyCourses({ search: searchQuery || undefined, status: statusFilter !== 'ALL' ? statusFilter : undefined });
+  const publishMut = usePublishCourse();
+  const archiveMut = useArchiveCourse();
+
+  const courses: any[] = data?.data ?? [];
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case 'PUBLISHED': return <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">Published</Badge>;
+      case 'DRAFT': return <Badge className="bg-amber-50 text-amber-600 hover:bg-amber-50">Draft</Badge>;
+      case 'ARCHIVED': return <Badge className="bg-slate-100 text-slate-500 hover:bg-slate-100">Archived</Badge>;
+      default: return <Badge>{status}</Badge>;
+    }
+  };
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      {/* Breadcrumb */}
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">My Courses</span>
+      </div>
+
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">My Courses</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {role === 'TEACHER'
+              ? <>Manage the courses you teach — <span className="font-semibold text-purple-600">{courses.length}</span> total.</>
+              : <>All courses on the platform (admin view) — <span className="font-semibold text-purple-600">{courses.length}</span> total.</>}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => onNavigate('course-create')} className="bg-purple-600 text-white hover:bg-purple-700">
+            <Plus className="mr-1.5 h-4 w-4" />New Course
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <Card className="mb-5 border border-slate-200 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input placeholder="Search my courses…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+          </div>
+          <div className="flex items-center gap-2">
+            {['ALL', 'PUBLISHED', 'DRAFT', 'ARCHIVED'].map((s) => (
+              <button key={s} onClick={() => setStatusFilter(s)} className={cn('rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', statusFilter === s ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
+                {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading your courses…</div>}
+      {isError && <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load your courses.</div>}
+      {!isLoading && !isError && courses.length === 0 && (
+        <Card className="border border-dashed border-slate-300 p-12 text-center">
+          <BookOpen className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+          <h3 className="text-base font-semibold text-slate-700">No courses yet</h3>
+          <p className="mt-1 text-sm text-slate-500">You haven&apos;t created any courses. Click &quot;New Course&quot; to get started.</p>
+          <Button onClick={() => onNavigate('course-create')} className="mt-4 bg-purple-600 text-white hover:bg-purple-700">
+            <Plus className="mr-1.5 h-4 w-4" />Create your first course
+          </Button>
+        </Card>
+      )}
+
+      {/* Course table */}
+      {courses.length > 0 && (
+        <Card className="border border-slate-200 shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
+                  <th className="px-4 py-3 text-left font-medium">Course</th>
+                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-left font-medium">Category</th>
+                  <th className="px-4 py-3 text-left font-medium">Difficulty</th>
+                  <th className="px-4 py-3 text-left font-medium">Created</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {courses.map((c: any) => (
+                  <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <button onClick={() => onSelectCourse(c.id)} className="text-left">
+                        <p className="font-medium text-slate-900 hover:text-purple-600">{c.title}</p>
+                        <p className="line-clamp-1 text-xs text-slate-500">{c.description ?? 'No description'}</p>
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">{statusBadge(c.status)}</td>
+                    <td className="px-4 py-3 text-slate-600">{c.category ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{c.difficulty ? c.difficulty.charAt(0) + c.difficulty.slice(1).toLowerCase() : '—'}</td>
+                    <td className="px-4 py-3 text-slate-500">{formatDate(c.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button size="sm" variant="outline" onClick={() => onSelectCourse(c.id)} className="h-7 border-slate-200 px-2 text-xs">
+                          <Edit className="mr-1 h-3 w-3" />Edit
+                        </Button>
+                        {c.status === 'DRAFT' && (
+                          <Button size="sm" variant="outline" disabled={publishMut.isPending} onClick={() => publishMut.mutate(c.id)} className="h-7 border-emerald-200 px-2 text-xs text-emerald-700 hover:bg-emerald-50">
+                            <CheckCircle2 className="mr-1 h-3 w-3" />Publish
+                          </Button>
+                        )}
+                        {c.status !== 'ARCHIVED' && (
+                          <Button size="sm" variant="outline" disabled={archiveMut.isPending} onClick={() => archiveMut.mutate(c.id)} className="h-7 border-slate-200 px-2 text-xs text-slate-600 hover:bg-slate-50">
+                            <Trash2 className="mr-1 h-3 w-3" />Archive
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </main>
   );
 }
@@ -4350,8 +4974,32 @@ function ActivityFeed() {
 
 // ─── Admin Dashboard View ─────────────────────────────────────────────────
 function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const queryClient = useQueryClient();
   const { data: platformData, isLoading } = usePlatformDashboard();
   const stats = platformData?.stats;
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Real-time WebSocket updates — same pattern as AdminDashboardHomeView
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onStatsUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['platform-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+      setLastUpdate(new Date());
+    };
+    const onActivityUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+      setLastUpdate(new Date());
+    };
+    socket.on('platform-stats-update', onStatsUpdate);
+    socket.on('activity-update', onActivityUpdate);
+    return () => {
+      socket.off('platform-stats-update', onStatsUpdate);
+      socket.off('activity-update', onActivityUpdate);
+    };
+  }, [queryClient]);
 
   const platformStats = [
     { label: 'Total Users', value: String(stats?.users?.total ?? 0), icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: `+${stats?.users?.newThisWeek ?? 0}` },
@@ -4397,7 +5045,12 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-500">Platform overview · <span className="text-purple-600">●</span> Live (auto-refresh 30s)</p>
+          <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+            Platform overview
+            <span className="flex items-center gap-1 text-xs text-emerald-600">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Live · WebSocket + 30s polling · updated {timeAgo(lastUpdate.toISOString())}
+            </span>
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => downloadCSV('platform-stats.csv', platformStats.map((s: any) => ({ Label: s.label, Value: s.value, Trend: s.trend })), ['Label', 'Value', 'Trend'])} className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export</Button>
@@ -6314,6 +6967,7 @@ export default function App() {
     'users': ['ADMIN'],
     'settings': ['ADMIN'],
     'course-create': ['ADMIN', 'TEACHER'],
+    'my-courses': ['ADMIN', 'TEACHER'],
   };
 
   const handleNavigate = (v: View) => {
@@ -6384,6 +7038,7 @@ export default function App() {
         <Header onMenuClick={() => setSidebarOpen(true)} onNavigate={handleNavigate} currentView={view} onSelectCourse={handleSelectCourse} />
         {view === 'dashboard' && <DashboardView onNavigate={handleNavigate} />}
         {view === 'catalog' && <CatalogView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
+        {view === 'my-courses' && <MyCoursesView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
         {view === 'course-detail' && <CourseDetailView courseId={selectedCourseId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSelectAssignment={handleSelectAssignment} />}
         {view === 'quiz' && <QuizView quizId={selectedQuizId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSubmitted={handleQuizSubmitted} />}
         {view === 'quiz-results' && <QuizResultsView attemptId={lastAttemptId} onNavigate={handleNavigate} />}

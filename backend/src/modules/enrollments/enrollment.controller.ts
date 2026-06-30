@@ -71,6 +71,10 @@ export async function enrollUserController(req: Request, res: Response, next: Ne
       context: auditCtx(req),
     });
 
+    // Real-time: notify admins of new enrollment
+    const { broadcastPlatformStatsUpdate } = await import('../../socket');
+    broadcastPlatformStatsUpdate({ event: 'enrollment_created', timestamp: new Date().toISOString() });
+
     res.status(201).json({ message: 'User enrolled.', enrollment });
   } catch (err) {
     next(err);
