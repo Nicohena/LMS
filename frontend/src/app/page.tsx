@@ -70,7 +70,7 @@ const navItems: NavItem[] = [
 ];
 
 const stats = [
-  { label: 'Course', value: '12', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '+2' },
+  { label: 'Course', value: '12', icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+2' },
   { label: 'Page', value: '48', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+5' },
   { label: 'Assignment', value: '7', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+1' },
   { label: 'Quiz', value: '15', icon: FileQuestion, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+3' },
@@ -115,7 +115,7 @@ const quizGrading = [
 ];
 
 const catalogCourses: Course[] = [
-  { id: 'mock-1', title: 'UI Design Fundamentals', description: 'Master the principles of user interface design from wireframing to prototyping.', instructor: 'Sarah Chen', category: 'Design', difficulty: 'Beginner', duration: '12h 30m', lessons: 48, students: 1248, rating: 4.8, thumbnail: 'bg-gradient-to-br from-indigo-500 to-purple-500', progress: 75, modules: [
+  { id: 'mock-1', title: 'UI Design Fundamentals', description: 'Master the principles of user interface design from wireframing to prototyping.', instructor: 'Sarah Chen', category: 'Design', difficulty: 'Beginner', duration: '12h 30m', lessons: 48, students: 1248, rating: 4.8, thumbnail: 'bg-gradient-to-br from-purple-500 to-purple-500', progress: 75, modules: [
     { id: 1, title: 'Introduction', lessons: [
       { id: 1, title: 'Welcome to UI Design', type: 'video', duration: '5:30', completed: true },
       { id: 2, title: 'Course Overview', type: 'page', duration: '3:00', completed: true },
@@ -331,7 +331,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
       <button onClick={onMenuClick} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"><Menu className="h-5 w-5" /></button>
       <nav className="hidden items-center gap-1 md:flex">
         {visibleHeaderLinks.map((link) => (
-          <button key={link.label} onClick={() => onNavigate(link.view)} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-colors', link.view === currentView ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-100')}>{link.label}</button>
+          <button key={link.label} onClick={() => onNavigate(link.view)} className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-colors', link.view === currentView ? 'bg-purple-50 text-purple-600' : 'text-slate-600 hover:bg-slate-100')}>{link.label}</button>
         ))}
       </nav>
       <div className="relative hidden flex-1 md:block lg:max-w-xs">
@@ -343,7 +343,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
           onChange={(e) => { setSearchQuery(e.target.value); setShowSearch(true); }}
           onFocus={() => setShowSearch(true)}
           onBlur={() => setTimeout(() => setShowSearch(false), 200)}
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
         />
         {showSearch && searchQuery.trim() && (
           <div className="absolute left-0 right-0 top-full z-40 mt-2 rounded-xl border border-slate-200 bg-white shadow-lg">
@@ -363,8 +363,8 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
                     onClick={() => handleSelectSearchResult(c.id)}
                     className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50"
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
-                      <BookOpen className="h-4 w-4 text-indigo-600" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-50">
+                      <BookOpen className="h-4 w-4 text-purple-600" />
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <p className="truncate text-sm font-medium text-slate-900">{c.title}</p>
@@ -375,7 +375,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
                 ))}
                 <button
                   onClick={() => { onNavigate('catalog'); setShowSearch(false); setSearchQuery(''); }}
-                  className="block w-full border-t border-slate-200 px-3 py-2.5 text-center text-xs font-medium text-indigo-600 hover:bg-slate-50"
+                  className="block w-full border-t border-slate-200 px-3 py-2.5 text-center text-xs font-medium text-purple-600 hover:bg-slate-50"
                 >
                   View all results in catalog
                 </button>
@@ -406,7 +406,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                   <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
                   {unreadCount > 0 && (
-                    <button onClick={handleMarkAllRead} disabled={markAllReadMut.isPending} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                    <button onClick={handleMarkAllRead} disabled={markAllReadMut.isPending} className="text-xs font-medium text-purple-600 hover:text-purple-700">
                       Mark all read
                     </button>
                   )}
@@ -423,9 +423,9 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
                       <button
                         key={n.id}
                         onClick={() => !n.isRead && handleMarkOneRead(n.id)}
-                        className={cn('flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50', !n.isRead && 'bg-indigo-50/40')}
+                        className={cn('flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50', !n.isRead && 'bg-purple-50/40')}
                       >
-                        <div className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', n.isRead ? 'bg-transparent' : 'bg-indigo-500')} />
+                        <div className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', n.isRead ? 'bg-transparent' : 'bg-purple-500')} />
                         <div className="flex-1 overflow-hidden">
                           <p className={cn('text-sm', n.isRead ? 'font-medium text-slate-700' : 'font-semibold text-slate-900')}>{n.title}</p>
                           {n.message && <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{n.message}</p>}
@@ -438,7 +438,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
                 {allNotifications.length > 0 && (
                   <button
                     onClick={() => { setShowNotifs(false); onNavigate('announcements'); }}
-                    className="block w-full border-t border-slate-200 px-4 py-2.5 text-center text-xs font-medium text-indigo-600 hover:bg-slate-50"
+                    className="block w-full border-t border-slate-200 px-4 py-2.5 text-center text-xs font-medium text-purple-600 hover:bg-slate-50"
                   >
                     View all announcements
                   </button>
@@ -449,7 +449,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
         </div>
         <div className="flex items-center gap-3 border-l border-slate-200 pl-3">
           <div className="hidden text-right md:block"><p className="text-sm font-semibold text-slate-900">{displayName}</p><p className="text-xs capitalize text-slate-500">{roleLabel}</p></div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{initials}</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-600">{initials}</div>
           <button onClick={() => logoutMutation.mutate()} title="Logout" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><LogOut className="h-4 w-4" /></button>
         </div>
       </div>
@@ -486,10 +486,10 @@ function CertificateVerificationView({ onNavigate }: { onNavigate: (v: View) => 
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="mb-8 flex flex-col items-center">
-          <button onClick={() => onNavigate('login')} className="mb-6 flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600">
+          <button onClick={() => onNavigate('login')} className="mb-6 flex items-center gap-2 text-sm text-slate-500 hover:text-purple-600">
             <ArrowLeft className="h-4 w-4" />Back to Login
           </button>
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-purple-600">
             <BadgeCheck className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Certificate Verification</h1>
@@ -515,7 +515,7 @@ function CertificateVerificationView({ onNavigate }: { onNavigate: (v: View) => 
               </div>
               <p className="text-xs text-slate-400">The reference number appears on the certificate (format: CERT-YYYY-XXXX)</p>
             </div>
-            <Button type="submit" disabled={loading || !certNumber.trim()} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+            <Button type="submit" disabled={loading || !certNumber.trim()} className="w-full bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
               {loading ? 'Verifying…' : 'Verify Certificate'}
             </Button>
             {error && (
@@ -599,7 +599,7 @@ function CertificateVerificationView({ onNavigate }: { onNavigate: (v: View) => 
                       href={result.certificate.certificateUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-purple-200 bg-purple-50 p-3 text-sm font-medium text-purple-600 hover:bg-purple-100"
                     >
                       <Download className="h-4 w-4" />
                       View / Download Certificate
@@ -610,7 +610,7 @@ function CertificateVerificationView({ onNavigate }: { onNavigate: (v: View) => 
 
               {/* Verification footer */}
               <div className="mt-6 flex items-center gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-400">
-                <BadgeCheck className="h-4 w-4 text-indigo-400" />
+                <BadgeCheck className="h-4 w-4 text-purple-400" />
                 Verified via Trenning LMS Certificate Verification System
               </div>
             </div>
@@ -668,7 +668,7 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600"><GraduationCap className="h-7 w-7 text-white" /></div>
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-600"><GraduationCap className="h-7 w-7 text-white" /></div>
           <h1 className="text-2xl font-bold text-slate-900">Welcome to Trenning</h1>
           <p className="mt-1 text-sm text-slate-500">Sign in to your account to continue learning</p>
         </div>
@@ -684,7 +684,7 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-sm font-medium text-slate-700">Password</Label>
-                <button type="button" onClick={() => alert('Password reset: Please contact your administrator to reset your password, or use the "Change Password" feature from your Profile page after logging in.')} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">Forgot password?</button>
+                <button type="button" onClick={() => alert('Password reset: Please contact your administrator to reset your password, or use the "Change Password" feature from your Profile page after logging in.')} className="text-xs font-medium text-purple-600 hover:text-purple-700">Forgot password?</button>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -695,10 +695,10 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="remember" className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+              <input type="checkbox" id="remember" className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500" />
               <Label htmlFor="remember" className="text-sm text-slate-600">Remember me for 30 days</Label>
             </div>
-            <Button type="submit" disabled={loginMutation.isPending} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+            <Button type="submit" disabled={loginMutation.isPending} className="w-full bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
               {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
             </Button>
             {error && (
@@ -725,11 +725,11 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
           </div>
         </Card>
         <p className="mt-6 text-center text-sm text-slate-500">
-          Don&apos;t have an account? <button onClick={() => alert('Self-registration: Please contact your administrator to create an account. If self-registration is enabled in Settings, an admin can enable it for new sign-ups.')} className="font-semibold text-indigo-600 hover:text-indigo-700">Sign up free</button>
+          Don&apos;t have an account? <button onClick={() => alert('Self-registration: Please contact your administrator to create an account. If self-registration is enabled in Settings, an admin can enable it for new sign-ups.')} className="font-semibold text-purple-600 hover:text-purple-700">Sign up free</button>
         </p>
         {onNavigate && (
           <p className="mt-3 text-center text-xs text-slate-400">
-            <button onClick={() => onNavigate('verify-certificate')} className="text-slate-500 hover:text-indigo-600">
+            <button onClick={() => onNavigate('verify-certificate')} className="text-slate-500 hover:text-purple-600">
               🔍 Verify a Certificate
             </button>
           </p>
@@ -756,7 +756,7 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const SectionHeader = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => (
     <div className="mb-4 flex items-center justify-between">
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-      {action && <button onClick={onAction} className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">{action}<ChevronRight className="h-3.5 w-3.5" /></button>}
+      {action && <button onClick={onAction} className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700">{action}<ChevronRight className="h-3.5 w-3.5" /></button>}
     </div>
   );
 
@@ -767,14 +767,14 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
   // Derive stats from real data
   const liveStats = isStudent
     ? [
-        { label: 'Enrolled', value: String(studentData?.stats?.totalEnrollments ?? 0), icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: '' },
+        { label: 'Enrolled', value: String(studentData?.stats?.totalEnrollments ?? 0), icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50', trend: '' },
         { label: 'Active', value: String(studentData?.stats?.active ?? 0), icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', trend: '' },
         { label: 'Completed', value: String(studentData?.stats?.completed ?? 0), icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '' },
         { label: 'Avg Progress', value: `${Math.round(studentData?.stats?.averageProgress ?? 0)}%`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
         { label: 'Dropped', value: String(studentData?.stats?.dropped ?? 0), icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', trend: '' },
       ]
     : [
-        { label: 'Users', value: String(platformData?.stats?.users?.total ?? 0), icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: `+${platformData?.stats?.users?.newThisWeek ?? 0}` },
+        { label: 'Users', value: String(platformData?.stats?.users?.total ?? 0), icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: `+${platformData?.stats?.users?.newThisWeek ?? 0}` },
         { label: 'Courses', value: String(platformData?.stats?.courses?.total ?? 0), icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: '' },
         { label: 'Enrollments', value: String(platformData?.stats?.enrollments?.total ?? 0), icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `+${platformData?.stats?.enrollments?.newThisWeek ?? 0}` },
         { label: 'Modules', value: String(platformData?.stats?.content?.totalModules ?? 0), icon: Layers, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
@@ -810,13 +810,13 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{greeting}, {firstName} 👋</h1>
           <p className="mt-1 text-sm text-slate-500">{isStudent
-            ? <>You have <span className="font-semibold text-indigo-600">{studentData?.stats?.active ?? 0} active courses</span> and your average progress is <span className="font-semibold text-indigo-600">{Math.round(studentData?.stats?.averageProgress ?? 0)}%</span>.</>
-            : <>Your platform has <span className="font-semibold text-indigo-600">{platformData?.stats?.users?.total ?? 0} users</span> and <span className="font-semibold text-indigo-600">{platformData?.stats?.courses?.total ?? 0} courses</span>.</>
+            ? <>You have <span className="font-semibold text-purple-600">{studentData?.stats?.active ?? 0} active courses</span> and your average progress is <span className="font-semibold text-purple-600">{Math.round(studentData?.stats?.averageProgress ?? 0)}%</span>.</>
+            : <>Your platform has <span className="font-semibold text-purple-600">{platformData?.stats?.users?.total ?? 0} users</span> and <span className="font-semibold text-purple-600">{platformData?.stats?.courses?.total ?? 0} courses</span>.</>
           }</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {[{ label: 'Browse Courses', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' }, { label: 'My Assignments', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' }, { label: 'Take a Quiz', icon: FileQuestion, color: 'text-emerald-600', bg: 'bg-emerald-50' }, { label: 'Certificates', icon: Award, color: 'text-purple-600', bg: 'bg-purple-50' }].map((a) => (
-            <button key={a.label} onClick={() => a.label === 'Browse Courses' && onNavigate('catalog')} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-indigo-200 hover:shadow-md">
+          {[{ label: 'Browse Courses', icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-50' }, { label: 'My Assignments', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50' }, { label: 'Take a Quiz', icon: FileQuestion, color: 'text-emerald-600', bg: 'bg-emerald-50' }, { label: 'Certificates', icon: Award, color: 'text-purple-600', bg: 'bg-purple-50' }].map((a) => (
+            <button key={a.label} onClick={() => a.label === 'Browse Courses' && onNavigate('catalog')} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-purple-200 hover:shadow-md">
               <div className={cn('flex h-6 w-6 items-center justify-center rounded', a.bg)}><a.icon className={cn('h-3.5 w-3.5', a.color)} /></div>{a.label}
             </button>
           ))}
@@ -891,18 +891,18 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
               {(liveTopLearners.length > 0 ? liveTopLearners : topLearners).map((learner) => (
                 <div key={learner.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
                   <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-amber-100 text-amber-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>{learner.rank}</div>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">{learner.avatar}</div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-600">{learner.avatar}</div>
                   <div className="flex-1"><p className="text-sm font-medium text-slate-900">{learner.name}</p><p className="text-xs text-slate-400">Level {learner.courses}</p></div>
-                  <div className="text-right"><p className="text-sm font-bold text-indigo-600">{learner.points.toLocaleString()}</p><p className="text-[10px] text-slate-400">XP</p></div>
+                  <div className="text-right"><p className="text-sm font-bold text-purple-600">{learner.points.toLocaleString()}</p><p className="text-[10px] text-slate-400">XP</p></div>
                 </div>
               ))}
             </div>
           </Card>
-          <Card className="relative overflow-hidden border border-indigo-100 bg-gradient-to-br from-indigo-600 to-indigo-500 p-5 shadow-sm">
+          <Card className="relative overflow-hidden border border-purple-100 bg-gradient-to-br from-purple-600 to-purple-500 p-5 shadow-sm">
             <div className="relative z-10">
               <div className="mb-3 flex items-center gap-2"><Crown className="h-5 w-5 text-amber-300" /><span className="text-sm font-semibold text-white">Upgrade to PRO</span></div>
-              <p className="mb-4 text-xs text-indigo-100">Unlock unlimited courses, advanced analytics, certificates, and priority support.</p>
-              <Button onClick={() => alert('Upgrade to PRO: This is a demo feature. In production, this would redirect to a billing page.')} className="w-full bg-white text-indigo-600 hover:bg-indigo-50"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Upgrade Now</Button>
+              <p className="mb-4 text-xs text-purple-100">Unlock unlimited courses, advanced analytics, certificates, and priority support.</p>
+              <Button onClick={() => alert('Upgrade to PRO: This is a demo feature. In production, this would redirect to a billing page.')} className="w-full bg-amber-500 text-white hover:bg-amber-600"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Upgrade Now</Button>
             </div>
             <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10" /><div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-white/5" />
           </Card>
@@ -919,7 +919,7 @@ function DashboardView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   </div>
                   <div className="flex items-center justify-between">
                     {quiz.pending > 0 && <Badge className="bg-amber-50 text-amber-600 hover:bg-amber-50">{quiz.pending} pending</Badge>}
-                    <Button size="sm" onClick={() => onNavigate('quiz')} className="ml-auto bg-indigo-600 text-white hover:bg-indigo-700">Grade Now<ChevronRight className="ml-1 h-3.5 w-3.5" /></Button>
+                    <Button size="sm" onClick={() => onNavigate('quiz')} className="ml-auto bg-amber-500 text-white hover:bg-amber-600">Grade Now<ChevronRight className="ml-1 h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               ))}
@@ -951,7 +951,7 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
     lessons: c.moduleCount ?? 0,
     students: 0,
     rating: 0,
-    thumbnail: 'bg-gradient-to-br from-indigo-500 to-purple-500',
+    thumbnail: 'bg-gradient-to-br from-purple-500 to-purple-500',
   }));
 
   const filtered = apiCourses.filter(c => {
@@ -994,7 +994,7 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
               <h3 className="mb-2 text-sm font-semibold text-slate-900">Category</h3>
               <div className="space-y-1">
                 {categories.map((cat) => (
-                  <button key={cat} onClick={() => setSelectedCategory(cat)} className={cn('flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors', selectedCategory === cat ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-slate-600 hover:bg-slate-50')}>
+                  <button key={cat} onClick={() => setSelectedCategory(cat)} className={cn('flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors', selectedCategory === cat ? 'bg-purple-50 text-purple-600 font-medium' : 'text-slate-600 hover:bg-slate-50')}>
                     {cat}
                     {selectedCategory === cat && <CheckCircle2 className="h-3.5 w-3.5" />}
                   </button>
@@ -1005,7 +1005,7 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
               <h3 className="mb-2 text-sm font-semibold text-slate-900">Difficulty</h3>
               <div className="space-y-1">
                 {difficulties.map((diff) => (
-                  <button key={diff} onClick={() => setSelectedDifficulty(diff)} className={cn('flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors', selectedDifficulty === diff ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-slate-600 hover:bg-slate-50')}>
+                  <button key={diff} onClick={() => setSelectedDifficulty(diff)} className={cn('flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors', selectedDifficulty === diff ? 'bg-purple-50 text-purple-600 font-medium' : 'text-slate-600 hover:bg-slate-50')}>
                     {diff}
                     {selectedDifficulty === diff && <CheckCircle2 className="h-3.5 w-3.5" />}
                   </button>
@@ -1026,7 +1026,7 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
                 {/* Thumbnail */}
                 <div className={cn('relative h-36', course.thumbnail)}>
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90"><PlayCircle className="h-6 w-6 text-indigo-600" /></div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90"><PlayCircle className="h-6 w-6 text-purple-600" /></div>
                   </div>
                   <Badge className="absolute left-3 top-3 bg-white/90 text-slate-700 hover:bg-white">{course.category}</Badge>
                   {course.progress !== undefined && (
@@ -1043,11 +1043,11 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
                     <span className="text-slate-300">·</span>
                     <span className="flex items-center gap-0.5 text-xs text-slate-400"><Clock className="h-3 w-3" />{course.duration}</span>
                   </div>
-                  <h3 className="mb-1 text-sm font-semibold text-slate-900 group-hover:text-indigo-600">{course.title}</h3>
+                  <h3 className="mb-1 text-sm font-semibold text-slate-900 group-hover:text-purple-600">{course.title}</h3>
                   <p className="mb-3 line-clamp-2 text-xs text-slate-500">{course.description}</p>
                   <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-600">{course.instructor.split(' ').map(n => n[0]).join('')}</div>
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-[10px] font-semibold text-purple-600">{course.instructor.split(' ').map(n => n[0]).join('')}</div>
                       <span className="text-xs text-slate-500">{course.instructor}</span>
                     </div>
                     <div className="flex items-center gap-1 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-slate-700">{course.rating}</span></div>
@@ -1140,7 +1140,7 @@ function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: strin
           <RichTextEditor value={markdown} onChange={setMarkdown} placeholder="Write your lesson content here. Supports markdown: **bold**, *italic*, # headings, - lists, > quotes, [links](url)..." />
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setIsEditing(false); setSaveStatus({ type: 'idle' }); }} className="border-slate-200 text-slate-600">Cancel</Button>
-            <Button onClick={handleSave} disabled={updateContent.isPending} className="bg-indigo-600 text-white hover:bg-indigo-700">
+            <Button onClick={handleSave} disabled={updateContent.isPending} className="bg-purple-600 text-white hover:bg-purple-700">
               {updateContent.isPending ? 'Saving…' : 'Save Content'}
             </Button>
           </div>
@@ -1204,7 +1204,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
     lessons: apiCourse.moduleCount ?? 0,
     students: 0,
     rating: 0,
-    thumbnail: 'bg-gradient-to-br from-indigo-500 to-purple-500',
+    thumbnail: 'bg-gradient-to-br from-purple-500 to-purple-500',
     modules: apiModules.map((m: any, mi: number) => ({
       id: m.id ?? mi,
       title: m.title ?? `Module ${mi + 1}`,
@@ -1297,7 +1297,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
         <span className="font-medium text-slate-700">{course.title}</span>
       </div>
 
-      <button onClick={() => onNavigate('catalog')} className="mb-4 flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700">
+      <button onClick={() => onNavigate('catalog')} className="mb-4 flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700">
         <ArrowLeft className="h-4 w-4" />Back to Catalog
       </button>
 
@@ -1324,7 +1324,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
             <Button onClick={() => {
               const activeLessonObj = course.modules?.[activeModule]?.lessons?.[activeLesson];
               if (activeLessonObj) handleLessonClick(activeModule, activeLesson, activeLessonObj);
-            }} className="bg-white text-indigo-600 hover:bg-white/90"><PlayCircle className="mr-2 h-4 w-4" />Continue Learning</Button>
+            }} className="bg-white text-purple-600 hover:bg-white/90"><PlayCircle className="mr-2 h-4 w-4" />Continue Learning</Button>
             <Button variant="outline" onClick={() => setIsFavorite(!isFavorite)} className={cn('border-white/30 text-white hover:bg-white/10', isFavorite && 'bg-white/20')}>
               {isFavorite ? <><Star className="mr-1.5 h-4 w-4 fill-amber-300 text-amber-300" />Favorited</> : <><Star className="mr-1.5 h-4 w-4" />Add to Favorites</>}
             </Button>
@@ -1344,8 +1344,8 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
         <div className="lg:col-span-2">
           <Card className="border border-slate-200 p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50">
-                {(() => { const Icon = lessonTypeIcons[course.modules?.[activeModule]?.lessons[activeLesson]?.type || 'video'] || Video; return <Icon className="h-5 w-5 text-indigo-600" />; })()}
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50">
+                {(() => { const Icon = lessonTypeIcons[course.modules?.[activeModule]?.lessons[activeLesson]?.type || 'video'] || Video; return <Icon className="h-5 w-5 text-purple-600" />; })()}
               </div>
               <div>
                 <h2 className="text-base font-semibold text-slate-900">{course.modules?.[activeModule]?.lessons[activeLesson]?.title}</h2>
@@ -1398,7 +1398,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                   {/* Content tabs */}
                   <div className="mt-5 flex gap-1 border-b border-slate-200">
                     {['Overview', 'Resources', 'Discussion'].map((tab, i) => (
-                      <button key={tab} className={cn('border-b-2 px-3 py-2 text-sm font-medium transition-colors', i === 0 ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700')}>{tab}</button>
+                      <button key={tab} className={cn('border-b-2 px-3 py-2 text-sm font-medium transition-colors', i === 0 ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700')}>{tab}</button>
                     ))}
                   </div>
                   <div className="mt-4 text-sm text-slate-600">
@@ -1426,13 +1426,13 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                   <p className="mt-0.5 text-xs text-slate-400">{completedLessons}/{totalLessons} lessons completed</p>
                 </div>
                 {canAuthor && (
-                  <button onClick={() => setShowAddModule(true)} title="Add module" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600">
+                  <button onClick={() => setShowAddModule(true)} title="Add module" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-purple-600">
                     <Plus className="h-4 w-4" />
                   </button>
                 )}
               </div>
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-indigo-600" style={{ width: `${totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0}%` }} />
+                <div className="h-full rounded-full bg-purple-600" style={{ width: `${totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0}%` }} />
               </div>
             </div>
             <div className="max-h-[500px] overflow-y-auto p-2">
@@ -1445,7 +1445,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                     </button>
                     {canAuthor && (
                       <div className="flex gap-0.5 pr-1">
-                        <button onClick={() => setShowAddContent(String(module.id))} title="Add content" className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Plus className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => setShowAddContent(String(module.id))} title="Add content" className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-purple-600"><Plus className="h-3.5 w-3.5" /></button>
                         <button onClick={() => handleDeleteModule(String(module.id))} title="Delete module" className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                     )}
@@ -1456,19 +1456,19 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                         const Icon = lessonTypeIcons[lesson.type] || Video;
                         const hasLinkedEntity = (lesson.type === 'quiz' && quizIdByContent[String(lesson.id)]) || (lesson.type === 'assignment' && assignmentIdByContent[String(lesson.id)]);
                         return (
-                          <div key={lesson.id} className={cn('group flex items-center rounded-lg', mIdx === activeModule && lIdx === activeLesson ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
+                          <div key={lesson.id} className={cn('group flex items-center rounded-lg', mIdx === activeModule && lIdx === activeLesson ? 'bg-purple-50' : 'hover:bg-slate-50')}>
                             <button
                               onClick={() => handleLessonClick(mIdx, lIdx, lesson)}
                               className={cn('flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors')}
                               title={hasLinkedEntity ? `Open ${lesson.type}` : undefined}
                             >
                               <div className={cn('flex h-5 w-5 items-center justify-center rounded-full', lesson.completed ? 'bg-emerald-100' : 'bg-slate-100')}>
-                                {lesson.completed ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Icon className={cn('h-3 w-3', lesson.type === 'quiz' || lesson.type === 'assignment' ? 'text-indigo-500' : 'text-slate-400')} />}
+                                {lesson.completed ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Icon className={cn('h-3 w-3', lesson.type === 'quiz' || lesson.type === 'assignment' ? 'text-purple-500' : 'text-slate-400')} />}
                               </div>
                               <div className="flex-1">
-                                <p className={cn('text-xs', mIdx === activeModule && lIdx === activeLesson ? 'font-medium text-indigo-600' : 'text-slate-600')}>{lesson.title}</p>
+                                <p className={cn('text-xs', mIdx === activeModule && lIdx === activeLesson ? 'font-medium text-purple-600' : 'text-slate-600')}>{lesson.title}</p>
                               </div>
-                              {hasLinkedEntity && <ChevronRight className="h-3 w-3 text-indigo-400" />}
+                              {hasLinkedEntity && <ChevronRight className="h-3 w-3 text-purple-400" />}
                               <span className="text-[10px] text-slate-400">{lesson.duration}</span>
                             </button>
                             {canAuthor && (
@@ -1480,7 +1480,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                         );
                       })}
                       {canAuthor && (
-                        <button onClick={() => setShowAddContent(String(module.id))} className="flex w-full items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 hover:border-indigo-300 hover:text-indigo-600">
+                        <button onClick={() => setShowAddContent(String(module.id))} className="flex w-full items-center gap-2 rounded-lg border-2 border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 hover:border-purple-300 hover:text-purple-600">
                           <Plus className="h-3 w-3" />Add content
                         </button>
                       )}
@@ -1489,7 +1489,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                 </div>
               ))}
               {canAuthor && course.modules && course.modules.length === 0 && (
-                <button onClick={() => setShowAddModule(true)} className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-4 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600">
+                <button onClick={() => setShowAddModule(true)} className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 py-4 text-sm font-medium text-slate-500 hover:border-purple-300 hover:text-purple-600">
                   <Plus className="h-4 w-4" />Add first module
                 </button>
               )}
@@ -1506,7 +1506,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                 <span className="ml-auto text-[10px] font-medium text-slate-400">Locked</span>
               </div>
               <div className="flex items-center gap-2 rounded-lg border border-slate-100 p-2.5">
-                <Crown className="h-4 w-4 text-indigo-500" />
+                <Crown className="h-4 w-4 text-purple-500" />
                 <span className="text-xs text-slate-600">500 XP on completion</span>
               </div>
               <div className="flex items-center gap-2 rounded-lg border border-slate-100 p-2.5">
@@ -1535,7 +1535,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
               {authorErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{authorErr}</div>}
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setShowAddModule(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-                <Button onClick={handleCreateModule} disabled={createModuleMut.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                <Button onClick={handleCreateModule} disabled={createModuleMut.isPending} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                   {createModuleMut.isPending ? 'Creating…' : 'Create Module'}
                 </Button>
               </div>
@@ -1559,7 +1559,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
               </div>
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Content Type</Label>
-                <select value={newContentType} onChange={(e) => setNewContentType(e.target.value as any)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
+                <select value={newContentType} onChange={(e) => setNewContentType(e.target.value as any)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-purple-500 focus:outline-none">
                   <option value="PAGE">Page (rich text)</option>
                   <option value="VIDEO">Video</option>
                   <option value="DOCUMENT">Document</option>
@@ -1576,7 +1576,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
               {authorErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{authorErr}</div>}
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setShowAddContent(null)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-                <Button onClick={() => handleCreateContent(showAddContent)} disabled={createContentMut.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                <Button onClick={() => handleCreateContent(showAddContent)} disabled={createContentMut.isPending} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                   {createContentMut.isPending ? 'Creating…' : 'Create Content'}
                 </Button>
               </div>
@@ -1626,7 +1626,7 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
           <p className="mt-1 text-sm text-slate-500">{quizzes.length} {isTeacher ? 'total' : 'published'} quizzes · {isTeacher ? 'Manage your quiz library' : 'Test your knowledge'}</p>
         </div>
         {isTeacher && (
-          <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">
+          <Button onClick={() => setShowCreate(true)} className="bg-purple-600 text-white hover:bg-purple-700">
             <Plus className="mr-1.5 h-4 w-4" />Create Quiz
           </Button>
         )}
@@ -1800,7 +1800,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
               </div>
             </div>
             {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-            <Button onClick={handleCreate} disabled={createQuiz.isPending} className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
+            <Button onClick={handleCreate} disabled={createQuiz.isPending} className="w-full bg-purple-600 text-white hover:bg-purple-700">
               {createQuiz.isPending ? 'Creating…' : 'Create Quiz'}
             </Button>
           </div>
@@ -1816,7 +1816,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Existing Questions ({existingQuestions.length})</p>
                 {existingQuestions.map((q: any, idx: number) => (
                   <div key={q.id} className="group flex items-start gap-3 rounded-lg border border-slate-100 p-3">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">{idx + 1}</div>
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600">{idx + 1}</div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-slate-900">{q.questionText}</p>
                       <p className="text-xs text-slate-400">{q.type.replace(/_/g, ' ')} · {q.points} pt</p>
@@ -1842,7 +1842,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 </div>
                 <div>
                   <Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Text *</Label>
-                  <textarea value={qText} onChange={(e) => setQText(e.target.value)} rows={2} placeholder="Type the question..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  <textarea value={qText} onChange={(e) => setQText(e.target.value)} rows={2} placeholder="Type the question..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" />
                 </div>
                 {qType === 'MULTIPLE_CHOICE_SINGLE' && (
                   <div>
@@ -1873,7 +1873,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                   <Input type="number" min="1" max="100" value={qPoints} onChange={(e) => setQPoints(e.target.value)} className="w-24" />
                 </div>
                 {qError && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{qError}</div>}
-                <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
+                <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-purple-600 text-white hover:bg-purple-700">
                   {addQuestion.isPending ? 'Adding…' : 'Add Question'}
                 </Button>
               </div>
@@ -2008,7 +2008,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
         </div>
         <Card className="border border-slate-200 p-8 shadow-sm">
           <div className="flex flex-col items-center text-center">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50"><FileQuestion className="h-7 w-7 text-indigo-600" /></div>
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-purple-50"><FileQuestion className="h-7 w-7 text-purple-600" /></div>
             <h1 className="text-2xl font-bold text-slate-900">{quiz.title}</h1>
             {quiz.description && <p className="mt-2 max-w-md text-sm text-slate-500">{quiz.description}</p>}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
@@ -2025,7 +2025,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             )}
             {error && <div className="mt-4 w-full rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
             {!isTeacher && (
-              <Button onClick={handleStart} disabled={startAttempt.isPending || !matchingEnrollment} className="mt-6 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+              <Button onClick={handleStart} disabled={startAttempt.isPending || !matchingEnrollment} className="mt-6 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                 {startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}
               </Button>
             )}
@@ -2037,7 +2037,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
                 <h3 className="mb-3 text-sm font-semibold text-slate-900">Quiz Analytics</h3>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-lg border border-slate-100 p-3 text-center">
-                    <p className="text-2xl font-bold text-indigo-600">{(analyticsData as any)?.totalAttempts ?? 0}</p>
+                    <p className="text-2xl font-bold text-purple-600">{(analyticsData as any)?.totalAttempts ?? 0}</p>
                     <p className="text-xs text-slate-400">Total Attempts</p>
                   </div>
                   <div className="rounded-lg border border-slate-100 p-3 text-center">
@@ -2054,7 +2054,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Per-Question Breakdown</p>
                     {(analyticsData as any).questionStats.map((qs: any, i: number) => (
                       <div key={i} className="flex items-center gap-3 rounded-lg border border-slate-100 p-2.5">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">{i + 1}</div>
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600">{i + 1}</div>
                         <div className="flex-1 overflow-hidden">
                           <p className="truncate text-xs font-medium text-slate-700">{qs.questionText ?? qs.questionId}</p>
                         </div>
@@ -2117,15 +2117,22 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             </div>
             {/* Progress */}
             <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }} />
+              <div className="h-full rounded-full bg-purple-600 transition-all" style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }} />
             </div>
             <p className="mt-1.5 text-xs text-slate-400">Question {currentQ + 1} of {questions.length}</p>
           </Card>
 
           {/* Question Card */}
           <Card className="border border-slate-200 p-6 shadow-sm">
+            {/* Question content area — orange/amber background per reference */}
+            <div className="mb-6 flex aspect-[16/3] items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-100">
+              <div className="text-center">
+                <FileQuestion className="mx-auto h-12 w-12 text-amber-400" />
+                <p className="mt-2 text-sm text-amber-600">Question {currentQ + 1} of {questions.length}</p>
+              </div>
+            </div>
             <div className="mb-4">
-              <Badge className="mb-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-50">{currentQuestion.type.replace(/_/g, ' ')}</Badge>
+              <Badge className="mb-2 bg-purple-50 text-purple-600 hover:bg-purple-50">{currentQuestion.type.replace(/_/g, ' ')}</Badge>
               <h2 className="text-lg font-semibold text-slate-900">{currentQuestion.questionText}</h2>
             </div>
             <div className="space-y-2">
@@ -2139,16 +2146,16 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
                     key={idx}
                     onClick={() => setAnswers({ ...answers, [currentQuestion.id]: optValue })}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-lg border p-3.5 text-left text-sm transition-all',
+                      'flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition-all',
                       selected
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
+                        ? 'border-purple-500 bg-purple-50 text-purple-900'
                         : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50',
                     )}
                   >
                     <div className={cn(
-                      'flex h-5 w-5 items-center justify-center rounded-full border-2 text-xs font-bold',
+                      'flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors',
                       selected
-                        ? 'border-indigo-600 bg-indigo-600 text-white'
+                        ? 'border-purple-600 bg-purple-600 text-white'
                         : 'border-slate-300 text-slate-400',
                     )}>
                       {String.fromCharCode(65 + idx)}
@@ -2158,6 +2165,17 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
                 );
               })}
             </div>
+
+            {/* I'm not sure checkbox */}
+            <label className="mt-4 flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={answers[currentQuestion.id] === 'not_sure'}
+                onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.checked ? 'not_sure' : undefined })}
+                className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+              />
+              <span className="text-sm text-slate-500">I'm not sure</span>
+            </label>
 
             {/* Navigation */}
             <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
@@ -2171,12 +2189,12 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
                 Previous
               </Button>
               {currentQ === questions.length - 1 ? (
-                <Button onClick={() => setShowSubmit(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">
+                <Button onClick={() => setShowSubmit(true)} className="bg-amber-500 text-white hover:bg-amber-600">
                   Submit Quiz
                 </Button>
               ) : (
-                <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-indigo-600 text-white hover:bg-indigo-700">
-                  Next
+                <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-amber-500 text-white hover:bg-amber-600">
+                  Continue
                   <ChevronRight className="ml-1.5 h-4 w-4" />
                 </Button>
               )}
@@ -2188,8 +2206,16 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
         <div>
           <Card className="border border-slate-200 shadow-sm">
             <div className="border-b border-slate-200 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Questions</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Quiz Navigation</h3>
               <p className="mt-0.5 text-xs text-slate-400">{answered}/{questions.length} answered</p>
+            </div>
+            {/* Status filters */}
+            <div className="border-b border-slate-100 p-3">
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">All Questions</span>
+                <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-600">Answered</span>
+                <span className="rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-600">Not Sure</span>
+              </div>
             </div>
             <div className="grid grid-cols-5 gap-2 p-4">
               {questions.map((q, idx) => (
@@ -2199,10 +2225,12 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
                   className={cn(
                     'flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors',
                     idx === currentQ
-                      ? 'bg-indigo-600 text-white'
-                      : answers[q.id] !== undefined
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
+                      ? 'bg-purple-600 text-white'
+                      : answers[q.id] === 'not_sure'
+                        ? 'bg-amber-100 text-amber-700'
+                        : answers[q.id] !== undefined
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
                   )}
                 >
                   {idx + 1}
@@ -2211,11 +2239,12 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             </div>
             <div className="border-t border-slate-200 p-4">
               <div className="mb-3 space-y-1.5 text-xs">
-                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-indigo-600" /><span className="text-slate-500">Current</span></div>
+                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-purple-600" /><span className="text-slate-500">Current</span></div>
                 <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-emerald-100" /><span className="text-slate-500">Answered</span></div>
-                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-100" /><span className="text-slate-500">Not answered</span></div>
+                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-amber-100" /><span className="text-slate-500">Not Sure</span></div>
+                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-100" /><span className="text-slate-500">Not Answered</span></div>
               </div>
-              <Button onClick={() => setShowSubmit(true)} className="w-full bg-indigo-600 text-white hover:bg-indigo-700">
+              <Button onClick={() => setShowSubmit(true)} className="w-full bg-amber-500 text-white hover:bg-amber-600">
                 Submit Quiz
               </Button>
             </div>
@@ -2238,7 +2267,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowSubmit(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-              <Button onClick={handleSubmit} disabled={submitAttempt.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+              <Button onClick={handleSubmit} disabled={submitAttempt.isPending} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                 {submitAttempt.isPending ? 'Submitting…' : 'Finish!'}
               </Button>
             </div>
@@ -2315,7 +2344,7 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
             <p className="text-xs text-slate-400">Incorrect</p>
           </div>
           <div className="rounded-lg border border-slate-100 p-3 text-center">
-            <p className="text-2xl font-bold text-indigo-600">{accuracy}%</p>
+            <p className="text-2xl font-bold text-purple-600">{accuracy}%</p>
             <p className="text-xs text-slate-400">Accuracy</p>
           </div>
         </div>
@@ -2348,7 +2377,7 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
       {/* Actions */}
       <div className="mt-6 flex gap-3">
         <Button variant="outline" onClick={() => onNavigate('dashboard')} className="border-slate-200 text-slate-600">Back to Dashboard</Button>
-        <Button onClick={() => onNavigate('catalog')} className="bg-indigo-600 text-white hover:bg-indigo-700">Browse More Courses</Button>
+        <Button onClick={() => onNavigate('catalog')} className="bg-purple-600 text-white hover:bg-purple-700">Browse More Courses</Button>
       </div>
     </main>
   );
@@ -2514,7 +2543,7 @@ function PeerReviewPanel({ assignmentId }: { assignmentId: string }) {
                 <div className="mt-2 space-y-1.5">
                   {selectedReview.submission.content.files.map((f: any, i: number) => (
                     <a key={i} href={f.secure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 p-2 text-xs text-slate-700 hover:bg-slate-50">
-                      <File className="h-3.5 w-3.5 text-indigo-500" /><span className="flex-1 truncate">{f.original_filename}</span><Download className="h-3.5 w-3.5 text-slate-400" />
+                      <File className="h-3.5 w-3.5 text-purple-500" /><span className="flex-1 truncate">{f.original_filename}</span><Download className="h-3.5 w-3.5 text-slate-400" />
                     </a>
                   ))}
                 </div>
@@ -2661,9 +2690,9 @@ function TeacherGradingPanel({ assignmentId, assignment }: { assignmentId: strin
                   <button
                     key={s.id}
                     onClick={() => setSelectedSubmissionId(s.id)}
-                    className={cn('flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors', isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:bg-slate-50')}
+                    className={cn('flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors', isSelected ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:bg-slate-50')}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-600">
                       {getInitials(studentName)}
                     </div>
                     <div className="flex-1 overflow-hidden">
@@ -2708,8 +2737,8 @@ function TeacherGradingPanel({ assignmentId, assignment }: { assignmentId: strin
                       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Attached Files</p>
                       <div className="space-y-1.5">
                         {selectedSubmission.content.files.map((f: any, idx: number) => (
-                          <a key={idx} href={f.secure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 hover:border-indigo-300 hover:bg-slate-50">
-                            <File className="h-3.5 w-3.5 text-indigo-500" />
+                          <a key={idx} href={f.secure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 hover:border-purple-300 hover:bg-slate-50">
+                            <File className="h-3.5 w-3.5 text-purple-500" />
                             <span className="flex-1 truncate">{f.original_filename}</span>
                             <Download className="h-3.5 w-3.5 text-slate-400" />
                           </a>
@@ -2738,22 +2767,22 @@ function TeacherGradingPanel({ assignmentId, assignment }: { assignmentId: strin
                     </div>
                     <div>
                       <Label className="mb-1.5 block text-xs font-medium text-slate-600">Feedback (optional)</Label>
-                      <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3} placeholder="Provide feedback for the student..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                      <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3} placeholder="Provide feedback for the student..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" id="revision" checked={showRevisionBox} onChange={(e) => setShowRevisionBox(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+                      <input type="checkbox" id="revision" checked={showRevisionBox} onChange={(e) => setShowRevisionBox(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600" />
                       <Label htmlFor="revision" className="text-xs font-medium text-slate-600">Request revision (student must resubmit)</Label>
                     </div>
                     {showRevisionBox && (
                       <div>
                         <Label className="mb-1.5 block text-xs font-medium text-slate-600">Revision Comments</Label>
-                        <textarea value={revisionComments} onChange={(e) => setRevisionComments(e.target.value)} rows={2} placeholder="Explain what needs to be revised..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                        <textarea value={revisionComments} onChange={(e) => setRevisionComments(e.target.value)} rows={2} placeholder="Explain what needs to be revised..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" />
                       </div>
                     )}
                     {error && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{error}</div>}
                     {success && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700">{success}</div>}
                     <div className="flex gap-2">
-                      <Button onClick={handleGrade} disabled={gradeMut.isPending} className="bg-indigo-600 text-white hover:bg-indigo-700">
+                      <Button onClick={handleGrade} disabled={gradeMut.isPending} className="bg-purple-600 text-white hover:bg-purple-700">
                         {gradeMut.isPending ? 'Saving…' : 'Save Grade'}
                       </Button>
                       {showRevisionBox && (
@@ -2941,8 +2970,8 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
                 {latestSubmission.content?.files && latestSubmission.content.files.length > 0 && (
                   <div className="mt-2 space-y-1.5">
                     {latestSubmission.content.files.map((f: any, idx: number) => (
-                      <a key={idx} href={f.secure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 hover:border-indigo-300 hover:bg-slate-50">
-                        <File className="h-3.5 w-3.5 text-indigo-500" />
+                      <a key={idx} href={f.secure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 hover:border-purple-300 hover:bg-slate-50">
+                        <File className="h-3.5 w-3.5 text-purple-500" />
                         <span className="flex-1 truncate">{f.original_filename}</span>
                         <Download className="h-3.5 w-3.5 text-slate-400" />
                       </a>
@@ -2972,11 +3001,11 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
                 {assignment.requiresFileUpload && (
                   <div>
                     <Label className="mb-2 block text-sm font-medium text-slate-700">Upload File</Label>
-                    <label className={cn('flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed py-8', uploadingFile ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50')}>
+                    <label className={cn('flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed py-8', uploadingFile ? 'border-purple-300 bg-purple-50/50' : 'border-slate-200 hover:border-purple-300 hover:bg-slate-50')}>
                       {uploadingFile ? (
                         <>
-                          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
-                          <p className="text-sm font-medium text-indigo-600">Uploading to Cloudinary…</p>
+                          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-2 border-purple-200 border-t-purple-600" />
+                          <p className="text-sm font-medium text-purple-600">Uploading to Cloudinary…</p>
                         </>
                       ) : (
                         <>
@@ -2999,7 +3028,7 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
                               <p className="truncate text-sm font-medium text-slate-900">{f.original_filename}</p>
                               <p className="text-xs text-slate-500">{(f.size / 1024).toFixed(1)} KB · {f.format?.toUpperCase() ?? 'FILE'}</p>
                             </div>
-                            <a href={f.secure_url} target="_blank" rel="noopener noreferrer" className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600" title="View file">
+                            <a href={f.secure_url} target="_blank" rel="noopener noreferrer" className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-purple-600" title="View file">
                               <Download className="h-4 w-4" />
                             </a>
                             <button onClick={() => handleRemoveFile(f.public_id)} className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500" title="Remove file">
@@ -3019,11 +3048,11 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
                     onChange={(e) => setSubmissionText(e.target.value)}
                     rows={6}
                     placeholder="Type your submission or add comments for your instructor..."
-                    className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
                 </div>
                 {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-                <Button onClick={handleSubmit} disabled={createSubmission.isPending || uploadingFile || (!submissionText.trim() && uploadedFiles.length === 0)} className="w-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                <Button onClick={handleSubmit} disabled={createSubmission.isPending || uploadingFile || (!submissionText.trim() && uploadedFiles.length === 0)} className="w-full bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                   {createSubmission.isPending ? 'Submitting…' : latestSubmission ? 'Resubmit Assignment' : 'Submit Assignment'}
                 </Button>
               </div>
@@ -3134,7 +3163,7 @@ function DiscussionsView({ onNavigate, onSelectDiscussion }: { onNavigate: (v: V
           <h1 className="text-2xl font-bold text-slate-900">Discussions</h1>
           <p className="mt-1 text-sm text-slate-500">{threads.length} threads · UI Design Fundamentals</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">
+        <Button onClick={() => setShowCreate(true)} className="bg-purple-600 text-white hover:bg-purple-700">
           <Plus className="mr-1.5 h-4 w-4" />
           New Thread
         </Button>
@@ -3145,11 +3174,11 @@ function DiscussionsView({ onNavigate, onSelectDiscussion }: { onNavigate: (v: V
         {threads.map((thread) => (
           <Card key={thread.id} className="cursor-pointer border border-slate-200 p-4 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectDiscussion(thread.id)}>
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{thread.avatar}</div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-600">{thread.avatar}</div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  {thread.pinned && <Pin className="h-3.5 w-3.5 text-indigo-500" />}
-                  <h3 className="text-sm font-semibold text-slate-900 hover:text-indigo-600">{thread.title}</h3>
+                  {thread.pinned && <Pin className="h-3.5 w-3.5 text-purple-500" />}
+                  <h3 className="text-sm font-semibold text-slate-900 hover:text-purple-600">{thread.title}</h3>
                 </div>
                 <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
                   <span>{thread.author}</span>
@@ -3183,11 +3212,11 @@ function DiscussionsView({ onNavigate, onSelectDiscussion }: { onNavigate: (v: V
               </div>
               <div>
                 <Label className="mb-2 block text-sm font-medium text-slate-700">Content</Label>
-                <textarea value={newContent} onChange={(e) => setNewContent(e.target.value)} rows={5} placeholder="Share your thoughts..." className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                <textarea value={newContent} onChange={(e) => setNewContent(e.target.value)} rows={5} placeholder="Share your thoughts..." className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" />
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-                <Button onClick={handleCreate} disabled={!newTitle.trim()} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">Post Thread</Button>
+                <Button onClick={handleCreate} disabled={!newTitle.trim()} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">Post Thread</Button>
               </div>
             </div>
           </Card>
@@ -3252,16 +3281,16 @@ function DiscussionDetailView({ discussionId, onNavigate }: { discussionId: stri
       {/* Thread header */}
       <Card className="mb-6 border border-slate-200 p-6 shadow-sm">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-base font-semibold text-indigo-600">{getInitials(authorName)}</div>
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-purple-100 text-base font-semibold text-purple-600">{getInitials(authorName)}</div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              {discussion.pinned && <Pin className="h-4 w-4 text-indigo-500" />}
+              {discussion.pinned && <Pin className="h-4 w-4 text-purple-500" />}
               <h1 className="text-xl font-bold text-slate-900">{discussion.title}</h1>
             </div>
             <p className="mt-1 text-xs text-slate-400">By {authorName} · {timeAgo(discussion.createdAt)} · {discussion.views} views</p>
             <p className="mt-3 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{discussion.content}</p>
             <div className="mt-4 flex items-center gap-4">
-              <button onClick={() => upvoteDiscussion.mutate(discussionId)} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-600">
+              <button onClick={() => upvoteDiscussion.mutate(discussionId)} className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-purple-300 hover:text-purple-600">
                 <Star className="h-3.5 w-3.5" />{discussion.upvotes ?? 0} upvotes
               </button>
               <span className="text-xs text-slate-400">{replies.length} repl{replies.length !== 1 ? 'ies' : 'y'}</span>
@@ -3292,12 +3321,12 @@ function DiscussionDetailView({ discussionId, onNavigate }: { discussionId: stri
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-slate-900">{replyAuthor}</p>
-                    {reply.author?.role === 'TEACHER' && <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">Teacher</Badge>}
+                    {reply.author?.role === 'TEACHER' && <Badge className="bg-purple-50 text-purple-600 hover:bg-purple-50">Teacher</Badge>}
                     <span className="text-xs text-slate-400">· {timeAgo(reply.createdAt)}</span>
                   </div>
                   <p className="mt-1.5 text-sm text-slate-700 whitespace-pre-wrap">{reply.content}</p>
                   <div className="mt-2 flex items-center gap-3">
-                    <button className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600">
+                    <button className="flex items-center gap-1 text-xs text-slate-500 hover:text-purple-600">
                       <Star className="h-3 w-3" />{reply.upvotes ?? 0}
                     </button>
                     {canMarkBestAnswer && !reply.isBestAnswer && (
@@ -3321,11 +3350,11 @@ function DiscussionDetailView({ discussionId, onNavigate }: { discussionId: stri
           onChange={(e) => setReplyText(e.target.value)}
           rows={4}
           placeholder="Write your reply..."
-          className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
         />
         {error && <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{error}</div>}
         <div className="mt-3 flex justify-end">
-          <Button onClick={handleReply} disabled={createReply.isPending || !replyText.trim()} className="bg-indigo-600 text-white hover:bg-indigo-700">
+          <Button onClick={handleReply} disabled={createReply.isPending || !replyText.trim()} className="bg-purple-600 text-white hover:bg-purple-700">
             {createReply.isPending ? 'Posting…' : 'Post Reply'}
           </Button>
         </div>
@@ -3485,7 +3514,7 @@ function AnnouncementsView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <p className="mt-1 text-sm text-slate-500">{announcements.length} announcement{announcements.length !== 1 ? 's' : ''} · Stay up to date</p>
         </div>
         {canManage && (
-          <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">
+          <Button onClick={() => setShowCreate(true)} className="bg-purple-600 text-white hover:bg-purple-700">
             <Plus className="mr-1.5 h-4 w-4" />New Announcement
           </Button>
         )}
@@ -3505,7 +3534,7 @@ function AnnouncementsView({ onNavigate }: { onNavigate: (v: View) => void }) {
           const creator = a.creator ? `${a.creator.firstName} ${a.creator.lastName}` : 'Unknown';
           const isUnread = a.readReceipts === null || (Array.isArray(a.readReceipts) && !a.readReceipts.includes(authUser?.id));
           return (
-            <Card key={a.id} className={cn('border p-5 shadow-sm transition-all', isUnread ? 'border-indigo-200 bg-indigo-50/30' : 'border-slate-200')}>
+            <Card key={a.id} className={cn('border p-5 shadow-sm transition-all', isUnread ? 'border-purple-200 bg-purple-50/30' : 'border-slate-200')}>
               <div className="flex items-start gap-3">
                 <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', priorityColors[a.priority ?? 'NORMAL'] || priorityColors.NORMAL)}>
                   <Bell className="h-5 w-5" />
@@ -3515,7 +3544,7 @@ function AnnouncementsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-semibold text-slate-900">{a.title}</h3>
-                        {isUnread && <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">New</Badge>}
+                        {isUnread && <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">New</Badge>}
                         <Badge className={cn('hover:opacity-90', priorityColors[a.priority ?? 'NORMAL'] || priorityColors.NORMAL)}>{a.priority ?? 'NORMAL'}</Badge>
                       </div>
                       <p className="mt-0.5 text-xs text-slate-400">By {creator} · {timeAgo(a.createdAt)}</p>
@@ -3528,7 +3557,7 @@ function AnnouncementsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{a.content}</p>
                   {isUnread && (
-                    <button onClick={() => handleMarkRead(a.id)} className="mt-3 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                    <button onClick={() => handleMarkRead(a.id)} className="mt-3 text-xs font-medium text-purple-600 hover:text-purple-700">
                       Mark as read
                     </button>
                   )}
@@ -3559,21 +3588,21 @@ function AnnouncementsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   onChange={(e) => setNewContent(e.target.value)}
                   rows={5}
                   placeholder="Write your announcement..."
-                  className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
               </div>
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Priority</Label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const).map((p) => (
-                    <button key={p} type="button" onClick={() => setNewPriority(p)} className={cn('rounded-lg border py-2 text-xs font-medium transition-colors', p === newPriority ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{p}</button>
+                    <button key={p} type="button" onClick={() => setNewPriority(p)} className={cn('rounded-lg border py-2 text-xs font-medium transition-colors', p === newPriority ? 'border-purple-500 bg-purple-50 text-purple-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{p}</button>
                   ))}
                 </div>
               </div>
               {formErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{formErr}</div>}
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-                <Button onClick={handleCreate} disabled={createMut.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                <Button onClick={handleCreate} disabled={createMut.isPending} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                   {createMut.isPending ? 'Publishing…' : 'Publish'}
                 </Button>
               </div>
@@ -3591,7 +3620,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const stats = platformData?.stats;
 
   const platformStats = [
-    { label: 'Total Users', value: String(stats?.users?.total ?? 0), icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: `+${stats?.users?.newThisWeek ?? 0}` },
+    { label: 'Total Users', value: String(stats?.users?.total ?? 0), icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: `+${stats?.users?.newThisWeek ?? 0}` },
     { label: 'Active Courses', value: String(stats?.courses?.total ?? 0), icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: `+${stats?.courses?.published ?? 0}` },
     { label: 'Enrollments', value: String(stats?.enrollments?.total ?? 0), icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `+${stats?.enrollments?.newThisWeek ?? 0}` },
     { label: 'Certificates', value: String(stats?.engagement?.certificatesIssued ?? 0), icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
@@ -3638,7 +3667,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => downloadCSV('platform-stats.csv', platformStats.map((s: any) => ({ Label: s.label, Value: s.value, Trend: s.trend })), ['Label', 'Value', 'Trend'])} className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export</Button>
-          <Button onClick={() => onNavigate('users')} className="bg-indigo-600 text-white hover:bg-indigo-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
+          <Button onClick={() => onNavigate('users')} className="bg-purple-600 text-white hover:bg-purple-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
         </div>
       </div>
 
@@ -3695,7 +3724,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <Card className="border border-slate-200 p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900">Top Performing Courses</h2>
-              <Button variant="ghost" size="sm" onClick={() => onNavigate('catalog')} className="text-indigo-600 hover:bg-indigo-50">View all</Button>
+              <Button variant="ghost" size="sm" onClick={() => onNavigate('catalog')} className="text-purple-600 hover:bg-purple-50">View all</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -3716,7 +3745,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
                       <td className="py-3 text-right">
                         <div className="ml-auto flex w-20 items-center gap-2">
                           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                            <div className="h-full rounded-full bg-indigo-600" style={{ width: `${course.completion}%` }} />
+                            <div className="h-full rounded-full bg-purple-600" style={{ width: `${course.completion}%` }} />
                           </div>
                           <span className="text-xs text-slate-500">{course.completion}%</span>
                         </div>
@@ -3764,12 +3793,12 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
             <h2 className="mb-3 text-base font-semibold text-slate-900">Quick Actions</h2>
             <div className="space-y-2">
               {[
-                { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-indigo-600 bg-indigo-50' },
+                { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-purple-600 bg-purple-50' },
                 { label: 'Create Course', icon: Plus, view: 'course-create' as View, color: 'text-emerald-600 bg-emerald-50' },
                 { label: 'View Reports', icon: BarChart3, view: 'admin' as View, color: 'text-amber-600 bg-amber-50' },
                 { label: 'Gamification', icon: Trophy, view: 'gamification' as View, color: 'text-purple-600 bg-purple-50' },
               ].map((action) => (
-                <button key={action.label} onClick={() => onNavigate(action.view)} className="flex w-full items-center gap-3 rounded-lg border border-slate-100 p-3 text-sm font-medium text-slate-700 transition-all hover:border-indigo-200 hover:bg-slate-50">
+                <button key={action.label} onClick={() => onNavigate(action.view)} className="flex w-full items-center gap-3 rounded-lg border border-slate-100 p-3 text-sm font-medium text-slate-700 transition-all hover:border-purple-200 hover:bg-slate-50">
                   <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', action.color)}>
                     <action.icon className="h-4 w-4" />
                   </div>
@@ -3823,7 +3852,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   const roleColors: Record<string, string> = {
     ADMIN: 'bg-red-50 text-red-600',
-    TEACHER: 'bg-indigo-50 text-indigo-600',
+    TEACHER: 'bg-purple-50 text-purple-600',
     STUDENT: 'bg-emerald-50 text-emerald-600',
   };
 
@@ -3904,7 +3933,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => downloadCSV('users.csv', apiUsers.map((u: any) => ({ Name: u.name, Email: u.email, Role: u.role, Status: u.status, Joined: u.joined })), ['Name', 'Email', 'Role', 'Status', 'Joined'])} className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export CSV</Button>
-          <Button onClick={openCreate} className="bg-indigo-600 text-white hover:bg-indigo-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
+          <Button onClick={openCreate} className="bg-purple-600 text-white hover:bg-purple-700"><UserPlus className="mr-1.5 h-4 w-4" />Add User</Button>
         </div>
       </div>
 
@@ -3917,7 +3946,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
           </div>
           <div className="flex gap-1">
             {['All', 'ADMIN', 'TEACHER', 'STUDENT'].map((role) => (
-              <button key={role} onClick={() => setRoleFilter(role)} className={cn('rounded-lg px-3 py-2 text-xs font-medium transition-colors', roleFilter === role ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
+              <button key={role} onClick={() => setRoleFilter(role)} className={cn('rounded-lg px-3 py-2 text-xs font-medium transition-colors', roleFilter === role ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
                 {role === 'All' ? 'All Roles' : role}
               </button>
             ))}
@@ -3944,7 +3973,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">{user.avatar}</div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-600">{user.avatar}</div>
                       <div>
                         <p className="font-medium text-slate-900">{user.name}</p>
                         <p className="text-xs text-slate-400">{user.email}</p>
@@ -3957,14 +3986,14 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   <td className="px-4 py-3">
                     <button onClick={() => handleToggleActive(user)} title="Toggle active status" className="flex items-center gap-1.5">
                       <div className={cn('h-2 w-2 rounded-full', user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300')} />
-                      <span className="text-xs text-slate-600 hover:text-indigo-600">{user.status}</span>
+                      <span className="text-xs text-slate-600 hover:text-purple-600">{user.status}</span>
                     </button>
                   </td>
                   <td className="px-4 py-3 text-center text-slate-600">{user.courses}</td>
                   <td className="px-4 py-3 text-xs text-slate-500">{user.joined}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => openEdit(user)} title="Edit user" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => openEdit(user)} title="Edit user" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-purple-600"><Edit className="h-4 w-4" /></button>
                       <button onClick={() => setDeletingUser(user)} title="Delete user" className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
@@ -4003,7 +4032,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Role</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['STUDENT', 'TEACHER', 'ADMIN'] as const).map((role) => (
-                    <button key={role} type="button" onClick={() => setFormRole(role)} className={cn('rounded-lg border py-2 text-xs font-medium transition-colors', role === formRole ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{role}</button>
+                    <button key={role} type="button" onClick={() => setFormRole(role)} className={cn('rounded-lg border py-2 text-xs font-medium transition-colors', role === formRole ? 'border-purple-500 bg-purple-50 text-purple-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{role}</button>
                   ))}
                 </div>
               </div>
@@ -4017,7 +4046,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
               {formErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{formErr}</div>}
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-                <Button onClick={handleSubmit} disabled={createUser.isPending || updateUser.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                <Button onClick={handleSubmit} disabled={createUser.isPending || updateUser.isPending} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                   {(createUser.isPending || updateUser.isPending) ? 'Saving…' : editingUser ? 'Save Changes' : 'Create User'}
                 </Button>
               </div>
@@ -4066,7 +4095,7 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const earnedBadges = (badgesData?.badges ?? []) as any[];
   const badges = [
     { id: 1, name: 'Quick Learner', icon: Zap, color: 'bg-amber-100 text-amber-600', earned: true, date: '2 days ago' },
-    { id: 2, name: 'Quiz Master', icon: FileQuestion, color: 'bg-indigo-100 text-indigo-600', earned: true, date: '1 week ago' },
+    { id: 2, name: 'Quiz Master', icon: FileQuestion, color: 'bg-purple-100 text-purple-600', earned: true, date: '1 week ago' },
     { id: 3, name: 'Perfect Score', icon: Star, color: 'bg-purple-100 text-purple-600', earned: true, date: '3 days ago' },
     { id: 4, name: 'Course Completer', icon: CheckCircle2, color: 'bg-emerald-100 text-emerald-600', earned: true, date: '2 weeks ago' },
     { id: 5, name: 'Discussion Pro', icon: MessageSquare, color: 'bg-blue-100 text-blue-600', earned: false, date: '' },
@@ -4117,20 +4146,20 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
       </div>
 
       {/* XP + Level Card */}
-      <Card className="mb-6 overflow-hidden border border-indigo-100 bg-gradient-to-br from-indigo-600 to-indigo-500 p-6 shadow-sm">
+      <Card className="mb-6 overflow-hidden border border-purple-100 bg-gradient-to-br from-purple-600 to-purple-500 p-6 shadow-sm">
         <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
               <Trophy className="h-8 w-8 text-amber-300" />
             </div>
             <div>
-              <p className="text-sm text-indigo-100">Your Level</p>
+              <p className="text-sm text-purple-100">Your Level</p>
               <p className="text-3xl font-bold text-white">Level {currentLevel}</p>
-              <p className="text-xs text-indigo-200">{totalXP.toLocaleString()} XP · {level?.nextLevelXP ? `${level.nextLevelXP - level.currentLevelXP} XP to Level ${currentLevel + 1}` : ''}</p>
+              <p className="text-xs text-purple-200">{totalXP.toLocaleString()} XP · {level?.nextLevelXP ? `${level.nextLevelXP - level.currentLevelXP} XP to Level ${currentLevel + 1}` : ''}</p>
             </div>
           </div>
           <div className="sm:w-64">
-            <div className="mb-1.5 flex items-center justify-between text-xs text-indigo-100">
+            <div className="mb-1.5 flex items-center justify-between text-xs text-purple-100">
               <span>Level {currentLevel}</span>
               <span>{Math.round(progressPct)}% to Level {currentLevel + 1}</span>
             </div>
@@ -4177,12 +4206,12 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <h2 className="text-base font-semibold text-slate-900">Certificates</h2>
                 <p className="text-sm text-slate-500">{certificates.length} certificates earned</p>
               </div>
-              <Award className="h-5 w-5 text-indigo-500" />
+              <Award className="h-5 w-5 text-purple-500" />
             </div>
             <div className="space-y-3">
               {certList.map((cert) => (
-                <div key={cert.id} className="flex items-center gap-4 rounded-lg border border-slate-200 p-4 hover:border-indigo-200 hover:shadow-sm">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500">
+                <div key={cert.id} className="flex items-center gap-4 rounded-lg border border-slate-200 p-4 hover:border-purple-200 hover:shadow-sm">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-500">
                     <BadgeCheck className="h-6 w-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -4196,7 +4225,7 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
                         <Button variant="outline" size="sm" className="border-slate-200 text-slate-600"><Download className="mr-1 h-3.5 w-3.5" />PDF</Button>
                       </a>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => onNavigate('verify-certificate')} className="text-indigo-600 hover:bg-indigo-50">Verify</Button>
+                    <Button variant="ghost" size="sm" onClick={() => onNavigate('verify-certificate')} className="text-purple-600 hover:bg-purple-50">Verify</Button>
                   </div>
                 </div>
               ))}
@@ -4233,21 +4262,21 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <Card className="border border-slate-200 p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-900">Leaderboard</h2>
-              <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">This Week</Badge>
+              <Badge className="bg-purple-50 text-purple-600 hover:bg-purple-50">This Week</Badge>
             </div>
             <div className="space-y-1">
               {liveLeaderboard.map((learner) => (
-                <div key={learner.rank} className={cn('flex items-center gap-3 rounded-lg px-2 py-2', learner.name === 'Ricky Fajrin' ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
+                <div key={learner.rank} className={cn('flex items-center gap-3 rounded-lg px-2 py-2', learner.name === 'Ricky Fajrin' ? 'bg-purple-50' : 'hover:bg-slate-50')}>
                   <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-amber-100 text-amber-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>
                     {learner.rank}
                   </div>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">{learner.avatar}</div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-600">{learner.avatar}</div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-900">{learner.name}</p>
                     <p className="text-[10px] text-slate-400">Level {learner.level} · {learner.courses} courses</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-indigo-600">{learner.xp.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-purple-600">{learner.xp.toLocaleString()}</p>
                     <p className="text-[10px] text-slate-400">XP</p>
                   </div>
                 </div>
@@ -4281,7 +4310,7 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   const contentTypes = [
     { type: 'Page', icon: File, color: 'bg-blue-50 text-blue-600', desc: 'Rich text content with images, videos, and embeds' },
-    { type: 'Video', icon: Video, color: 'bg-indigo-50 text-indigo-600', desc: 'Upload or embed video content' },
+    { type: 'Video', icon: Video, color: 'bg-purple-50 text-purple-600', desc: 'Upload or embed video content' },
     { type: 'Quiz', icon: FileQuestion, color: 'bg-emerald-50 text-emerald-600', desc: 'Create quizzes with multiple question types' },
     { type: 'Assignment', icon: FileText, color: 'bg-amber-50 text-amber-600', desc: 'File upload or text-based assignments' },
     { type: 'Document', icon: File, color: 'bg-purple-50 text-purple-600', desc: 'Upload PDF, DOCX, or other documents' },
@@ -4326,7 +4355,7 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
             </p>
             <div className="mt-6 flex gap-3">
               <Button variant="outline" onClick={() => onNavigate('catalog')} className="border-slate-200 text-slate-600">Browse Catalog</Button>
-              <Button onClick={() => onNavigate('dashboard')} className="bg-indigo-600 text-white hover:bg-indigo-700">Back to Dashboard</Button>
+              <Button onClick={() => onNavigate('dashboard')} className="bg-purple-600 text-white hover:bg-purple-700">Back to Dashboard</Button>
             </div>
           </div>
         </Card>
@@ -4349,12 +4378,12 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
         {steps.map((s, idx) => (
           <div key={s.num} className="flex items-center">
             <div className="flex flex-col items-center">
-              <div className={cn('flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors', step >= s.num ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400')}>
+              <div className={cn('flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors', step >= s.num ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-400')}>
                 {step > s.num ? <Check className="h-4 w-4" /> : s.num}
               </div>
               <span className={cn('mt-1.5 text-xs font-medium', step >= s.num ? 'text-slate-900' : 'text-slate-400')}>{s.label}</span>
             </div>
-            {idx < steps.length - 1 && <div className={cn('mx-2 h-0.5 w-12 sm:w-24', step > s.num ? 'bg-indigo-600' : 'bg-slate-200')} />}
+            {idx < steps.length - 1 && <div className={cn('mx-2 h-0.5 w-12 sm:w-24', step > s.num ? 'bg-purple-600' : 'bg-slate-200')} />}
           </div>
         ))}
       </div>
@@ -4370,25 +4399,25 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
             </div>
             <div>
               <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description *</Label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Brief description of what students will learn..." className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Brief description of what students will learn..." className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Category</Label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-purple-500 focus:outline-none">
                   <option>Design</option><option>Programming</option><option>Business</option><option>Data Science</option><option>Marketing</option><option>General</option>
                 </select>
               </div>
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Difficulty</Label>
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED')} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none">
+                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED')} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-purple-500 focus:outline-none">
                   <option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option>
                 </select>
               </div>
             </div>
             <div>
               <Label className="mb-1.5 block text-sm font-medium text-slate-700">Thumbnail</Label>
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-6 hover:border-indigo-300 hover:bg-slate-50">
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-6 hover:border-purple-300 hover:bg-slate-50">
                 <Image className="mb-2 h-8 w-8 text-slate-400" />
                 <p className="text-sm text-slate-500">Upload thumbnail image</p>
                 <p className="mt-1 text-xs text-slate-400">PNG, JPG up to 5MB · 16:9 recommended</p>
@@ -4399,7 +4428,7 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
           </div>
           <div className="mt-6 flex justify-end gap-3">
             <Button variant="outline" onClick={() => onNavigate('dashboard')} className="border-slate-200 text-slate-600">Cancel</Button>
-            <Button onClick={() => setStep(2)} disabled={!title || !description} className="bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">Next: Add Content<ChevronRight className="ml-1.5 h-4 w-4" /></Button>
+            <Button onClick={() => setStep(2)} disabled={!title || !description} className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">Next: Add Content<ChevronRight className="ml-1.5 h-4 w-4" /></Button>
           </div>
         </Card>
       )}
@@ -4430,7 +4459,7 @@ function CourseCreateView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
           <div className="mt-6 flex justify-between gap-3">
             <Button variant="outline" onClick={() => setStep(1)} className="border-slate-200 text-slate-600"><ArrowLeft className="mr-1.5 h-4 w-4" />Back</Button>
-            <Button onClick={() => setStep(3)} className="bg-indigo-600 text-white hover:bg-indigo-700">Next: Review & Publish<ChevronRight className="ml-1.5 h-4 w-4" /></Button>
+            <Button onClick={() => setStep(3)} className="bg-purple-600 text-white hover:bg-purple-700">Next: Review & Publish<ChevronRight className="ml-1.5 h-4 w-4" /></Button>
           </div>
         </Card>
       )}
@@ -4564,7 +4593,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="sm:col-span-1">
           <Card className="border border-slate-200 p-2 shadow-sm">
             {tabs.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors', activeTab === tab.id ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100')}>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn('flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors', activeTab === tab.id ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100')}>
                 <tab.icon className="h-4 w-4" />
                 {tab.label}
               </button>
@@ -4591,7 +4620,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     <p className="text-sm font-medium text-slate-900">Allow Self-Registration</p>
                     <p className="text-xs text-slate-500">Allow new users to create accounts</p>
                   </div>
-                  <button onClick={() => setAllowReg(!allowReg)} className={cn('relative h-6 w-11 rounded-full transition-colors', allowReg ? 'bg-indigo-600' : 'bg-slate-300')}>
+                  <button onClick={() => setAllowReg(!allowReg)} className={cn('relative h-6 w-11 rounded-full transition-colors', allowReg ? 'bg-purple-600' : 'bg-slate-300')}>
                     <div className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', allowReg ? 'translate-x-5' : 'translate-x-0.5')} />
                   </button>
                 </div>
@@ -4602,7 +4631,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{saveStatus.msg}</div>
                 )}
                 <div className="flex justify-end">
-                  <Button onClick={handleSaveGeneral} disabled={batchUpdate.isPending} className="bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  <Button onClick={handleSaveGeneral} disabled={batchUpdate.isPending} className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                     {batchUpdate.isPending ? 'Saving…' : 'Save Changes'}
                   </Button>
                 </div>
@@ -4616,7 +4645,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
               <div className="space-y-2">
                 {emailTemplates.map((tpl) => (
                   <div key={tpl.type} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50"><Mail className="h-4 w-4 text-indigo-600" /></div>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50"><Mail className="h-4 w-4 text-purple-600" /></div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-slate-900">{tpl.type.replace(/_/g, ' ')}</p>
                       <p className="text-xs text-slate-400">{tpl.subject}</p>
@@ -4638,7 +4667,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                           alert('Failed to load template: ' + (err.response?.data?.message || err.message));
                         }
                       });
-                    }} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Edit className="h-4 w-4" /></button>
+                    }} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-purple-600"><Edit className="h-4 w-4" /></button>
                   </div>
                 ))}
               </div>
@@ -4658,7 +4687,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                       alert('Grading scale created!');
                     } catch (err: any) { alert('Failed: ' + (err.response?.data?.message || err.message)); }
                   });
-                }} className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Scale</Button>
+                }} className="bg-purple-600 text-white hover:bg-purple-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Scale</Button>
               </div>
               <div className="space-y-3">
                 {gradingScales.map((scale) => (
@@ -4666,7 +4695,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-slate-900">{scale.name}</p>
-                        {scale.isDefault && <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">Default</Badge>}
+                        {scale.isDefault && <Badge className="bg-purple-50 text-purple-600 hover:bg-purple-50">Default</Badge>}
                       </div>
                       <Badge className="bg-slate-100 text-slate-500">{scale.type}</Badge>
                     </div>
@@ -4694,7 +4723,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                       alert('Academic year created!');
                     } catch (err: any) { alert('Failed: ' + (err.response?.data?.message || err.message)); }
                   });
-                }} className="bg-indigo-600 text-white hover:bg-indigo-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Year</Button>
+                }} className="bg-purple-600 text-white hover:bg-purple-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Year</Button>
               </div>
               <div className="space-y-2">
                 {academicYears.map((year) => (
@@ -4728,7 +4757,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </div>
                 <div>
                   <Label className="mb-1.5 block text-sm font-medium text-slate-700">Maintenance Message</Label>
-                  <textarea value={maintMsg} onChange={(e) => setMaintMsg(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  <textarea value={maintMsg} onChange={(e) => setMaintMsg(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" />
                 </div>
                 <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
                   <div className="flex items-center gap-2">
@@ -4743,7 +4772,7 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     } else {
                       disableMaintenance.mutate();
                     }
-                  }} disabled={enableMaintenance.isPending || disableMaintenance.isPending} className="bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                  }} disabled={enableMaintenance.isPending || disableMaintenance.isPending} className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                     {enableMaintenance.isPending || disableMaintenance.isPending ? 'Saving…' : 'Save Settings'}
                   </Button>
                 </div>
@@ -4837,7 +4866,7 @@ function NotificationPreferencesTab() {
                 <td className="py-3 px-3 text-center">
                   <button
                     onClick={() => handleToggle(nt.type, 'IN_APP', !isEnabled(nt.type, 'IN_APP'))}
-                    className={cn('relative h-6 w-11 rounded-full transition-colors', isEnabled(nt.type, 'IN_APP') ? 'bg-indigo-600' : 'bg-slate-300')}
+                    className={cn('relative h-6 w-11 rounded-full transition-colors', isEnabled(nt.type, 'IN_APP') ? 'bg-purple-600' : 'bg-slate-300')}
                   >
                     <div className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', isEnabled(nt.type, 'IN_APP') ? 'translate-x-5' : 'translate-x-0.5')} />
                   </button>
@@ -4845,7 +4874,7 @@ function NotificationPreferencesTab() {
                 <td className="py-3 px-3 text-center">
                   <button
                     onClick={() => handleToggle(nt.type, 'EMAIL', !isEnabled(nt.type, 'EMAIL'))}
-                    className={cn('relative h-6 w-11 rounded-full transition-colors', isEnabled(nt.type, 'EMAIL') ? 'bg-indigo-600' : 'bg-slate-300')}
+                    className={cn('relative h-6 w-11 rounded-full transition-colors', isEnabled(nt.type, 'EMAIL') ? 'bg-purple-600' : 'bg-slate-300')}
                   >
                     <div className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', isEnabled(nt.type, 'EMAIL') ? 'translate-x-5' : 'translate-x-0.5')} />
                   </button>
@@ -5002,9 +5031,9 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
         </div>
         <div className="flex-1 overflow-y-auto">
           {allConversations.map((conv) => (
-            <button key={conv.id} onClick={() => setActiveChat(conv.id)} className={cn('flex w-full items-start gap-3 border-b border-slate-100 p-4 text-left transition-colors', activeChatId === conv.id ? 'bg-indigo-50' : 'hover:bg-slate-50')}>
+            <button key={conv.id} onClick={() => setActiveChat(conv.id)} className={cn('flex w-full items-start gap-3 border-b border-slate-100 p-4 text-left transition-colors', activeChatId === conv.id ? 'bg-purple-50' : 'hover:bg-slate-50')}>
               <div className="relative">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{conv.avatar}</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-600">{conv.avatar}</div>
                 {conv.online && <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}
               </div>
               <div className="flex-1 overflow-hidden">
@@ -5015,7 +5044,7 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <p className="text-[10px] text-slate-400">{conv.role}</p>
                 <div className="mt-0.5 flex items-center justify-between">
                   <p className="truncate text-xs text-slate-500">{conv.lastMsg}</p>
-                  {conv.unread > 0 && <span className="ml-1 flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white">{conv.unread}</span>}
+                  {conv.unread > 0 && <span className="ml-1 flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-purple-600 px-1 text-[10px] font-bold text-white">{conv.unread}</span>}
                 </div>
               </div>
             </button>
@@ -5029,7 +5058,7 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <button onClick={() => onNavigate('dashboard')} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 md:hidden"><ArrowLeft className="h-5 w-5" /></button>
           <div className="relative">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-600">{activeConv?.avatar}</div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-600">{activeConv?.avatar}</div>
             {activeConv?.online && <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />}
           </div>
           <div className="flex-1">
@@ -5044,9 +5073,9 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <div className="mx-auto max-w-2xl space-y-3">
             {allMessages.map((msg) => (
               <div key={msg.id} className={cn('flex', msg.isMe ? 'justify-end' : 'justify-start')}>
-                <div className={cn('max-w-[75%] rounded-2xl px-4 py-2.5 text-sm', msg.isMe ? 'rounded-br-md bg-indigo-600 text-white' : 'rounded-bl-md bg-white text-slate-700 border border-slate-200')}>
+                <div className={cn('max-w-[75%] rounded-2xl px-4 py-2.5 text-sm', msg.isMe ? 'rounded-br-md bg-purple-600 text-white' : 'rounded-bl-md bg-white text-slate-700 border border-slate-200')}>
                   <p>{msg.text}</p>
-                  <p className={cn('mt-1 text-[10px]', msg.isMe ? 'text-indigo-200' : 'text-slate-400')}>{msg.time}</p>
+                  <p className={cn('mt-1 text-[10px]', msg.isMe ? 'text-purple-200' : 'text-slate-400')}>{msg.time}</p>
                 </div>
               </div>
             ))}
@@ -5073,9 +5102,9 @@ function MessagesView({ onNavigate }: { onNavigate: (v: View) => void }) {
               onChange={handleType}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Type a message..."
-              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
-            <button onClick={handleSend} disabled={!message.trim()} className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white transition-colors hover:bg-indigo-700 disabled:opacity-50">
+            <button onClick={handleSend} disabled={!message.trim()} className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-600 text-white transition-colors hover:bg-purple-700 disabled:opacity-50">
               <Sparkles className="h-4 w-4" />
             </button>
           </div>
@@ -5167,13 +5196,13 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const achievements = [
     { icon: Trophy, label: `Level ${currentLevel}`, sublabel: `${totalXP.toLocaleString()} XP`, color: 'bg-amber-50 text-amber-600' },
     { icon: Flame, label: '12-day streak', sublabel: 'Longest: 21 days', color: 'bg-orange-50 text-orange-600' },
-    { icon: BookOpen, label: `${studentData?.stats?.totalEnrollments ?? 0} courses`, sublabel: `${studentData?.stats?.active ?? 0} in progress`, color: 'bg-indigo-50 text-indigo-600' },
+    { icon: BookOpen, label: `${studentData?.stats?.totalEnrollments ?? 0} courses`, sublabel: `${studentData?.stats?.active ?? 0} in progress`, color: 'bg-purple-50 text-purple-600' },
     { icon: Award, label: '2 certificates', sublabel: 'This year', color: 'bg-emerald-50 text-emerald-600' },
   ];
 
   const activity = [
     { type: 'quiz', title: 'Scored 92% on Design Principles Quiz', time: '2 hours ago', icon: FileQuestion, color: 'text-emerald-600' },
-    { type: 'lesson', title: 'Completed: Introduction to Generics', time: '5 hours ago', icon: CheckCircle2, color: 'text-indigo-600' },
+    { type: 'lesson', title: 'Completed: Introduction to Generics', time: '5 hours ago', icon: CheckCircle2, color: 'text-purple-600' },
     { type: 'badge', title: 'Earned Badge: Quick Learner (+50 XP)', time: '1 day ago', icon: Zap, color: 'text-amber-600' },
     { type: 'assignment', title: 'Submitted: User Research Report', time: '2 days ago', icon: FileText, color: 'text-blue-600' },
     { type: 'certificate', title: 'Earned Certificate: UI Design Fundamentals', time: '3 days ago', icon: Award, color: 'text-purple-600' },
@@ -5196,16 +5225,16 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {/* Profile Header */}
       <Card className="mb-6 overflow-hidden border border-slate-200 shadow-sm">
-        <div className="h-28 bg-gradient-to-r from-indigo-600 to-purple-500" />
+        <div className="h-28 bg-gradient-to-r from-purple-600 to-purple-500" />
         <div className="px-6 pb-6">
           <div className="-mt-12 flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end gap-4">
-              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-indigo-100 text-2xl font-bold text-indigo-600 shadow-lg">{initials}</div>
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-purple-100 text-2xl font-bold text-purple-600 shadow-lg">{initials}</div>
               <div className="pb-2">
                 <h1 className="text-xl font-bold text-slate-900">{fullName}</h1>
                 <p className="text-sm capitalize text-slate-500">{roleLabel} · Joined {joinedDate}</p>
                 <div className="mt-1 flex items-center gap-2">
-                  <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50"><Trophy className="mr-1 h-3 w-3" />Level {currentLevel}</Badge>
+                  <Badge className="bg-purple-50 text-purple-600 hover:bg-purple-50"><Trophy className="mr-1 h-3 w-3" />Level {currentLevel}</Badge>
                   <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50"><Flame className="mr-1 h-3 w-3" />12-day streak</Badge>
                 </div>
               </div>
@@ -5234,7 +5263,7 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
       {/* Tabs */}
       <div className="mb-4 flex gap-1 border-b border-slate-200">
         {tabs.map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn('border-b-2 px-4 py-2.5 text-sm font-medium transition-colors', activeTab === tab.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700')}>{tab.label}</button>
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn('border-b-2 px-4 py-2.5 text-sm font-medium transition-colors', activeTab === tab.id ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700')}>{tab.label}</button>
         ))}
       </div>
 
@@ -5280,7 +5309,7 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </div>
                 <div className="ml-4 w-32">
                   <div className="mb-1 flex items-center justify-between text-xs"><span className="text-slate-400">Progress</span><span className="font-semibold text-slate-700">{course.progress}%</span></div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600" style={{ width: `${course.progress}%` }} /></div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-purple-600" style={{ width: `${course.progress}%` }} /></div>
                 </div>
               </div>
             </Card>
@@ -5310,7 +5339,7 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { name: 'Quick Learner', icon: Zap, color: 'bg-amber-50 text-amber-600', earned: true },
-            { name: 'Quiz Master', icon: FileQuestion, color: 'bg-indigo-50 text-indigo-600', earned: true },
+            { name: 'Quiz Master', icon: FileQuestion, color: 'bg-purple-50 text-purple-600', earned: true },
             { name: 'Perfect Score', icon: Star, color: 'bg-purple-50 text-purple-600', earned: true },
             { name: 'Course Completer', icon: CheckCircle2, color: 'bg-emerald-50 text-emerald-600', earned: true },
             { name: '7-Day Streak', icon: Flame, color: 'bg-orange-50 text-orange-600', earned: true },
@@ -5355,13 +5384,13 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   onChange={(e) => setEditBio(e.target.value)}
                   rows={4}
                   placeholder="Tell us about yourself..."
-                  className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
               </div>
               {editErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{editErr}</div>}
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setShowEdit(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-                <Button onClick={handleSaveProfile} disabled={updateProfile.isPending} className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                <Button onClick={handleSaveProfile} disabled={updateProfile.isPending} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
                   {updateProfile.isPending ? 'Saving…' : 'Save Changes'}
                 </Button>
               </div>
@@ -5414,7 +5443,7 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
                     );
                   }}
                   disabled={changePasswordMut.isPending}
-                  className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
                 >
                   {changePasswordMut.isPending ? 'Changing…' : 'Change Password'}
                 </Button>
