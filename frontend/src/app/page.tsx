@@ -14,8 +14,9 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useStudentDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
+import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -761,6 +762,104 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
   );
 }
 
+// ─── Page Content Editor (rich text for PAGE-type content) ───────────────
+function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: string; contentId: string; canAuthor: boolean }) {
+  const { data: courseData } = useCourse(courseId || null);
+  const updateContent = useUpdateContent(courseId || null);
+  const [markdown, setMarkdown] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'idle' | 'success' | 'error'; msg?: string }>({ type: 'idle' });
+
+  // Find the content in the course data
+  const apiModules = (courseData as any)?.course?.modules ?? (courseData as any)?.modules ?? [];
+  const allContents = apiModules.flatMap((m: any) => m.contents ?? []);
+  const content = allContents.find((c: any) => c.id === contentId);
+
+  // Load markdown from contentJson when content changes
+  useEffect(() => {
+    if (content?.contentJson) {
+      const cj = content.contentJson as any;
+      if (typeof cj === 'string') {
+        setMarkdown(cj);
+      } else if (cj?.type === 'markdown' && typeof cj.content === 'string') {
+        setMarkdown(cj.content);
+      } else {
+        setMarkdown('');
+      }
+    } else {
+      setMarkdown('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentId, content?.contentJson]);
+
+  const handleSave = () => {
+    setSaveStatus({ type: 'idle' });
+    updateContent.mutate(
+      {
+        contentId,
+        data: { contentJson: { type: 'markdown', content: markdown, updatedAt: new Date().toISOString() } },
+      },
+      {
+        onSuccess: () => {
+          setSaveStatus({ type: 'success', msg: 'Content saved.' });
+          setIsEditing(false);
+          setTimeout(() => setSaveStatus({ type: 'idle' }), 3000);
+        },
+        onError: (err: any) => setSaveStatus({ type: 'error', msg: err.response?.data?.message || 'Failed to save.' }),
+      },
+    );
+  };
+
+  if (!content) {
+    return <p className="text-sm text-slate-400">Content not found.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">{content.title}</h3>
+          <p className="text-xs text-slate-400">Page content · {markdown.length} characters</p>
+        </div>
+        {canAuthor && !isEditing && (
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="border-slate-200 text-slate-600">
+            <Edit className="mr-1.5 h-3.5 w-3.5" />Edit Content
+          </Button>
+        )}
+      </div>
+
+      {saveStatus.type === 'success' && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700">{saveStatus.msg}</div>
+      )}
+      {saveStatus.type === 'error' && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{saveStatus.msg}</div>
+      )}
+
+      {canAuthor && isEditing ? (
+        <div className="space-y-3">
+          <RichTextEditor value={markdown} onChange={setMarkdown} placeholder="Write your lesson content here. Supports markdown: **bold**, *italic*, # headings, - lists, > quotes, [links](url)..." />
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setIsEditing(false); setSaveStatus({ type: 'idle' }); }} className="border-slate-200 text-slate-600">Cancel</Button>
+            <Button onClick={handleSave} disabled={updateContent.isPending} className="bg-indigo-600 text-white hover:bg-indigo-700">
+              {updateContent.isPending ? 'Saving…' : 'Save Content'}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
+          {markdown.trim() ? (
+            <RichTextRenderer content={markdown} />
+          ) : (
+            <p className="text-sm italic text-slate-400">
+              {canAuthor ? 'No content yet. Click "Edit Content" to add lesson material.' : 'No content available for this lesson yet.'}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Course Detail View ──────────────────────────────────────────────────
 function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignment }: { courseId: string; onNavigate: (v: View) => void; onSelectQuiz?: (id: string) => void; onSelectAssignment?: (id: string) => void }) {
   const { data: courseData, isLoading } = useCourse(courseId || null);
@@ -981,6 +1080,10 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                 );
               }
               // Default: video placeholder + tabs
+              // For PAGE content, show rich text editor (teacher) or rendered content (student)
+              if (activeLessonObj.type === 'page') {
+                return <PageContentEditor courseId={courseId} contentId={contentId} canAuthor={canAuthor} />;
+              }
               return (
                 <>
                   <div className="flex aspect-video items-center justify-center rounded-lg bg-slate-900">
@@ -1706,6 +1809,228 @@ function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v
   );
 }
 
+// ─── Teacher Grading Panel (shown in AssignmentRunner for ADMIN/TEACHER) ──
+function TeacherGradingPanel({ assignmentId, assignment }: { assignmentId: string; assignment: any }) {
+  const { data: submissionsData, isLoading } = useSubmissions(assignmentId || null);
+  const gradeMut = useGradeSubmission();
+  const revisionMut = useRequestRevision();
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>('');
+  const [grade, setGrade] = useState<string>('');
+  const [feedback, setFeedback] = useState('');
+  const [revisionComments, setRevisionComments] = useState('');
+  const [showRevisionBox, setShowRevisionBox] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const submissions = ((submissionsData as any)?.data ?? []) as any[];
+  const selectedSubmission = submissions.find((s: any) => s.id === selectedSubmissionId) ?? submissions[0];
+
+  // Sync form when selected submission changes
+  useEffect(() => {
+    if (selectedSubmission) {
+      setGrade(selectedSubmission.grade != null ? String(selectedSubmission.grade) : '');
+      setFeedback(selectedSubmission.feedback ?? '');
+      setRevisionComments(selectedSubmission.revisionComments ?? '');
+      setShowRevisionBox(!!selectedSubmission.revisionRequested);
+      setError(''); setSuccess('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubmissionId, selectedSubmission?.id]);
+
+  const handleGrade = () => {
+    if (!selectedSubmission) return;
+    setError(''); setSuccess('');
+    const gradeNum = Number(grade);
+    if (grade === '' || isNaN(gradeNum) || gradeNum < 0) {
+      setError('Please enter a valid grade (0 or higher).');
+      return;
+    }
+    if (gradeNum > assignment.maxPoints) {
+      setError(`Grade cannot exceed max points (${assignment.maxPoints}).`);
+      return;
+    }
+    gradeMut.mutate(
+      {
+        submissionId: selectedSubmission.id,
+        data: {
+          grade: gradeNum,
+          feedback: feedback.trim() || undefined,
+          revisionRequested: showRevisionBox,
+          revisionComments: showRevisionBox ? revisionComments.trim() || undefined : undefined,
+        },
+      },
+      {
+        onSuccess: () => setSuccess(`Graded ${selectedSubmission.user?.firstName}'s submission: ${gradeNum}/${assignment.maxPoints}`),
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to save grade.'),
+      },
+    );
+  };
+
+  const handleRequestRevision = () => {
+    if (!selectedSubmission) return;
+    setError(''); setSuccess('');
+    if (!revisionComments.trim()) {
+      setError('Please enter revision comments.');
+      return;
+    }
+    revisionMut.mutate(
+      { submissionId: selectedSubmission.id, comments: revisionComments },
+      {
+        onSuccess: () => setSuccess(`Revision requested for ${selectedSubmission.user?.firstName}'s submission.`),
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to request revision.'),
+      },
+    );
+  };
+
+  const statusColors: Record<string, string> = {
+    SUBMITTED: 'bg-blue-50 text-blue-600',
+    GRADED: 'bg-emerald-50 text-emerald-600',
+    RESUBMITTED: 'bg-amber-50 text-amber-600',
+    NOT_GRADED: 'bg-slate-100 text-slate-500',
+  };
+
+  if (isLoading) {
+    return <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading submissions…</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="border border-slate-200 p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Submissions ({submissions.length})</h2>
+            <p className="text-xs text-slate-400">Grade and provide feedback on student work</p>
+          </div>
+        </div>
+
+        {submissions.length === 0 ? (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-8 text-center">
+            <FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+            <p className="text-sm text-slate-500">No submissions yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {/* Submission list */}
+            <div className="space-y-2 lg:col-span-1">
+              {submissions.map((s: any) => {
+                const isSelected = (selectedSubmission?.id) === s.id;
+                const studentName = s.user ? `${s.user.firstName} ${s.user.lastName}` : 'Unknown';
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSubmissionId(s.id)}
+                    className={cn('flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors', isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:bg-slate-50')}
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">
+                      {getInitials(studentName)}
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <p className="truncate text-sm font-medium text-slate-900">{studentName}</p>
+                      <p className="text-xs text-slate-400">v{s.version} · {timeAgo(s.submittedAt)}</p>
+                    </div>
+                    <Badge className={cn('shrink-0 hover:opacity-90', statusColors[s.gradingStatus] || statusColors.NOT_GRADED)}>
+                      {s.gradingStatus === 'NOT_GRADED' ? 'Pending' : s.gradingStatus === 'GRADED' ? `Graded: ${s.grade ?? 0}` : s.status}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Grading panel */}
+            {selectedSubmission && (
+              <div className="space-y-4 lg:col-span-2">
+                <Card className="border border-slate-200 p-4 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedSubmission.user?.firstName} {selectedSubmission.user?.lastName}
+                      </p>
+                      <p className="text-xs text-slate-400">{selectedSubmission.user?.email} · Submitted {timeAgo(selectedSubmission.submittedAt)}</p>
+                    </div>
+                    <Badge className={cn('hover:opacity-90', statusColors[selectedSubmission.gradingStatus] || statusColors.NOT_GRADED)}>
+                      {selectedSubmission.gradingStatus === 'GRADED' ? `Graded: ${selectedSubmission.grade ?? 0}/${assignment.maxPoints}` : selectedSubmission.gradingStatus === 'NOT_GRADED' ? 'Pending' : selectedSubmission.status}
+                    </Badge>
+                  </div>
+
+                  {/* Student's submission text */}
+                  {selectedSubmission.content?.text && (
+                    <div className="mb-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Student's Text</p>
+                      <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">{selectedSubmission.content.text}</div>
+                    </div>
+                  )}
+
+                  {/* Attached files */}
+                  {selectedSubmission.content?.files && selectedSubmission.content.files.length > 0 && (
+                    <div className="mb-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Attached Files</p>
+                      <div className="space-y-1.5">
+                        {selectedSubmission.content.files.map((f: any, idx: number) => (
+                          <a key={idx} href={f.secure_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 hover:border-indigo-300 hover:bg-slate-50">
+                            <File className="h-3.5 w-3.5 text-indigo-500" />
+                            <span className="flex-1 truncate">{f.original_filename}</span>
+                            <Download className="h-3.5 w-3.5 text-slate-400" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Existing grade/feedback */}
+                  {selectedSubmission.grade != null && (
+                    <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                      <p className="text-xs font-semibold text-emerald-700">Current Grade: {selectedSubmission.grade}/{assignment.maxPoints}</p>
+                      {selectedSubmission.feedback && <p className="mt-1 text-xs italic text-slate-600">"{selectedSubmission.feedback}"</p>}
+                      {selectedSubmission.gradedAt && <p className="mt-1 text-[10px] text-slate-400">Graded {timeAgo(selectedSubmission.gradedAt)}</p>}
+                    </div>
+                  )}
+                </Card>
+
+                {/* Grading form */}
+                <Card className="border border-slate-200 p-4 shadow-sm">
+                  <h3 className="mb-3 text-sm font-semibold text-slate-900">Grade Submission</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="mb-1.5 block text-xs font-medium text-slate-600">Grade (out of {assignment.maxPoints})</Label>
+                      <Input type="number" min="0" max={assignment.maxPoints} value={grade} onChange={(e) => setGrade(e.target.value)} placeholder={`0 - ${assignment.maxPoints}`} />
+                    </div>
+                    <div>
+                      <Label className="mb-1.5 block text-xs font-medium text-slate-600">Feedback (optional)</Label>
+                      <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3} placeholder="Provide feedback for the student..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id="revision" checked={showRevisionBox} onChange={(e) => setShowRevisionBox(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+                      <Label htmlFor="revision" className="text-xs font-medium text-slate-600">Request revision (student must resubmit)</Label>
+                    </div>
+                    {showRevisionBox && (
+                      <div>
+                        <Label className="mb-1.5 block text-xs font-medium text-slate-600">Revision Comments</Label>
+                        <textarea value={revisionComments} onChange={(e) => setRevisionComments(e.target.value)} rows={2} placeholder="Explain what needs to be revised..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                      </div>
+                    )}
+                    {error && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{error}</div>}
+                    {success && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700">{success}</div>}
+                    <div className="flex gap-2">
+                      <Button onClick={handleGrade} disabled={gradeMut.isPending} className="bg-indigo-600 text-white hover:bg-indigo-700">
+                        {gradeMut.isPending ? 'Saving…' : 'Save Grade'}
+                      </Button>
+                      {showRevisionBox && (
+                        <Button onClick={handleRequestRevision} disabled={revisionMut.isPending} variant="outline" className="border-amber-200 text-amber-700 hover:bg-amber-50">
+                          {revisionMut.isPending ? 'Sending…' : 'Request Revision'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 // ─── Assignment Runner (single assignment view) ──────────────────────────
 function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; onNavigate: (v: View) => void }) {
   const { data: assignData, isLoading } = useAssignment(assignmentId || null);
@@ -1713,6 +2038,8 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
   const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
   const createSubmission = useCreateSubmission();
   const uploadFile = useUploadFile();
+  const authUser = useAuthStore((s) => s.user);
+  const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
 
   const [submissionText, setSubmissionText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ public_id: string; secure_url: string; original_filename: string; size: number; format?: string }>>([]);
@@ -1839,6 +2166,10 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
         </div>
       </Card>
 
+      {/* Teachers/Admins see the grading panel; students see the submission UI */}
+      {isTeacher ? (
+        <TeacherGradingPanel assignmentId={assignmentId} assignment={assignment} />
+      ) : (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Main Content */}
         <div className="space-y-6 lg:col-span-2">
@@ -2002,6 +2333,7 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
           </Card>
         </div>
       </div>
+      )}
     </main>
   );
 }

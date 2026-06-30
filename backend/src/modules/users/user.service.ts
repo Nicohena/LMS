@@ -137,6 +137,29 @@ export async function createUser(data: CreateUserInput): Promise<CreateUserResul
   // eslint-disable-next-line no-console
   console.log(`[users] Admin created user: ${user.email} (role=${user.role})`);
 
+  // Send a welcome email (async via the email queue; logs to console if SMTP not configured).
+  // We import lazily to avoid a circular dependency at module-load time.
+  try {
+    const { sendEmail } = await import('../notifications/email.service');
+    await sendEmail({
+      to: user.email,
+      subject: `Welcome to LMS, ${user.firstName}!`,
+      template: 'welcome',
+      data: {
+        firstName: user.firstName,
+        email: user.email,
+        temporaryPassword: temporaryPassword ?? undefined,
+        loginLink: `${process.env.CLIENT_URL || 'http://localhost:3000'}/login`,
+      },
+    });
+    // eslint-disable-next-line no-console
+    console.log(`[users] Welcome email queued for ${user.email}`);
+  } catch (err) {
+    // Don't fail user creation if the email fails — just log it.
+    // eslint-disable-next-line no-console
+    console.warn(`[users] Failed to send welcome email to ${user.email}:`, (err as Error).message);
+  }
+
   return {
     user: toPublicUser(user),
     ...(temporaryPassword ? { temporaryPassword } : {}),

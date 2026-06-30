@@ -260,6 +260,28 @@ export function useDeleteContent(courseId: string | null) {
   });
 }
 
+export function useUpdateContent(courseId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ contentId, data }: { contentId: string; data: {
+      title?: string;
+      description?: string;
+      contentJson?: unknown;
+      videoUrl?: string;
+      fileUrl?: string;
+      externalUrl?: string;
+      duration?: number;
+      isPublished?: boolean;
+    } }) => {
+      const res = await api.patch(`/courses/contents/${contentId}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      if (courseId) queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+    },
+  });
+}
+
 // ─── Enrollments ─────────────────────────────────────────────────────────
 
 export function useStudentDashboard() {
@@ -459,6 +481,37 @@ export function useUploadFile() {
         size: number;
         format?: string;
       };
+    },
+  });
+}
+
+export function useGradeSubmission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ submissionId, data }: { submissionId: string; data: {
+      grade: number;
+      feedback?: string;
+      revisionRequested?: boolean;
+      revisionComments?: string;
+    } }) => {
+      const res = await api.post(`/assignments/submissions/${submissionId}/grade`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+    },
+  });
+}
+
+export function useRequestRevision() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ submissionId, comments }: { submissionId: string; comments: string }) => {
+      const res = await api.post(`/assignments/submissions/${submissionId}/revision`, { comments });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
     },
   });
 }
