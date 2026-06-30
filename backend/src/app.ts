@@ -65,6 +65,33 @@ app.use('/api/v1/auth', authRouter);
 // --- Users module ---
 app.use('/api/v1/users', userRouter);
 
+// --- Invite codes + self-service user management ---
+import {
+  generateInviteController,
+  getInvitesController,
+  registerWithInviteController,
+  teacherCreateStudentController,
+  changeUserRoleController,
+} from './modules/users/invite.controller';
+import { Router as InviteRouter } from 'express';
+
+// Public: register with invite code
+app.post('/api/v1/auth/register-with-invite', registerWithInviteController);
+
+// Teacher+Admin: create student accounts
+const studentRouter = InviteRouter();
+studentRouter.use(authenticate, authorize('ADMIN', 'TEACHER'));
+studentRouter.post('/', teacherCreateStudentController);
+app.use('/api/v1/students', studentRouter);
+
+// Admin-only: invite code management + role changes
+const inviteRouter = InviteRouter();
+inviteRouter.use(authenticate, authorize('ADMIN'));
+inviteRouter.post('/invites/generate', generateInviteController);
+inviteRouter.get('/invites', getInvitesController);
+inviteRouter.patch('/users/:id/role', changeUserRoleController);
+app.use('/api/v1/admin', inviteRouter);
+
 // --- Courses module ---
 app.use('/api/v1/courses', courseRouter);
 

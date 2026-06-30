@@ -41,14 +41,14 @@ function toPublicUser(user: {
   };
 }
 
-function issueTokens(payload: TokenPayload): Tokens {
+export function issueTokens(payload: TokenPayload): Tokens {
   return {
     accessToken: signAccessToken(payload),
     refreshToken: signRefreshToken(payload),
   };
 }
 
-function refreshExpiryDate(): Date {
+export function refreshExpiryDate(): Date {
   const expiryStr = process.env.JWT_REFRESH_EXPIRY || '7d';
   return new Date(Date.now() + expiryStringToMs(expiryStr));
 }
