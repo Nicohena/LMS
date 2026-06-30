@@ -66,6 +66,7 @@ model User {
   createdUsers         User[]        @relation("userCreatedBy")
   inviteCodesCreated   InviteCode[]  @relation("inviteCreator")
   inviteUsedBy         InviteCode?   @relation("inviteUsedBy")
+  gradeDisputes        GradeDispute[]
 }
 
 model RefreshToken {
@@ -370,6 +371,7 @@ model QuizAttempt {
   enrollment  Enrollment     @relation(fields: [enrollmentId], references: [id])
   answers_rel Answer[]
   grading     ManualGrading[]
+  disputes    GradeDispute[]
 }
 
 model ManualGrading {
@@ -1088,4 +1090,26 @@ model InviteCode {
 
   creator User  @relation("inviteCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   usedByUser User? @relation("inviteUsedBy", fields: [usedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model GradeDispute {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  attemptId     String   @db.ObjectId
+  userId        String   @db.ObjectId
+  reason        String
+  status        DisputeStatus @default(OPEN)
+  resolution    String?
+  resolvedBy    String?  @db.ObjectId
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  attempt QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  ESCALATED
 }

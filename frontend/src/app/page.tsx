@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -2399,6 +2399,7 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
       <div className="mt-6 flex gap-3">
         <Button variant="outline" onClick={() => onNavigate('dashboard')} className="border-slate-200 text-slate-600">Back to Dashboard</Button>
         <Button onClick={() => onNavigate('catalog')} className="bg-purple-600 text-white hover:bg-purple-700">Browse More Courses</Button>
+        <DisputeGradeButton attemptId={attemptId} />
       </div>
     </main>
   );
@@ -3635,6 +3636,131 @@ function AnnouncementsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   );
 }
 
+// ─── Dispute Grade Button (in QuizResultsView) ────────────────────────────
+function DisputeGradeButton({ attemptId }: { attemptId: string }) {
+  const escalateMut = useEscalateGrade();
+  const [showDispute, setShowDispute] = useState(false);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleEscalate = () => {
+    setError(''); setSuccess('');
+    if (!reason.trim()) { setError('Please provide a reason for your dispute.'); return; }
+    escalateMut.mutate(
+      { attemptId, reason },
+      {
+        onSuccess: () => { setSuccess('Grade dispute submitted! The teacher will review it.'); setReason(''); setShowDispute(false); },
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to submit dispute.'),
+      },
+    );
+  };
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setShowDispute(!showDispute)} className="border-amber-200 text-amber-700 hover:bg-amber-50">
+        <AlertCircle className="mr-1.5 h-4 w-4" />Dispute Grade
+      </Button>
+      {showDispute && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md border-0 p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Dispute Grade</h2>
+              <button onClick={() => setShowDispute(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="mb-3 text-sm text-slate-500">Explain why you believe your grade is incorrect. The teacher will review your dispute.</p>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4} placeholder="e.g., I believe question 3 was marked incorrectly because..." className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500" />
+            {error && <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{error}</div>}
+            {success && <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700">{success}</div>}
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" onClick={() => setShowDispute(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
+              <Button onClick={handleEscalate} disabled={escalateMut.isPending} className="flex-1 bg-amber-500 text-white hover:bg-amber-600">
+                {escalateMut.isPending ? 'Submitting…' : 'Submit Dispute'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Grade Disputes Section (in AdminView for teachers/admins) ───────────
+function GradeDisputesSection() {
+  const { data, isLoading } = useGradeDisputes({ limit: 10 });
+  const resolveMut = useResolveDispute();
+  const disputes = (data?.data ?? []) as any[];
+
+  const handleResolve = (disputeId: string, status: 'RESOLVED' | 'ESCALATED') => {
+    const resolution = prompt(`Resolution notes for ${status === 'RESOLVED' ? 'resolving' : 'escalating'} this dispute:`) || '';
+    const newScoreStr = status === 'RESOLVED' ? prompt('New score (leave empty for no change):') : '';
+    const newScore = newScoreStr && !isNaN(Number(newScoreStr)) ? Number(newScoreStr) : undefined;
+    resolveMut.mutate({ disputeId, resolution, status, newScore });
+  };
+
+  const statusColors: Record<string, string> = {
+    OPEN: 'bg-amber-50 text-amber-600',
+    UNDER_REVIEW: 'bg-blue-50 text-blue-600',
+    RESOLVED: 'bg-emerald-50 text-emerald-600',
+    ESCALATED: 'bg-red-50 text-red-600',
+  };
+
+  return (
+    <Card className="mt-6 border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Grade Disputes</h2>
+          <p className="text-xs text-slate-400">Student grade escalations — review and resolve</p>
+        </div>
+        <Badge className={cn('hover:opacity-90', disputes.length > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600')}>
+          {disputes.length} open
+        </Badge>
+      </div>
+
+      {isLoading && <div className="p-4 text-center text-sm text-slate-500">Loading disputes…</div>}
+
+      {!isLoading && disputes.length === 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-4">
+          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+          <p className="text-sm text-emerald-700">No open grade disputes.</p>
+        </div>
+      )}
+
+      {disputes.length > 0 && (
+        <div className="space-y-3">
+          {disputes.map((d: any) => (
+            <div key={d.id} className="rounded-lg border border-amber-200 bg-amber-50/30 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
+                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{d.user?.firstName} {d.user?.lastName}</p>
+                    <Badge className={cn('hover:opacity-90', statusColors[d.status] || statusColors.OPEN)}>{d.status}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">{d.reason}</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Quiz: {d.attempt?.quiz?.title ?? 'Unknown'} · Score: {d.attempt?.scorePercentage ?? '?'}% · {timeAgo(d.createdAt)}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Button size="sm" onClick={() => handleResolve(d.id, 'RESOLVED')} disabled={resolveMut.isPending} className="bg-emerald-500 text-white hover:bg-emerald-600">
+                      <CheckCircle2 className="mr-1 h-3.5 w-3.5" />Resolve
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleResolve(d.id, 'ESCALATED')} disabled={resolveMut.isPending} className="border-red-200 text-red-600 hover:bg-red-50">
+                      Escalate to Admin
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ─── Admin Dashboard View ─────────────────────────────────────────────────
 function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { data: platformData, isLoading } = usePlatformDashboard();
@@ -3834,6 +3960,9 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {/* Flagged Content Section (post-moderation) */}
       <FlaggedContentSection />
+
+      {/* Grade Disputes Section */}
+      <GradeDisputesSection />
     </main>
   );
 }

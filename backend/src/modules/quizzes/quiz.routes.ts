@@ -43,14 +43,23 @@ const router = Router();
 
 // Public list + detail (anonymous can see PUBLISHED; logged-in see more based on role)
 router.get('/', optionalAuth, validate({ query: quizQuerySchema }), getQuizzesController);
+
+// Static routes MUST come before /:quizId to avoid being matched as a quizId
+import {
+  adminGradeController,
+  escalateGradeController,
+  getDisputesController,
+  resolveDisputeController,
+} from './grading-escalation.controller';
+
+router.get('/disputes', authenticate, authorize('ADMIN', 'TEACHER'), getDisputesController);
+router.get('/questions/bank', authenticate, getQuestionBankController);
+
 router.get('/:quizId', optionalAuth, getQuizController);
 
 // ---------------------------------------------------------------------------
 // Authenticated routes (any logged-in user)
 // ---------------------------------------------------------------------------
-
-// Question bank — any authenticated admin/teacher (service checks role)
-router.get('/questions/bank', authenticate, getQuestionBankController);
 
 // Attempt routes — students can take quizzes; teachers/admins can grade/list
 router.post('/:quizId/attempts/start', authenticate, validate({ body: startAttemptSchema }), startAttemptController);
@@ -62,6 +71,16 @@ router.get('/attempts/:attemptId/results', authenticate, getResultsController);
 // Admin/teacher-only attempt routes
 router.get('/:quizId/attempts', authenticate, authorize('ADMIN', 'TEACHER'), getAttemptsController);
 router.patch('/attempts/:attemptId/grade', authenticate, authorize('ADMIN', 'TEACHER'), validate({ body: manualGradeSchema }), manualGradeController);
+
+// --- Step 4: Automated Grading — admin override + grade disputes ---
+// (disputes route is registered above before /:quizId)
+
+// Admin override (force grade change)
+router.patch('/attempts/:attemptId/admin-grade', authenticate, authorize('ADMIN'), adminGradeController);
+// Student escalates grade dispute
+router.post('/attempts/:attemptId/escalate', authenticate, escalateGradeController);
+// Resolve a dispute
+router.patch('/disputes/:disputeId/resolve', authenticate, authorize('ADMIN', 'TEACHER'), resolveDisputeController);
 
 // ---------------------------------------------------------------------------
 // Admin/teacher-only routes (quiz CRUD + question CRUD + analytics)

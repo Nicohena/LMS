@@ -468,6 +468,55 @@ export function useAttemptResults(attemptId: string | null) {
   });
 }
 
+// ─── Grading Escalation (Step 4) ─────────────────────────────────────────
+
+export function useAdminOverrideGrade() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ attemptId, newScore, reason }: { attemptId: string; newScore: number; reason: string }) => {
+      const res = await api.patch(`/quizzes/attempts/${attemptId}/admin-grade`, { newScore, reason });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-attempt-results'] });
+      queryClient.invalidateQueries({ queryKey: ['quiz-attempts'] });
+    },
+  });
+}
+
+export function useEscalateGrade() {
+  return useMutation({
+    mutationFn: async ({ attemptId, reason }: { attemptId: string; reason: string }) => {
+      const res = await api.post(`/quizzes/attempts/${attemptId}/escalate`, { reason });
+      return res.data;
+    },
+  });
+}
+
+export function useGradeDisputes(params?: { status?: string; page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ['grade-disputes', params],
+    queryFn: async () => {
+      const res = await api.get('/quizzes/disputes', { params });
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useResolveDispute() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ disputeId, resolution, status, newScore }: { disputeId: string; resolution: string; status: 'RESOLVED' | 'ESCALATED'; newScore?: number }) => {
+      const res = await api.patch(`/quizzes/disputes/${disputeId}/resolve`, { resolution, status, newScore });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['grade-disputes'] });
+    },
+  });
+}
+
 // ─── Assignments ─────────────────────────────────────────────────────────
 
 export function useAssignments(params?: { page?: number; limit?: number; search?: string; status?: string; contentId?: string }) {
