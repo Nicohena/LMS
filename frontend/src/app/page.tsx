@@ -62,8 +62,8 @@ const navItems: NavItem[] = [
   // Students: their learning content
   { label: 'My Learning', icon: BookOpen, view: 'assignment', roles: ['STUDENT'] },
   // Shared learning content (assignments/quizzes filter server-side by role)
-  { label: 'Assignments', icon: FileText, view: 'assignment', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  { label: 'Quizzes', icon: FileQuestion, view: 'quiz', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'Assignments', icon: FileText, view: 'assignment', roles: ['TEACHER', 'STUDENT'] },
+  { label: 'Quizzes', icon: FileQuestion, view: 'quiz', roles: ['TEACHER', 'STUDENT'] },
   { label: 'Certificates', icon: Award, view: 'gamification', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   { label: 'Discussions', icon: MessageSquare, view: 'discussions', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   { label: 'Announcements', icon: Bell, view: 'announcements', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
