@@ -944,7 +944,7 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
 // ─── Teacher Dashboard Home ──────────────────────────────────────────────
 function TeacherDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const user = useAuthStore((s) => s.user);
-  const { data: teacherData, isLoading } = useTeacherDashboard();
+  const { data: teacherData, isLoading, isError } = useTeacherDashboard();
   const { data: myCoursesData } = useMyCourses({ limit: 5 });
   const { data: schoolData } = useTeacherSchoolDashboard();
   const firstName = user?.firstName ?? 'Teacher';
@@ -968,6 +968,9 @@ function TeacherDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
 
   if (isLoading) {
     return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading your teacher dashboard…</div></main>;
+  }
+  if (isError) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load your dashboard. Please try again.</div></main>;
   }
 
   const myCourses = (myCoursesData?.data ?? []) as any[];
@@ -1094,21 +1097,46 @@ function TeacherDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
             </div>
           </Card>
 
-          {/* Recent my courses */}
+          {/* School structure summary */}
           <Card className="border border-slate-200 p-5 shadow-sm">
-            <SectionHeader title="Recent courses" action="See all" onAction={() => onNavigate('my-courses')} />
-            {myCourses.length === 0 ? (
-              <p className="py-4 text-center text-sm text-slate-400">No courses yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {myCourses.slice(0, 4).map((c: any) => (
-                  <div key={c.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50"><BookOpen className="h-4 w-4 text-purple-600" /></div>
-                    <div className="flex-1"><p className="text-sm font-medium text-slate-900 line-clamp-1">{c.title}</p><p className="text-xs text-slate-400">{c.status}</p></div>
-                  </div>
-                ))}
+            <h2 className="mb-3 text-base font-semibold text-slate-900">Teaching Summary</h2>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Total sections</span>
+                <span className="font-bold text-slate-900">{schoolData?.stats?.totalSections ?? 0}</span>
               </div>
-            )}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Total subjects</span>
+                <span className="font-bold text-slate-900">{schoolData?.stats?.totalSubjects ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Total students</span>
+                <span className="font-bold text-slate-900">{schoolData?.stats?.totalStudents ?? stats?.totalStudents ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Content items</span>
+                <span className="font-bold text-slate-900">{schoolData?.stats?.totalContent ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Quizzes</span>
+                <span className="font-bold text-slate-900">{schoolData?.stats?.totalQuizzes ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Assignments</span>
+                <span className="font-bold text-slate-900">{schoolData?.stats?.totalAssignments ?? 0}</span>
+              </div>
+              {(schoolData?.upcomingDeadlines ?? []).length > 0 && (
+                <div className="border-t border-slate-100 pt-2">
+                  <p className="mb-1 text-xs font-medium text-slate-500">Upcoming deadlines</p>
+                  {(schoolData?.upcomingDeadlines ?? []).slice(0, 3).map((d: any) => (
+                    <div key={d.id} className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600 line-clamp-1">{d.title}</span>
+                      <span className="text-amber-600">{d.subject}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </Card>
         </div>
       </div>
@@ -3105,7 +3133,7 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
   const authUser = useAuthStore((s) => s.user);
   const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
   // Teachers see all quizzes (including drafts); students only see PUBLISHED
-  const { data, isLoading } = useQuizzes({ limit: 50, status: isTeacher ? undefined : 'PUBLISHED' });
+  const { data, isLoading, isError } = useQuizzes({ limit: 50, status: isTeacher ? undefined : 'PUBLISHED' });
   const deleteQuizMut = useDeleteQuiz();
   const [showCreate, setShowCreate] = useState(false);
   const quizzes = (data?.data ?? []) as any[];
@@ -3113,7 +3141,10 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
   const handleDelete = (e: React.MouseEvent, quizId: string) => {
     e.stopPropagation();
     if (!confirm('Delete this quiz and all its questions? This cannot be undone.')) return;
-    deleteQuizMut.mutate(quizId);
+    deleteQuizMut.mutate(quizId, {
+      onSuccess: () => toast({ title: 'Quiz deleted', description: 'The quiz has been removed.' }),
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to delete quiz.', variant: 'destructive' }),
+    });
   };
 
   return (
@@ -3134,8 +3165,9 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
           </Button>
         )}
       </div>
+      {isError && <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load quizzes.</div>}
       {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quizzes…</div>}
-      {!isLoading && quizzes.length === 0 && (
+      {!isLoading && !isError && quizzes.length === 0 && (
         <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
           {isTeacher ? 'No quizzes yet. Click "Create Quiz" to get started.' : 'No quizzes available yet.'}
         </div>
@@ -3898,7 +3930,9 @@ function AssignmentView({ assignmentId, onNavigate, onSelectAssignment }: { assi
 
 // ─── Assignment List View ────────────────────────────────────────────────
 function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v: View) => void; onSelectAssignment: (id: string) => void }) {
-  const { data, isLoading } = useAssignments({ limit: 50, status: 'PUBLISHED' });
+  const authUser = useAuthStore((s) => s.user);
+  const isTeacher = authUser?.role === 'TEACHER' || authUser?.role === 'ADMIN';
+  const { data, isLoading, isError } = useAssignments({ limit: 50, status: isTeacher ? undefined : 'PUBLISHED' });
   const assignments = (data?.data ?? []) as any[];
 
   return (
@@ -3909,12 +3943,15 @@ function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v
         <span className="font-medium text-slate-700">Assignments</span>
       </div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Available Assignments</h1>
-        <p className="mt-1 text-sm text-slate-500">{assignments.length} published assignments · Submit your work</p>
+        <h1 className="text-2xl font-bold text-slate-900">{isTeacher ? 'All Assignments' : 'Available Assignments'}</h1>
+        <p className="mt-1 text-sm text-slate-500">{assignments.length} {isTeacher ? 'total' : 'published'} assignments · {isTeacher ? 'Manage and grade submissions' : 'Submit your work'}</p>
       </div>
+      {isError && <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load assignments.</div>}
       {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading assignments…</div>}
-      {!isLoading && assignments.length === 0 && (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No assignments available yet.</div>
+      {!isLoading && !isError && assignments.length === 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+          {isTeacher ? 'No assignments yet. Create one from a course detail page.' : 'No assignments available yet.'}
+        </div>
       )}
       <div className="space-y-3">
         {assignments.map((a: any) => {
