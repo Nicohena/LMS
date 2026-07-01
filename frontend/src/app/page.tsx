@@ -52,29 +52,32 @@ interface NavItem {
   roles: Role[]; // which roles can see this item
 }
 const navItems: NavItem[] = [
-  // Shared
+  // ── Shared ──
   { label: 'Home', icon: LayoutDashboard, view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  // Students: catalog to find new courses. Teachers/Admins: their own courses.
-  { label: 'Catalog', icon: Layers, view: 'catalog', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  { label: 'My Sections', icon: Layers, view: 'my-sections', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  // Teachers: My Courses (manage own courses). Admins review via Admin Panel.
+
+  // ── Student ──
+  { label: 'Catalog', icon: Layers, view: 'catalog', roles: ['TEACHER', 'STUDENT'] },
+  { label: 'Assignments', icon: FileText, view: 'assignment', roles: ['STUDENT'] },
+  { label: 'Quizzes', icon: FileQuestion, view: 'quiz', roles: ['STUDENT'] },
+  { label: 'Certificates', icon: Award, view: 'gamification', roles: ['STUDENT'] },
+
+  // ── Teacher ──
+  { label: 'My Sections', icon: Layers, view: 'my-sections', roles: ['TEACHER'] },
   { label: 'My Courses', icon: BookMarked, view: 'my-courses', roles: ['TEACHER'] },
-  // Students: their learning content
-  { label: 'My Learning', icon: BookOpen, view: 'assignment', roles: ['STUDENT'] },
-  // Shared learning content (assignments/quizzes filter server-side by role)
-  { label: 'Assignments', icon: FileText, view: 'assignment', roles: ['TEACHER', 'STUDENT'] },
-  { label: 'Quizzes', icon: FileQuestion, view: 'quiz', roles: ['TEACHER', 'STUDENT'] },
-  { label: 'Certificates', icon: Award, view: 'gamification', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  { label: 'Discussions', icon: MessageSquare, view: 'discussions', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  { label: 'Announcements', icon: Bell, view: 'announcements', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  { label: 'Messages', icon: MessageSquare, view: 'messages', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  // Teacher + Admin only
   { label: 'Create Course', icon: Plus, view: 'course-create', roles: ['TEACHER'] },
-  // Admin only
+  { label: 'Assignments', icon: FileText, view: 'assignment', roles: ['TEACHER'] },
+  { label: 'Quizzes', icon: FileQuestion, view: 'quiz', roles: ['TEACHER'] },
+
+  // ── Communication (teacher + student) ──
+  { label: 'Discussions', icon: MessageSquare, view: 'discussions', roles: ['TEACHER', 'STUDENT'] },
+  { label: 'Announcements', icon: Bell, view: 'announcements', roles: ['TEACHER', 'STUDENT'] },
+  { label: 'Messages', icon: MessageSquare, view: 'messages', roles: ['TEACHER', 'STUDENT'] },
+
+  // ── Admin ──
+  { label: 'Sections', icon: Layers, view: 'my-sections', roles: ['ADMIN'] },
   { label: 'Admin Panel', icon: BarChart3, view: 'admin', roles: ['ADMIN'] },
+  { label: 'Users', icon: Users, view: 'users', roles: ['ADMIN'] },
   { label: 'Audit Logs', icon: FileText, view: 'audit', roles: ['ADMIN'] },
-  { label: 'User Management', icon: Users, view: 'users', roles: ['ADMIN'] },
-  { label: 'Settings', icon: Settings, view: 'settings', roles: ['ADMIN'] },
 ];
 
 const stats = [
@@ -298,7 +301,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
   const unreadCount = allNotifications.filter((n: any) => !n.isRead).length;
   const headerLinks: { label: string; view: View; roles: Role[] }[] = [
     { label: 'Home', view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-    { label: 'Catalog', view: 'catalog', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+    { label: 'Catalog', view: 'catalog', roles: ['TEACHER', 'STUDENT'] },
     { label: 'Create Course', view: 'course-create', roles: ['TEACHER'] },
     { label: 'Admin', view: 'admin', roles: ['ADMIN'] },
   ];
