@@ -16,6 +16,7 @@ import {
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
 import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
+import { toast } from "@/hooks/use-toast";
 import { getSocket } from '@/lib/socket';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -1119,7 +1120,7 @@ function TeacherDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
 function AdminDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
-  const { data: platformData, isLoading } = usePlatformDashboard();
+  const { data: platformData, isLoading, isError } = usePlatformDashboard();
   const { data: alerts } = useAdminAlerts();
   const { data: activity } = useRecentActivity(8);
   const { data: schoolData } = useAdminSchoolDashboard();
@@ -1216,6 +1217,9 @@ function AdminDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void 
 
   if (isLoading) {
     return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading admin dashboard…</div></main>;
+  }
+  if (isError) {
+    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load dashboard data. Please check your connection and try again.</div></main>;
   }
 
   return (
@@ -1847,7 +1851,8 @@ function AcademicYearsTab() {
   const handleCreate = () => {
     if (!name || !startDate || !endDate) return;
     createMut.mutate({ name, startDate, endDate, isCurrent }, {
-      onSuccess: () => { setShowForm(false); setName(''); setStartDate(''); setEndDate(''); setIsCurrent(false); },
+      onSuccess: () => { setShowForm(false); setName(''); setStartDate(''); setEndDate(''); setIsCurrent(false); toast({ title: 'Academic year created', description: `${name} has been created.` }); },
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to create academic year.', variant: 'destructive' }),
     });
   };
 
@@ -1995,7 +2000,8 @@ function GradesTab() {
   const handleCreate = () => {
     if (!name || !level) return;
     createMut.mutate({ name, level: Number(level) }, {
-      onSuccess: () => { setShowForm(false); setName(''); setLevel(''); },
+      onSuccess: () => { setShowForm(false); setName(''); setLevel(''); toast({ title: 'Grade created', description: `${name} has been created.` }); },
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to create grade.', variant: 'destructive' }),
     });
   };
 
@@ -2069,7 +2075,8 @@ function SubjectsTab() {
   const handleCreate = () => {
     if (!name) return;
     createMut.mutate({ name, code: code || undefined }, {
-      onSuccess: () => { setShowForm(false); setName(''); setCode(''); },
+      onSuccess: () => { setShowForm(false); setName(''); setCode(''); toast({ title: 'Subject created', description: `${name} has been created.` }); },
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to create subject.', variant: 'destructive' }),
     });
   };
 
@@ -2148,7 +2155,8 @@ function SectionsTab({ selectedSectionId, onSelectSection }: { selectedSectionId
   const handleCreate = () => {
     if (!name || !gradeId || !ay) return;
     createMut.mutate({ name, gradeId, academicYearId: ay.id, capacity: Number(capacity) }, {
-      onSuccess: () => { setShowForm(false); setName(''); setCapacity('40'); },
+      onSuccess: () => { setShowForm(false); setName(''); setCapacity('40'); toast({ title: 'Section created', description: `Section ${name} has been created.` }); },
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to create section.', variant: 'destructive' }),
     });
   };
 
@@ -2257,20 +2265,25 @@ function SectionDetailView({ sectionId, onBack }: { sectionId: string; onBack: (
   const handleAssignStudent = () => {
     if (!selectedStudentId || !ay) return;
     assignStudentMut.mutate({ studentId: selectedStudentId, sectionId, academicYearId: ay.id }, {
-      onSuccess: () => setSelectedStudentId(''),
+      onSuccess: () => { setSelectedStudentId(''); toast({ title: 'Student assigned', description: 'Student has been added to this section.' }); },
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to assign student.', variant: 'destructive' }),
     });
   };
 
   const handleAssignTeacher = () => {
     if (!selectedTeacherId || !selectedSubjectId) return;
     assignTeacherMut.mutate({ sectionId, subjectId: selectedSubjectId, teacherId: selectedTeacherId }, {
-      onSuccess: () => { setSelectedTeacherId(''); setSelectedSubjectId(''); },
+      onSuccess: () => { setSelectedTeacherId(''); setSelectedSubjectId(''); toast({ title: 'Teacher assigned', description: 'Teacher has been assigned to this subject.' }); },
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to assign teacher.', variant: 'destructive' }),
     });
   };
 
   const handleRemoveStudent = (studentId: string) => {
     if (!confirm('Remove this student from the section?')) return;
-    removeStudentMut.mutate({ studentId, sectionId });
+    removeStudentMut.mutate({ studentId, sectionId }, {
+      onSuccess: () => toast({ title: 'Student removed', description: 'Student has been removed from this section.' }),
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to remove student.', variant: 'destructive' }),
+    });
   };
 
   return (
@@ -5383,7 +5396,7 @@ function AdminSubRolesSection() {
 
 // ─── Quality Monitoring Section (admin) ──────────────────────────────────
 function QualityMonitoringSection() {
-  const { data, isLoading } = useQualityReport();
+  const { data, isLoading, isError } = useQualityReport();
   const recalcMut = useRecalculateQuality();
   const flagMut = useFlagCourse();
   const unflagMut = useUnflagCourse();
@@ -5904,7 +5917,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
 // ─── Flagged Content Section (admin post-moderation) ─────────────────────
 function FlaggedContentSection() {
-  const { data, isLoading } = useFlaggedContent({ limit: 10 });
+  const { data, isLoading, isError } = useFlaggedContent({ limit: 10 });
   const moderateMut = useModerateContent();
   const flagged = (data?.data ?? []) as any[];
 
@@ -5994,7 +6007,7 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [formRole, setFormRole] = useState<'STUDENT' | 'TEACHER' | 'ADMIN'>('STUDENT');
   const [formPassword, setFormPassword] = useState('');
 
-  const { data, isLoading } = useUsers({ page: 1, limit: 50, search: search || undefined });
+  const { data, isLoading, isError } = useUsers({ page: 1, limit: 50, search: search || undefined });
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -6049,8 +6062,8 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
       updateUser.mutate(
         { id: editingUser.id, data: { firstName: formFirstName, lastName: formLastName, role: formRole } },
         {
-          onSuccess: () => setShowCreate(false),
-          onError: (err: any) => setFormErr(err.response?.data?.message || 'Failed to update user.'),
+          onSuccess: () => { setShowCreate(false); toast({ title: 'User updated', description: `${formFirstName} ${formLastName} has been updated.` }); },
+          onError: (err: any) => { setFormErr(err.response?.data?.message || 'Failed to update user.'); toast({ title: 'Error', description: err.response?.data?.message || 'Failed to update user.', variant: 'destructive' }); },
         },
       );
     } else {
@@ -6065,22 +6078,25 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
           mustChangePassword: !!formPassword,
         },
         {
-          onSuccess: () => setShowCreate(false),
-          onError: (err: any) => setFormErr(err.response?.data?.message || 'Failed to create user.'),
+          onSuccess: () => { setShowCreate(false); toast({ title: 'User created', description: `${formFirstName} ${formLastName} has been created successfully.` }); },
+          onError: (err: any) => { setFormErr(err.response?.data?.message || 'Failed to create user.'); toast({ title: 'Error', description: err.response?.data?.message || 'Failed to create user.', variant: 'destructive' }); },
         },
       );
     }
   };
 
   const handleToggleActive = (u: any) => {
-    updateUser.mutate({ id: u.id, data: { isActive: !u.isActive } });
+    updateUser.mutate(
+      { id: u.id, data: { isActive: !u.isActive } },
+      { onSuccess: () => toast({ title: u.isActive ? 'User deactivated' : 'User activated', description: `${u.name} has been ${u.isActive ? 'deactivated' : 'activated'}.` }) }
+    );
   };
 
   const handleDelete = () => {
     if (!deletingUser) return;
     deleteUser.mutate(deletingUser.id, {
-      onSuccess: () => setDeletingUser(null),
-      onError: (err: any) => { setFormErr(err.response?.data?.message || 'Failed to delete user.'); setDeletingUser(null); },
+      onSuccess: () => { setDeletingUser(null); toast({ title: 'User deleted', description: 'The user has been permanently deleted.' }); },
+      onError: (err: any) => { setFormErr(err.response?.data?.message || 'Failed to delete user.'); setDeletingUser(null); toast({ title: 'Error', description: err.response?.data?.message || 'Failed to delete user.', variant: 'destructive' }); },
     });
   };
 
@@ -6135,6 +6151,9 @@ function UsersView({ onNavigate }: { onNavigate: (v: View) => void }) {
               </tr>
             </thead>
             <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={7} className='py-12 text-center text-sm text-slate-400'>No users found. {search ? 'Try a different search term.' : 'Click "New User" to create one.'}</td></tr>
+              )}
               {filtered.map((user) => (
                 <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50/50">
                   <td className="px-4 py-3">
