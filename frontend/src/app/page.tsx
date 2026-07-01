@@ -1836,6 +1836,7 @@ function AcademicYearsTab() {
   const { data, isLoading } = useAcademicYears();
   const createMut = useCreateAcademicYear();
   const [showForm, setShowForm] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -1893,18 +1894,90 @@ function AcademicYearsTab() {
       <div className="space-y-2">
         {years.map((y: any) => (
           <div key={y.id} className="flex items-center justify-between rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
-            <div className="flex items-center gap-3">
+            <button className="flex flex-1 items-center gap-3 text-left" onClick={() => setSelectedYear(selectedYear === y.id ? null : y.id)}>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50"><Calendar className="h-5 w-5 text-purple-600" /></div>
               <div>
-                <p className="text-sm font-medium text-slate-900">{y.name}</p>
+                <p className="text-sm font-medium text-slate-900 hover:text-purple-600">{y.name}</p>
                 <p className="text-xs text-slate-500">{formatDate(y.startDate)} - {formatDate(y.endDate)}</p>
               </div>
-            </div>
+            </button>
             {y.isCurrent && <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">Current</Badge>}
           </div>
         ))}
       </div>
+
+      {/* Sections in selected academic year */}
+      {selectedYear && (
+        <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50/30 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">Sections in this Academic Year</h3>
+          <AcademicYearSections academicYearId={selectedYear} />
+        </div>
+      )}
     </Card>
+  );
+}
+
+// ── Helper: Sections in an Academic Year ──
+function AcademicYearSections({ academicYearId }: { academicYearId: string }) {
+  const { data, isLoading } = useSections({ academicYearId });
+  const sections = (data?.data ?? []) as any[];
+  if (isLoading) return <p className="text-sm text-slate-400">Loading...</p>;
+  if (sections.length === 0) return <p className="text-sm text-slate-400">No sections in this academic year.</p>;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {sections.map((s: any) => (
+        <div key={s.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <span className="font-semibold text-purple-600">{s.name}</span>
+          <span className="text-xs text-slate-400">{s.grade?.name}</span>
+          <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100">{s._count?.studentSections ?? 0} students</Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Helper: Sections in a Grade ──
+function GradeSections({ gradeId, gradeName }: { gradeId: string; gradeName: string }) {
+  const { data, isLoading } = useSections({ gradeId });
+  const sections = (data?.data ?? []) as any[];
+  if (isLoading) return <p className="text-sm text-slate-400">Loading...</p>;
+  if (sections.length === 0) return <p className="text-sm text-slate-400">No sections in {gradeName}.</p>;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {sections.map((s: any) => (
+        <div key={s.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <span className="font-semibold text-purple-600">{s.name}</span>
+          <span className="text-xs text-slate-400">{s.academicYear?.name}</span>
+          <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100">{s._count?.studentSections ?? 0} students</Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Helper: Sections teaching a Subject ──
+function SubjectSections({ subjectId, subjectName }: { subjectId: string; subjectName: string }) {
+  const { data, isLoading } = useSectionSubjects({} as any);
+  // Filter client-side by subjectId — useSectionSubjects doesn't accept subjectId filter
+  // so we fetch all and filter
+  const allSS = (data?.data ?? []) as any[];
+  const filtered = allSS.filter((ss: any) => ss.subjectId === subjectId);
+  if (isLoading) return <p className="text-sm text-slate-400">Loading...</p>;
+  if (filtered.length === 0) return <p className="text-sm text-slate-400">{subjectName} is not assigned to any section yet.</p>;
+  return (
+    <div className="space-y-2">
+      {filtered.map((ss: any) => (
+        <div key={ss.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-blue-600">{ss.section?.name}</span>
+            <span className="text-xs text-slate-400">{ss.section?.grade?.name} · {ss.section?.academicYear?.name}</span>
+          </div>
+          <div className="text-xs text-slate-500">
+            {ss.teacher ? `${ss.teacher.firstName} ${ss.teacher.lastName}` : <span className="text-amber-600">No teacher</span>}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1913,6 +1986,7 @@ function GradesTab() {
   const { data, isLoading } = useGrades();
   const createMut = useCreateGrade();
   const [showForm, setShowForm] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [level, setLevel] = useState('');
 
@@ -1955,13 +2029,28 @@ function GradesTab() {
       {isLoading && <p className="py-4 text-center text-sm text-slate-400">Loading...</p>}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {grades.map((g: any) => (
-          <div key={g.id} className="rounded-lg border border-slate-200 p-4 text-center">
+          <button
+            key={g.id}
+            onClick={() => setSelectedGrade(selectedGrade === g.id ? null : g.id)}
+            className={cn(
+              'rounded-lg border p-4 text-center transition-all',
+              selectedGrade === g.id ? 'border-purple-400 bg-purple-50 shadow-md' : 'border-slate-200 hover:border-purple-200 hover:shadow-sm'
+            )}
+          >
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100"><BookOpen className="h-6 w-6 text-purple-600" /></div>
             <p className="text-sm font-semibold text-slate-900">{g.name}</p>
             <p className="text-xs text-slate-400">{g._count?.sections ?? 0} sections</p>
-          </div>
+          </button>
         ))}
       </div>
+
+      {/* Sections in selected grade */}
+      {selectedGrade && (
+        <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50/30 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">Sections in this Grade</h3>
+          <GradeSections gradeId={selectedGrade} gradeName={grades.find(g => g.id === selectedGrade)?.name ?? ''} />
+        </div>
+      )}
     </Card>
   );
 }
@@ -1971,6 +2060,7 @@ function SubjectsTab() {
   const { data, isLoading } = useSubjects();
   const createMut = useCreateSubject();
   const [showForm, setShowForm] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
 
@@ -2013,14 +2103,29 @@ function SubjectsTab() {
       {isLoading && <p className="py-4 text-center text-sm text-slate-400">Loading...</p>}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {subjects.map((s: any) => (
-          <div key={s.id} className="rounded-lg border border-slate-200 p-3 text-center">
+          <button
+            key={s.id}
+            onClick={() => setSelectedSubject(selectedSubject === s.id ? null : s.id)}
+            className={cn(
+              'rounded-lg border p-3 text-center transition-all',
+              selectedSubject === s.id ? 'border-blue-400 bg-blue-50 shadow-md' : 'border-slate-200 hover:border-blue-200 hover:shadow-sm'
+            )}
+          >
             <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50"><BookMarked className="h-5 w-5 text-blue-600" /></div>
             <p className="text-sm font-semibold text-slate-900">{s.name}</p>
             {s.code && <p className="text-xs text-slate-400">{s.code}</p>}
             <p className="text-[10px] text-slate-400">{s._count?.sectionSubjects ?? 0} assignments</p>
-          </div>
+          </button>
         ))}
       </div>
+
+      {/* Section-subjects for selected subject */}
+      {selectedSubject && (
+        <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">Sections teaching this Subject</h3>
+          <SubjectSections subjectId={selectedSubject} subjectName={subjects.find(s => s.id === selectedSubject)?.name ?? ''} />
+        </div>
+      )}
     </Card>
   );
 }
