@@ -38,7 +38,7 @@ import {
 const router = Router();
 
 // ---------------------------------------------------------------------------
-// Public / optional-auth routes (no ADMIN/TEACHER gate)
+// Public / optional-auth routes (no role gate)
 // ---------------------------------------------------------------------------
 
 // Public list + detail (anonymous can see PUBLISHED; logged-in see more based on role)
@@ -68,32 +68,33 @@ router.post('/attempts/:attemptId/submit', authenticate, validate({ body: submit
 router.get('/attempts/:attemptId', authenticate, getAttemptController);
 router.get('/attempts/:attemptId/results', authenticate, getResultsController);
 
-// Admin/teacher-only attempt routes
+// Admin/teacher-only attempt routes (grading — admin can grade but NOT create quizzes)
 router.get('/:quizId/attempts', authenticate, authorize('ADMIN', 'TEACHER'), getAttemptsController);
 router.patch('/attempts/:attemptId/grade', authenticate, authorize('ADMIN', 'TEACHER'), validate({ body: manualGradeSchema }), manualGradeController);
 
 // --- Step 4: Automated Grading — admin override + grade disputes ---
-// (disputes route is registered above before /:quizId)
-
 // Admin override (force grade change)
 router.patch('/attempts/:attemptId/admin-grade', authenticate, authorize('ADMIN'), adminGradeController);
 // Student escalates grade dispute
 router.post('/attempts/:attemptId/escalate', authenticate, escalateGradeController);
-// Resolve a dispute
+// Resolve a dispute (admin or teacher)
 router.patch('/disputes/:disputeId/resolve', authenticate, authorize('ADMIN', 'TEACHER'), resolveDisputeController);
 
 // ---------------------------------------------------------------------------
-// Admin/teacher-only routes (quiz CRUD + question CRUD + analytics)
+// TEACHER-only routes (quiz CRUD + question CRUD)
+// Admins do NOT create quizzes — they review them via /content/flagged.
+// Admins CAN still view analytics for oversight.
 // ---------------------------------------------------------------------------
 
-router.post('/', authenticate, authorize('ADMIN', 'TEACHER'), validate({ body: createQuizSchema }), createQuizController);
-router.patch('/:quizId', authenticate, authorize('ADMIN', 'TEACHER'), validate({ body: updateQuizSchema }), updateQuizController);
-router.delete('/:quizId', authenticate, authorize('ADMIN', 'TEACHER'), deleteQuizController);
+router.post('/', authenticate, authorize('TEACHER'), validate({ body: createQuizSchema }), createQuizController);
+router.patch('/:quizId', authenticate, authorize('TEACHER'), validate({ body: updateQuizSchema }), updateQuizController);
+router.delete('/:quizId', authenticate, authorize('TEACHER'), deleteQuizController);
 
-router.post('/:quizId/questions', authenticate, authorize('ADMIN', 'TEACHER'), validate({ body: addQuestionSchema }), addQuestionController);
-router.patch('/questions/:questionId', authenticate, authorize('ADMIN', 'TEACHER'), validate({ body: updateQuestionSchema }), updateQuestionController);
-router.delete('/questions/:questionId', authenticate, authorize('ADMIN', 'TEACHER'), deleteQuestionController);
+router.post('/:quizId/questions', authenticate, authorize('TEACHER'), validate({ body: addQuestionSchema }), addQuestionController);
+router.patch('/questions/:questionId', authenticate, authorize('TEACHER'), validate({ body: updateQuestionSchema }), updateQuestionController);
+router.delete('/questions/:questionId', authenticate, authorize('TEACHER'), deleteQuestionController);
 
+// Analytics — admin can view (oversight), teacher can view (own quizzes)
 router.get('/:quizId/analytics', authenticate, authorize('ADMIN', 'TEACHER'), getAnalyticsController);
 
 // Service error handler

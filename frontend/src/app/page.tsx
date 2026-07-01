@@ -56,8 +56,8 @@ const navItems: NavItem[] = [
   { label: 'Home', icon: LayoutDashboard, view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   // Students: catalog to find new courses. Teachers/Admins: their own courses.
   { label: 'Catalog', icon: Layers, view: 'catalog', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-  // Teachers + Admins: My Courses (manage own courses)
-  { label: 'My Courses', icon: BookMarked, view: 'my-courses', roles: ['ADMIN', 'TEACHER'] },
+  // Teachers: My Courses (manage own courses). Admins review via Admin Panel.
+  { label: 'My Courses', icon: BookMarked, view: 'my-courses', roles: ['TEACHER'] },
   // Students: their learning content
   { label: 'My Learning', icon: BookOpen, view: 'assignment', roles: ['STUDENT'] },
   // Shared learning content (assignments/quizzes filter server-side by role)
@@ -68,7 +68,7 @@ const navItems: NavItem[] = [
   { label: 'Announcements', icon: Bell, view: 'announcements', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   { label: 'Messages', icon: MessageSquare, view: 'messages', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   // Teacher + Admin only
-  { label: 'Create Course', icon: Plus, view: 'course-create', roles: ['ADMIN', 'TEACHER'] },
+  { label: 'Create Course', icon: Plus, view: 'course-create', roles: ['TEACHER'] },
   // Admin only
   { label: 'Admin Panel', icon: BarChart3, view: 'admin', roles: ['ADMIN'] },
   { label: 'Audit Logs', icon: FileText, view: 'audit', roles: ['ADMIN'] },
@@ -298,7 +298,7 @@ function Header({ onMenuClick, onNavigate, currentView, onSelectCourse }: { onMe
   const headerLinks: { label: string; view: View; roles: Role[] }[] = [
     { label: 'Home', view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
     { label: 'Catalog', view: 'catalog', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-    { label: 'Create Course', view: 'course-create', roles: ['ADMIN', 'TEACHER'] },
+    { label: 'Create Course', view: 'course-create', roles: ['TEACHER'] },
     { label: 'Admin', view: 'admin', roles: ['ADMIN'] },
   ];
   const visibleHeaderLinks = headerLinks.filter((l) => l.roles.includes(role));
@@ -1316,7 +1316,7 @@ function AdminDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void 
             <div className="space-y-2">
               {[
                 { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-purple-600 bg-purple-50' },
-                { label: 'Create Course', icon: Plus, view: 'course-create' as View, color: 'text-emerald-600 bg-emerald-50' },
+                { label: 'Review Content', icon: AlertCircle, view: 'admin' as View, color: 'text-red-600 bg-red-50' },
                 { label: 'Audit Logs', icon: FileText, view: 'audit' as View, color: 'text-amber-600 bg-amber-50' },
                 { label: 'Settings', icon: Settings, view: 'settings' as View, color: 'text-slate-600 bg-slate-100' },
                 { label: 'Full Admin Panel', icon: BarChart3, view: 'admin' as View, color: 'text-purple-600 bg-purple-50' },
@@ -1428,12 +1428,12 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div><h1 className="text-2xl font-bold text-slate-900">{heading}</h1><p className="mt-1 text-sm text-slate-500">{subtitle}</p></div>
         <div className="flex items-center gap-2">
-          {(isTeacher || isAdmin) && (
+          {isTeacher && (
             <Button onClick={() => onNavigate('my-courses')} variant="outline" className="border-slate-200 text-slate-600">
               <BookMarked className="mr-1.5 h-4 w-4" />My Courses
             </Button>
           )}
-          {(isTeacher || isAdmin) && (
+          {isTeacher && (
             <Button onClick={() => onNavigate('course-create')} className="bg-purple-600 text-white hover:bg-purple-700">
               <Plus className="mr-1.5 h-4 w-4" />New Course
             </Button>
@@ -1788,7 +1788,7 @@ function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: strin
 function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignment }: { courseId: string; onNavigate: (v: View) => void; onSelectQuiz?: (id: string) => void; onSelectAssignment?: (id: string) => void }) {
   const { data: courseData, isLoading } = useCourse(courseId || null);
   const authUser = useAuthStore((s) => s.user);
-  const canAuthor = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
+  const canAuthor = authUser?.role === 'TEACHER';
   const isStudent = authUser?.role === 'STUDENT';
   const publishMut = usePublishCourse();
   const archiveMut = useArchiveCourse();
@@ -2270,7 +2270,7 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
           <h1 className="text-2xl font-bold text-slate-900">{isTeacher ? 'All Quizzes' : 'Available Quizzes'}</h1>
           <p className="mt-1 text-sm text-slate-500">{quizzes.length} {isTeacher ? 'total' : 'published'} quizzes · {isTeacher ? 'Manage your quiz library' : 'Test your knowledge'}</p>
         </div>
-        {isTeacher && (
+        {authUser?.role === 'TEACHER' && (
           <Button onClick={() => setShowCreate(true)} className="bg-purple-600 text-white hover:bg-purple-700">
             <Plus className="mr-1.5 h-4 w-4" />Create Quiz
           </Button>
@@ -5055,7 +5055,6 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => downloadCSV('platform-stats.csv', platformStats.map((s: any) => ({ Label: s.label, Value: s.value, Trend: s.trend })), ['Label', 'Value', 'Trend'])} className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export</Button>
           <Button variant="outline" onClick={() => onNavigate('users')} className="border-slate-200 text-slate-600"><UserPlus className="mr-1.5 h-4 w-4" />Users</Button>
-          <Button variant="outline" onClick={() => onNavigate('course-create')} className="border-slate-200 text-slate-600"><Plus className="mr-1.5 h-4 w-4" />Course</Button>
           <Button variant="outline" onClick={() => onNavigate('settings')} className="border-slate-200 text-slate-600"><Settings className="mr-1.5 h-4 w-4" />Settings</Button>
           <Button variant="outline" onClick={() => onNavigate('audit')} className="border-slate-200 text-slate-600"><FileText className="mr-1.5 h-4 w-4" />Audit</Button>
         </div>
@@ -5187,7 +5186,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
             <div className="space-y-2">
               {[
                 { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-purple-600 bg-purple-50' },
-                { label: 'Create Course', icon: Plus, view: 'course-create' as View, color: 'text-emerald-600 bg-emerald-50' },
+                { label: 'Review Flagged', icon: AlertCircle, view: 'admin' as View, color: 'text-red-600 bg-red-50' },
                 { label: 'View Reports', icon: BarChart3, view: 'admin' as View, color: 'text-amber-600 bg-amber-50' },
                 { label: 'Gamification', icon: Trophy, view: 'gamification' as View, color: 'text-purple-600 bg-purple-50' },
               ].map((action) => (
@@ -6966,8 +6965,8 @@ export default function App() {
     'audit': ['ADMIN'],
     'users': ['ADMIN'],
     'settings': ['ADMIN'],
-    'course-create': ['ADMIN', 'TEACHER'],
-    'my-courses': ['ADMIN', 'TEACHER'],
+    'course-create': ['TEACHER'],
+    'my-courses': ['TEACHER'],
   };
 
   const handleNavigate = (v: View) => {

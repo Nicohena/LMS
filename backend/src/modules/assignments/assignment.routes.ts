@@ -56,19 +56,12 @@ const router = Router();
 
 // ---------------------------------------------------------------------------
 // Multer config for assignment file uploads.
-// Files are kept in memory (small enough for assignment submissions capped
-// at the assignment's maxFileSizeMB) and uploaded to Cloudinary in the
-// controller, which returns the { public_id, secure_url, ... } metadata
-// for the client to include in the subsequent createSubmission/submitRevision
-// request body.
 // ---------------------------------------------------------------------------
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB global cap (per-assignment cap enforced in service)
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB global cap
   fileFilter: (_req, file, cb) => {
-    // Accept a broad set of formats — per-assignment allowedFileTypes is
-    // enforced in the submission service when the submission is created.
     const ok = [
       'application/pdf',
       'application/msword',
@@ -98,7 +91,7 @@ const upload = multer({
 router.get('/', optionalAuth, validate({ query: assignmentQuerySchema }), getAssignmentsController);
 router.get('/:assignmentId', optionalAuth, getAssignmentController);
 
-// Rubric (public read, admin/teacher write)
+// Rubric (public read)
 router.get('/:assignmentId/rubric', optionalAuth, getRubricController);
 
 // ---------------------------------------------------------------------------
@@ -121,7 +114,6 @@ router.post(
         res.status(400).json({ message: 'No file uploaded.' });
         return;
       }
-      // Upload to Cloudinary under lms/assignments folder
       const secure_url = await uploadFile(req.file, {
         folder: 'lms/assignments',
         resourceType: req.file.mimetype.startsWith('image/') ? 'image'
@@ -184,51 +176,9 @@ router.get('/peer-reviews/:reviewId', authenticate, getPeerReviewController);
 router.get('/:assignmentId/peer-reviews/my-received', authenticate, getReceivedPeerReviewsController);
 
 // ---------------------------------------------------------------------------
-// Admin/teacher-only routes
+// Admin/teacher-only routes (grading + peer-review assignment + analytics)
+// Admins can grade and review but do NOT create assignments.
 // ---------------------------------------------------------------------------
-
-router.post(
-  '/',
-  authenticate,
-  authorize('ADMIN', 'TEACHER'),
-  validate({ body: createAssignmentSchema }),
-  createAssignmentController,
-);
-router.patch(
-  '/:assignmentId',
-  authenticate,
-  authorize('ADMIN', 'TEACHER'),
-  validate({ body: updateAssignmentSchema }),
-  updateAssignmentController,
-);
-router.delete(
-  '/:assignmentId',
-  authenticate,
-  authorize('ADMIN', 'TEACHER'),
-  deleteAssignmentController,
-);
-
-// Rubric management (admin/teacher)
-router.post(
-  '/:assignmentId/rubric',
-  authenticate,
-  authorize('ADMIN', 'TEACHER'),
-  validate({ body: createRubricSchema }),
-  createRubricController,
-);
-router.patch(
-  '/rubric/:rubricId',
-  authenticate,
-  authorize('ADMIN', 'TEACHER'),
-  validate({ body: updateRubricSchema }),
-  updateRubricController,
-);
-router.delete(
-  '/rubric/:rubricId',
-  authenticate,
-  authorize('ADMIN', 'TEACHER'),
-  deleteRubricController,
-);
 
 // Grading + revision request (admin/teacher)
 router.post(
@@ -254,12 +204,60 @@ router.post(
   assignPeerReviewsController,
 );
 
-// Analytics (admin/teacher)
+// Analytics — admin can view (oversight), teacher can view (own assignments)
 router.get(
   '/:assignmentId/analytics',
   authenticate,
   authorize('ADMIN', 'TEACHER'),
   getAnalyticsController,
+);
+
+// ---------------------------------------------------------------------------
+// TEACHER-only routes (assignment CRUD + rubric CRUD)
+// Admins do NOT create assignments — they review them via /content/flagged.
+// ---------------------------------------------------------------------------
+
+router.post(
+  '/',
+  authenticate,
+  authorize('TEACHER'),
+  validate({ body: createAssignmentSchema }),
+  createAssignmentController,
+);
+router.patch(
+  '/:assignmentId',
+  authenticate,
+  authorize('TEACHER'),
+  validate({ body: updateAssignmentSchema }),
+  updateAssignmentController,
+);
+router.delete(
+  '/:assignmentId',
+  authenticate,
+  authorize('TEACHER'),
+  deleteAssignmentController,
+);
+
+// Rubric management (teacher only)
+router.post(
+  '/:assignmentId/rubric',
+  authenticate,
+  authorize('TEACHER'),
+  validate({ body: createRubricSchema }),
+  createRubricController,
+);
+router.patch(
+  '/rubric/:rubricId',
+  authenticate,
+  authorize('TEACHER'),
+  validate({ body: updateRubricSchema }),
+  updateRubricController,
+);
+router.delete(
+  '/rubric/:rubricId',
+  authenticate,
+  authorize('TEACHER'),
+  deleteRubricController,
 );
 
 // Service error handler

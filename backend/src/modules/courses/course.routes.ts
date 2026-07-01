@@ -41,14 +41,27 @@ const router = Router();
 router.get('/', optionalAuth, validate({ query: courseQuerySchema }), getCoursesController);
 router.get('/:id', optionalAuth, getCourseController);
 
-// --- Self-Service: Student self-enrollment (must be before the ADMIN/TEACHER guard) ---
+// --- Self-Service: Student self-enrollment (must be before the role guard) ---
 import { selfEnrollController } from './self-service.controller';
 router.post('/:courseId/self-enroll', authenticate, selfEnrollController);
 
-// All write operations require authentication + ADMIN or TEACHER role.
-router.use(authenticate, authorize('ADMIN', 'TEACHER'));
+// Admin can review/override (read + override) but cannot create/manage courses.
+// Teachers are the content creators.
+import {
+  publishCourseController,
+  archiveCourseController,
+  overrideCourseController,
+  checkSlotLimitController,
+} from './self-service.controller';
 
-// --- Course CRUD ---
+// Admin override (exception cases only) — registered before TEACHER guard
+router.patch('/:id/override', authenticate, authorize('ADMIN'), overrideCourseController);
+
+// All write operations (create/edit/delete course, modules, content) require TEACHER.
+// Admins do NOT create courses — they review them via /content/flagged + /admin/*.
+router.use(authenticate, authorize('TEACHER'));
+
+// --- Course CRUD (TEACHER only) ---
 router.post('/', validate({ body: createCourseSchema }), createCourseController);
 router.patch('/:id', validate({ body: updateCourseSchema }), updateCourseController);
 router.delete('/:id', deleteCourseController);
@@ -60,30 +73,21 @@ router.post('/:id/thumbnail', uploadThumbnail, uploadThumbnailController);
 router.post('/modules/reorder', validate({ body: reorderModulesSchema }), reorderModulesController);
 router.post('/contents/reorder', validate({ body: reorderContentsSchema }), reorderContentsController);
 
-// --- Module CRUD ---
+// --- Module CRUD (TEACHER only) ---
 router.post('/:courseId/modules', validate({ body: createModuleSchema }), addModuleController);
 router.patch('/modules/:moduleId', validate({ body: updateModuleSchema }), updateModuleController);
 router.delete('/modules/:moduleId', deleteModuleController);
 
-// --- Content CRUD ---
+// --- Content CRUD (TEACHER only) ---
 router.post('/modules/:moduleId/contents', validate({ body: createContentSchema }), addContentController);
 router.patch('/contents/:contentId', validate({ body: updateContentSchema }), updateContentController);
 router.delete('/contents/:contentId', deleteContentController);
 
-// --- Self-Service: Publish / Archive / Override (Phase 1) ---
-import {
-  publishCourseController,
-  archiveCourseController,
-  overrideCourseController,
-  checkSlotLimitController,
-} from './self-service.controller';
-
+// --- Self-Service: Publish / Archive (TEACHER only) ---
 // Teachers publish their own courses instantly (no admin approval)
 router.patch('/:id/publish', publishCourseController);
 // Teachers archive their own courses
 router.patch('/:id/archive', archiveCourseController);
-// Admin override (exception cases only)
-router.patch('/:id/override', authorize('ADMIN'), overrideCourseController);
 // Check teacher's course slot limit
 router.get('/me/slot-limit', checkSlotLimitController);
 
