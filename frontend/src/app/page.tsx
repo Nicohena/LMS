@@ -3209,6 +3209,8 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
 }
 
 // ─── Quiz Editor Modal (create quiz + add questions) ─────────────────────
+
+// ─── Quiz Editor Modal (supports all 10 question types) ──────────────────
 function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => void; quizId?: string }) {
   const createQuiz = useCreateQuiz();
   const addQuestion = useAddQuestion(existingQuizId ?? null);
@@ -3224,72 +3226,137 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [error, setError] = useState('');
   const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
 
-  // Question form state
-  const [qType, setQType] = useState<'MULTIPLE_CHOICE_SINGLE' | 'TRUE_FALSE'>('MULTIPLE_CHOICE_SINGLE');
+  // Question form state — supports all types
+  const [qType, setQType] = useState<string>('MULTIPLE_CHOICE_SINGLE');
   const [qText, setQText] = useState('');
+  const [qPoints, setQPoints] = useState('1');
+  const [qExplanation, setQExplanation] = useState('');
+  const [qError, setQError] = useState('');
+
+  // MCQ state
   const [qOptions, setQOptions] = useState<string[]>(['', '', '', '']);
   const [qCorrectIdx, setQCorrectIdx] = useState(0);
-  const [qPoints, setQPoints] = useState('1');
-  const [qError, setQError] = useState('');
+  const [qCorrectIdxs, setQCorrectIdxs] = useState<number[]>([]); // for multiple answer
+
+  // Fill-in-blank state
+  const [qBlanks, setQBlanks] = useState<string[]>(['']);
+
+  // Matching state: pairs of [left, right]
+  const [qMatchingPairs, setQMatchingPairs] = useState<{ left: string; right: string }[]>([{ left: '', right: '' }, { left: '', right: '' }]);
+
+  // Sorting state: items in correct order
+  const [qSortItems, setQSortItems] = useState<string[]>(['', '']);
+
+  // Short answer / Essay state
+  const [qTextAnswer, setQTextAnswer] = useState('');
+
+  // Hotspot state
+  const [qHotspotZones, setQHotspotZones] = useState<{ x: number; y: number; w: number; h: number; label: string }[]>([]);
+  const [qHotspotImage, setQHotspotImage] = useState('');
 
   const isEditing = !!createdQuizId;
   const quiz = (existingQuizData as any)?.quiz;
   const existingQuestions = ((existingQuizData as any)?.questions ?? []) as any[];
 
+  const resetQuestionForm = () => {
+    setQText(''); setQExplanation(''); setQError('');
+    setQOptions(['', '', '', '']); setQCorrectIdx(0); setQCorrectIdxs([]);
+    setQBlanks(['']);
+    setQMatchingPairs([{ left: '', right: '' }, { left: '', right: '' }]);
+    setQSortItems(['', '']);
+    setQTextAnswer('');
+    setQHotspotZones([]); setQHotspotImage('');
+  };
+
   const handleCreate = () => {
     setError('');
     if (!title.trim()) { setError('Title is required.'); return; }
     createQuiz.mutate(
-      {
-        title,
-        description: description.trim() || undefined,
-        timeLimit: Number(timeLimit) || 15,
-        passingScore: Number(passingScore) || 60,
-        maxAttempts: Number(maxAttempts) || 3,
-        status,
-      },
-      {
-        onSuccess: (data: any) => {
-          setCreatedQuizId(data?.quiz?.id ?? data?.id ?? null);
-        },
-        onError: (err: any) => setError(err.response?.data?.message || 'Failed to create quiz.'),
-      },
+      { title, description: description.trim() || undefined, timeLimit: Number(timeLimit) || 15, passingScore: Number(passingScore) || 60, maxAttempts: Number(maxAttempts) || 3, status },
+      { onSuccess: (data: any) => setCreatedQuizId(data?.quiz?.id ?? data?.id ?? null), onError: (err: any) => setError(err.response?.data?.message || 'Failed to create quiz.') },
     );
+  };
+
+  const buildQuestionData = (): { options: any; correctAnswer: any } | null => {
+    switch (qType) {
+      case 'MULTIPLE_CHOICE_SINGLE': {
+        const filled = qOptions.filter((o) => o.trim());
+        if (filled.length < 2) { setQError('Provide at least 2 options.'); return null; }
+        return {
+          options: qOptions.map((text, idx) => ({ text: text.trim(), isCorrect: idx === qCorrectIdx })),
+          correctAnswer: qOptions[qCorrectIdx]?.trim() || null,
+        };
+      }
+      case 'MULTIPLE_CHOICE_MULTIPLE': {
+        const filled = qOptions.filter((o) => o.trim());
+        if (filled.length < 2) { setQError('Provide at least 2 options.'); return null; }
+        if (qCorrectIdxs.length === 0) { setQError('Select at least one correct answer.'); return null; }
+        return {
+          options: qOptions.map((text, idx) => ({ text: text.trim(), isCorrect: qCorrectIdxs.includes(idx) })),
+          correctAnswer: qCorrectIdxs.map((idx) => qOptions[idx]?.trim()).filter(Boolean),
+        };
+      }
+      case 'TRUE_FALSE':
+        return { options: [{ text: 'True', isCorrect: qCorrectIdx === 0 }, { text: 'False', isCorrect: qCorrectIdx === 1 }], correctAnswer: qCorrectIdx === 0 };
+      case 'FILL_IN_BLANK': {
+        const filled = qBlanks.filter((b) => b.trim());
+        if (filled.length === 0) { setQError('Provide at least one blank answer.'); return null; }
+        return { options: null, correctAnswer: filled.length === 1 ? filled[0] : filled };
+      }
+      case 'MATCHING': {
+        const validPairs = qMatchingPairs.filter((p) => p.left.trim() && p.right.trim());
+        if (validPairs.length < 2) { setQError('Provide at least 2 matching pairs.'); return null; }
+        const options = { pairs: validPairs.map(p => ({ left: p.left.trim(), right: p.right.trim() })) };
+        const correctAnswer: Record<string, string> = {};
+        validPairs.forEach((p) => { correctAnswer[p.left.trim()] = p.right.trim(); });
+        return { options, correctAnswer };
+      }
+      case 'SORTING': {
+        const filled = qSortItems.filter((s) => s.trim());
+        if (filled.length < 2) { setQError('Provide at least 2 items to sort.'); return null; }
+        return { options: { items: filled }, correctAnswer: filled };
+      }
+      case 'SHORT_ANSWER':
+      case 'ESSAY': {
+        if (!qTextAnswer.trim() && qType === 'SHORT_ANSWER') { setQError('Provide a reference answer (for manual grading).'); return null; }
+        return { options: null, correctAnswer: qTextAnswer.trim() || null };
+      }
+      case 'FILE_UPLOAD':
+        return { options: null, correctAnswer: null };
+      case 'HOTSPOT': {
+        if (!qHotspotImage.trim()) { setQError('Provide an image URL for the hotspot question.'); return null; }
+        if (qHotspotZones.length === 0) { setQError('Add at least one clickable zone.'); return null; }
+        return { options: { imageUrl: qHotspotImage, zones: qHotspotZones }, correctAnswer: qHotspotZones.map((z) => z.label) };
+      }
+      default:
+        setQError('Unsupported question type.'); return null;
+    }
   };
 
   const handleAddQuestion = () => {
     setQError('');
     if (!qText.trim()) { setQError('Question text is required.'); return; }
     if (!createdQuizId) { setQError('Create the quiz first.'); return; }
-
-    let options: any;
-    let correctAnswer: any;
-
-    if (qType === 'TRUE_FALSE') {
-      options = [{ text: 'True', isCorrect: qCorrectIdx === 0 }, { text: 'False', isCorrect: qCorrectIdx === 1 }];
-      correctAnswer = qCorrectIdx === 0;
-    } else {
-      const filled = qOptions.filter((o) => o.trim());
-      if (filled.length < 2) { setQError('Provide at least 2 options.'); return; }
-      options = qOptions.map((text, idx) => ({ text: text.trim(), isCorrect: idx === qCorrectIdx }));
-      correctAnswer = qOptions[qCorrectIdx]?.trim();
-    }
+    const qData = buildQuestionData();
+    if (!qData) return;
 
     addQuestion.mutate(
-      {
-        type: qType,
-        questionText: qText,
-        points: Number(qPoints) || 1,
-        options,
-        correctAnswer,
-      },
-      {
-        onSuccess: () => {
-          setQText(''); setQOptions(['', '', '', '']); setQCorrectIdx(0); setQError('');
-        },
-        onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add question.'),
-      },
+      { type: qType as any, questionText: qText, points: Number(qPoints) || 1, options: qData.options, correctAnswer: qData.correctAnswer, explanation: qExplanation.trim() || undefined },
+      { onSuccess: () => { resetQuestionForm(); toast({ title: 'Question added', description: 'The question has been added to the quiz.' }); }, onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add question.') },
     );
+  };
+
+  const questionTypeLabels: Record<string, string> = {
+    MULTIPLE_CHOICE_SINGLE: 'Multiple Choice (single answer)',
+    MULTIPLE_CHOICE_MULTIPLE: 'Multiple Choice (multiple answers)',
+    TRUE_FALSE: 'True / False',
+    FILL_IN_BLANK: 'Fill in the Blank',
+    MATCHING: 'Matching (drag & drop)',
+    SORTING: 'Sorting / Ordering (drag & drop)',
+    SHORT_ANSWER: 'Short Answer',
+    ESSAY: 'Essay',
+    FILE_UPLOAD: 'File Upload',
+    HOTSPOT: 'Hotspot (clickable image)',
   };
 
   return (
@@ -3300,65 +3367,33 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
           <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
         </div>
 
-        {/* Quiz details form */}
         {!isEditing ? (
           <div className="space-y-4">
-            <div>
-              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Title *</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., UI Design Principles Quiz" />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of what the quiz covers" />
+            <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Title *</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Chapter 1 Quiz" /></div>
+            <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label><Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Time Limit (min)</Label><Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} /></div>
+              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Passing Score (%)</Label><Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Time Limit (min)</Label>
-                <Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} />
-              </div>
-              <div>
-                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Passing Score (%)</Label>
-                <Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Max Attempts</Label>
-                <Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} />
-              </div>
-              <div>
-                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Status</Label>
-                <select value={status} onChange={(e) => setStatus(e.target.value as 'DRAFT' | 'PUBLISHED')} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
-                  <option value="DRAFT">Draft (not visible to students)</option>
-                  <option value="PUBLISHED">Published (visible to students)</option>
-                </select>
-              </div>
+              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Max Attempts</Label><Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} /></div>
+              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Status</Label><select value={status} onChange={(e) => setStatus(e.target.value as 'DRAFT' | 'PUBLISHED')} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700"><option value="DRAFT">Draft (not visible)</option><option value="PUBLISHED">Published (visible)</option></select></div>
             </div>
             {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-            <Button onClick={handleCreate} disabled={createQuiz.isPending} className="w-full bg-purple-600 text-white hover:bg-purple-700">
-              {createQuiz.isPending ? 'Creating…' : 'Create Quiz'}
-            </Button>
+            <Button onClick={handleCreate} disabled={createQuiz.isPending} className="w-full bg-purple-600 text-white hover:bg-purple-700">{createQuiz.isPending ? 'Creating…' : 'Create Quiz'}</Button>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              ✓ Quiz created! Now add questions below. {quiz?.title && `(${quiz.title})`}
-            </div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">✓ Quiz created! Add questions below. {quiz?.title && `(${quiz.title})`}</div>
 
-            {/* Existing questions */}
             {existingQuestions.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Existing Questions ({existingQuestions.length})</p>
                 {existingQuestions.map((q: any, idx: number) => (
                   <div key={q.id} className="group flex items-start gap-3 rounded-lg border border-slate-100 p-3">
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600">{idx + 1}</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-900">{q.questionText}</p>
-                      <p className="text-xs text-slate-400">{q.type.replace(/_/g, ' ')} · {q.points} pt</p>
-                    </div>
-                    <button onClick={() => deleteQuestion.mutate(q.id)} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex-1"><p className="text-sm font-medium text-slate-900">{q.questionText}</p><p className="text-xs text-slate-400">{questionTypeLabels[q.type] ?? q.type} · {q.points} pt</p></div>
+                    <button onClick={() => deleteQuestion.mutate(q.id, { onSuccess: () => toast({ title: 'Question deleted' }), onError: () => toast({ title: 'Error', variant: 'destructive' }) })} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 ))}
               </div>
@@ -3368,55 +3403,89 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
             <div className="rounded-lg border-2 border-dashed border-slate-200 p-4">
               <h3 className="mb-3 text-sm font-semibold text-slate-900">Add Question</h3>
               <div className="space-y-3">
-                <div>
-                  <Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Type</Label>
-                  <select value={qType} onChange={(e) => { setQType(e.target.value as any); if (e.target.value === 'TRUE_FALSE') setQCorrectIdx(0); }} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-700">
-                    <option value="MULTIPLE_CHOICE_SINGLE">Multiple Choice (single answer)</option>
-                    <option value="TRUE_FALSE">True / False</option>
+                <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Type</Label>
+                  <select value={qType} onChange={(e) => { setQType(e.target.value); resetQuestionForm(); setQType(e.target.value); }} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-700">
+                    {Object.entries(questionTypeLabels).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                   </select>
                 </div>
-                <div>
-                  <Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Text *</Label>
-                  <textarea value={qText} onChange={(e) => setQText(e.target.value)} rows={2} placeholder="Type the question..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" />
-                </div>
+                <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Text *</Label><textarea value={qText} onChange={(e) => setQText(e.target.value)} rows={2} placeholder="Type the question..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500" /></div>
+
+                {/* MCQ Single */}
                 {qType === 'MULTIPLE_CHOICE_SINGLE' && (
-                  <div>
-                    <Label className="mb-1.5 block text-xs font-medium text-slate-600">Options (select the correct one)</Label>
-                    <div className="space-y-1.5">
-                      {qOptions.map((opt, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <button type="button" onClick={() => setQCorrectIdx(idx)} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold', idx === qCorrectIdx ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>
-                            {idx === qCorrectIdx ? '✓' : String.fromCharCode(65 + idx)}
-                          </button>
-                          <Input value={opt} onChange={(e) => { const next = [...qOptions]; next[idx] = e.target.value; setQOptions(next); }} placeholder={`Option ${String.fromCharCode(65 + idx)}`} className="text-sm" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Options (select correct one)</Label><div className="space-y-1.5">
+                    {qOptions.map((opt, idx) => (<div key={idx} className="flex items-center gap-2"><button type="button" onClick={() => setQCorrectIdx(idx)} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold', idx === qCorrectIdx ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>{idx === qCorrectIdx ? '✓' : String.fromCharCode(65 + idx)}</button><Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={`Option ${String.fromCharCode(65 + idx)}`} className="text-sm" />{qOptions.length > 2 && <button type="button" onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}</div>))}
+                    <button type="button" onClick={() => setQOptions([...qOptions, ''])} className="text-xs text-purple-600 hover:underline">+ Add option</button>
+                  </div></div>
                 )}
+
+                {/* MCQ Multiple */}
+                {qType === 'MULTIPLE_CHOICE_MULTIPLE' && (
+                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Options (check all correct answers)</Label><div className="space-y-1.5">
+                    {qOptions.map((opt, idx) => (<div key={idx} className="flex items-center gap-2"><button type="button" onClick={() => setQCorrectIdxs(qCorrectIdxs.includes(idx) ? qCorrectIdxs.filter((i) => i !== idx) : [...qCorrectIdxs, idx])} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 text-xs font-bold', qCorrectIdxs.includes(idx) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>{qCorrectIdxs.includes(idx) ? '✓' : ''}</button><Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={`Option ${String.fromCharCode(65 + idx)}`} className="text-sm" />{qOptions.length > 2 && <button type="button" onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}</div>))}
+                    <button type="button" onClick={() => setQOptions([...qOptions, ''])} className="text-xs text-purple-600 hover:underline">+ Add option</button>
+                  </div></div>
+                )}
+
+                {/* True/False */}
                 {qType === 'TRUE_FALSE' && (
-                  <div>
-                    <Label className="mb-1.5 block text-xs font-medium text-slate-600">Correct Answer</Label>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setQCorrectIdx(0)} className={cn('rounded-lg border px-4 py-2 text-sm font-medium', qCorrectIdx === 0 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-600')}>True</button>
-                      <button type="button" onClick={() => setQCorrectIdx(1)} className={cn('rounded-lg border px-4 py-2 text-sm font-medium', qCorrectIdx === 1 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-600')}>False</button>
+                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Correct Answer</Label><div className="flex gap-2">
+                    <button type="button" onClick={() => setQCorrectIdx(0)} className={cn('rounded-lg border px-4 py-2 text-sm font-medium', qCorrectIdx === 0 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-600')}>True</button>
+                    <button type="button" onClick={() => setQCorrectIdx(1)} className={cn('rounded-lg border px-4 py-2 text-sm font-medium', qCorrectIdx === 1 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-600')}>False</button>
+                  </div></div>
+                )}
+
+                {/* Fill in the Blank */}
+                {qType === 'FILL_IN_BLANK' && (
+                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Correct Answers (one per blank)</Label><div className="space-y-1.5">
+                    {qBlanks.map((blank, idx) => (<div key={idx} className="flex items-center gap-2"><span className="text-xs text-slate-400">Blank {idx + 1}:</span><Input value={blank} onChange={(e) => { const n = [...qBlanks]; n[idx] = e.target.value; setQBlanks(n); }} placeholder="Correct answer" className="text-sm" />{qBlanks.length > 1 && <button type="button" onClick={() => setQBlanks(qBlanks.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}</div>))}
+                    <button type="button" onClick={() => setQBlanks([...qBlanks, ''])} className="text-xs text-purple-600 hover:underline">+ Add blank</button>
+                  </div></div>
+                )}
+
+                {/* Matching (drag & drop) */}
+                {qType === 'MATCHING' && (
+                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Matching Pairs (students drag right items to match left)</Label><div className="space-y-2">
+                    {qMatchingPairs.map((pair, idx) => (<div key={idx} className="flex items-center gap-2"><Input value={pair.left} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], left: e.target.value }; setQMatchingPairs(n); }} placeholder="Left item" className="text-sm" /><span className="text-slate-400">↔</span><Input value={pair.right} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], right: e.target.value }; setQMatchingPairs(n); }} placeholder="Right item" className="text-sm" />{qMatchingPairs.length > 2 && <button type="button" onClick={() => setQMatchingPairs(qMatchingPairs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button></div>))}
+                    <button type="button" onClick={() => setQMatchingPairs([...qMatchingPairs, { left: '', right: '' }])} className="text-xs text-purple-600 hover:underline">+ Add pair</button>
+                  </div></div>
+                )}
+
+                {/* Sorting (drag & drop) */}
+                {qType === 'SORTING' && (
+                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Items in Correct Order (students will drag to rearrange)</Label><div className="space-y-1.5">
+                    {qSortItems.map((item, idx) => (<div key={idx} className="flex items-center gap-2"><GripVertical className="h-4 w-4 text-slate-300" /><span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-400">{idx + 1}</span><Input value={item} onChange={(e) => { const n = [...qSortItems]; n[idx] = e.target.value; setQSortItems(n); }} placeholder={`Item ${idx + 1}`} className="text-sm" />{qSortItems.length > 2 && <button type="button" onClick={() => setQSortItems(qSortItems.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button></div>))}
+                    <button type="button" onClick={() => setQSortItems([...qSortItems, ''])} className="text-xs text-purple-600 hover:underline">+ Add item</button>
+                  </div></div>
+                )}
+
+                {/* Short Answer / Essay */}
+                {(qType === 'SHORT_ANSWER' || qType === 'ESSAY') && (
+                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">{qType === 'SHORT_ANSWER' ? 'Reference Answer (for manual grading)' : 'Model Answer / Rubric Notes (for manual grading)'}</Label><textarea value={qTextAnswer} onChange={(e) => setQTextAnswer(e.target.value)} rows={qType === 'ESSAY' ? 4 : 2} placeholder="This will be used as a reference during manual grading" className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700" /></div>
+                )}
+
+                {/* File Upload */}
+                {qType === 'FILE_UPLOAD' && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">Students will be prompted to upload a file. This question type requires manual grading.</div>
+                )}
+
+                {/* Hotspot */}
+                {qType === 'HOTSPOT' && (
+                  <div className="space-y-2">
+                    <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Image URL</Label><Input value={qHotspotImage} onChange={(e) => setQHotspotImage(e.target.value)} placeholder="https://..." className="text-sm" /></div>
+                    <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Clickable Zones (x, y, width, height as % of image)</Label>
+                      {qHotspotZones.map((zone, idx) => (<div key={idx} className="flex items-center gap-1 text-xs"><Input type="number" value={zone.x} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], x: Number(e.target.value) }; setQHotspotZones(n); }} placeholder="X" className="w-16 text-sm" /><Input type="number" value={zone.y} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], y: Number(e.target.value) }; setQHotspotZones(n); }} placeholder="Y" className="w-16 text-sm" /><Input type="number" value={zone.w} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], w: Number(e.target.value) }; setQHotspotZones(n); }} placeholder="W" className="w-16 text-sm" /><Input type="number" value={zone.h} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], h: Number(e.target.value) }; setQHotspotZones(n); }} placeholder="H" className="w-16 text-sm" /><Input value={zone.label} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], label: e.target.value }; setQHotspotZones(n); }} placeholder="Label" className="text-sm" /><button type="button" onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button></div>))}
+                      <button type="button" onClick={() => setQHotspotZones([...qHotspotZones, { x: 10, y: 10, w: 20, h: 20, label: '' }])} className="text-xs text-purple-600 hover:underline">+ Add zone</button>
                     </div>
                   </div>
                 )}
-                <div>
-                  <Label className="mb-1.5 block text-xs font-medium text-slate-600">Points</Label>
-                  <Input type="number" min="1" max="100" value={qPoints} onChange={(e) => setQPoints(e.target.value)} className="w-24" />
-                </div>
+
+                <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Points</Label><Input type="number" min="1" max="100" value={qPoints} onChange={(e) => setQPoints(e.target.value)} className="w-24" /></div>
+                <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Explanation (optional, shown after answering)</Label><Input value={qExplanation} onChange={(e) => setQExplanation(e.target.value)} placeholder="Explanation for correct answer" className="text-sm" /></div>
                 {qError && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{qError}</div>}
-                <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-purple-600 text-white hover:bg-purple-700">
-                  {addQuestion.isPending ? 'Adding…' : 'Add Question'}
-                </Button>
+                <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-purple-600 text-white hover:bg-purple-700">{addQuestion.isPending ? 'Adding…' : 'Add Question'}</Button>
               </div>
             </div>
-
-            <div className="flex justify-end">
-              <Button onClick={onClose} className="bg-emerald-600 text-white hover:bg-emerald-700">Done</Button>
-            </div>
+            <div className="flex justify-end"><Button onClick={onClose} className="bg-emerald-600 text-white hover:bg-emerald-700">Done</Button></div>
           </div>
         )}
       </Card>
@@ -3424,7 +3493,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   );
 }
 
-// ─── Quiz Runner (single quiz attempt) ───────────────────────────────────
+// ─── Quiz Runner (supports all 10 question types with drag & drop) ────────
 function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSubmitted: (attemptId: string) => void }) {
   const { data: quizData, isLoading } = useQuiz(quizId || null);
   const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
@@ -3444,103 +3513,52 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
   const [startTime] = useState<number>(Date.now());
   const [timeLeft, setTimeLeft] = useState<number>((quiz?.timeLimit ?? 15) * 60);
   const [error, setError] = useState('');
+  // Drag-and-drop state for sorting/matching
+  const [draggedItem, setDraggedItem] = useState<{ type: string; idx: number } | null>(null);
+  const [draggedMatch, setDraggedMatch] = useState<string | null>(null);
 
-  // Reset timer when quiz loads
+  useEffect(() => { if (quiz?.timeLimit) setTimeLeft(quiz.timeLimit * 60); }, [quiz?.timeLimit]);
+  useEffect(() => { if (!attemptId || timeLeft <= 0) return; const t = setTimeout(() => setTimeLeft((v) => v - 1), 1000); return () => clearTimeout(t); }, [attemptId, timeLeft]);
+  useEffect(() => { if (attemptId && timeLeft === 0 && !showSubmit) handleSubmit(); /* eslint-disable-next-line */ }, [timeLeft, attemptId]);
+  useEffect(() => { if (attemptId) { setCurrentQ(0); setAnswers({}); } }, [attemptId]);
+  // Initialize shuffled order for SORTING questions when question loads
   useEffect(() => {
-    if (quiz?.timeLimit) setTimeLeft(quiz.timeLimit * 60);
-  }, [quiz?.timeLimit]);
-
-  // Tick down timer only while attempt is active
-  useEffect(() => {
-    if (!attemptId || timeLeft <= 0) return;
-    const t = setTimeout(() => setTimeLeft((v) => v - 1), 1000);
-    return () => clearTimeout(t);
-  }, [attemptId, timeLeft]);
-
-  // Auto-submit on time-out
-  useEffect(() => {
-    if (attemptId && timeLeft === 0 && !showSubmit) {
-      handleSubmit();
+    if (!attemptId || questions.length === 0) return;
+    const q = questions[currentQ];
+    if (q?.type === "SORTING" && !answers[q.id]) {
+      const correct = (q.correctAnswer as string[]) ?? [];
+      const shuffled = correct.slice().sort(() => Math.random() - 0.5);
+      setAnswers((prev) => ({ ...prev, [q.id]: shuffled }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft, attemptId]);
-
-  // Reset to first question when a new attempt starts
-  useEffect(() => {
-    if (attemptId) {
-      setCurrentQ(0);
-      setAnswers({});
-    }
-  }, [attemptId]);
+  }, [currentQ, attemptId]);
 
   const enrollments = (enrollmentsData?.data ?? []) as any[];
-  // Pick the first active enrollment that matches the quiz's contentId's course, else first active
   const matchingEnrollment = enrollments[0];
 
   const handleStart = () => {
-    if (!matchingEnrollment) {
-      setError('No active enrollment found. Enroll in a course first.');
-      return;
-    }
+    if (!matchingEnrollment) { setError('No active enrollment found.'); return; }
     setError('');
-    startAttempt.mutate(
-      { quizId, enrollmentId: matchingEnrollment.id },
-      {
-        onSuccess: (data) => {
-          setAttemptId(data.attempt.id);
-        },
-        onError: (err: any) => setError(err.response?.data?.message || 'Failed to start attempt'),
-      },
-    );
+    startAttempt.mutate({ quizId, enrollmentId: matchingEnrollment.id }, { onSuccess: (data) => setAttemptId(data.attempt.id), onError: (err: any) => setError(err.response?.data?.message || 'Failed to start attempt') });
   };
 
   const handleSubmit = () => {
     if (!attemptId) return;
     const timeSpent = Math.round((Date.now() - startTime) / 1000);
-    submitAttempt.mutate(
-      { attemptId, answers, timeSpent },
-      {
-        onSuccess: () => {
-          setShowSubmit(false);
-          onSubmitted(attemptId);
-        },
-        onError: (err: any) => {
-          setError(err.response?.data?.message || 'Failed to submit quiz');
-          setShowSubmit(false);
-        },
-      },
-    );
+    submitAttempt.mutate({ attemptId, answers, timeSpent }, { onSuccess: () => { setShowSubmit(false); onSubmitted(attemptId); }, onError: (err: any) => { setError(err.response?.data?.message || 'Failed to submit'); setShowSubmit(false); } });
   };
 
   const answered = Object.keys(answers).length;
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
 
-  if (isLoading) {
-    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quiz…</div></main>;
-  }
+  if (isLoading) return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quiz…</div></main>;
+  if (!quiz) return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center"><AlertCircle className="mx-auto mb-3 h-10 w-10 text-amber-500" /><p className="text-sm font-medium text-amber-700">Quiz not found.</p><Button variant="outline" onClick={() => onNavigate('dashboard')} className="mt-4 border-amber-200 text-amber-700">Back to Dashboard</Button></div></main>;
 
-  if (!quiz) {
-    return (
-      <main className="mx-auto max-w-7xl p-4 lg:p-6">
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center">
-          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-amber-500" />
-          <p className="text-sm font-medium text-amber-700">Quiz not found.</p>
-          <Button variant="outline" onClick={() => onNavigate('dashboard')} className="mt-4 border-amber-200 text-amber-700">Back to Dashboard</Button>
-        </div>
-      </main>
-    );
-  }
-
-  // Pre-attempt screen
+  // Pre-attempt screen (unchanged)
   if (!attemptId) {
     return (
       <main className="mx-auto max-w-3xl p-4 lg:p-6">
-        <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-          <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="font-medium text-slate-700">{quiz.title}</span>
-        </div>
+        <div className="mb-4 flex items-center gap-2 text-sm text-slate-500"><button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button><ChevronRight className="h-3.5 w-3.5" /><span className="font-medium text-slate-700">{quiz.title}</span></div>
         <Card className="border border-slate-200 p-8 shadow-sm">
           <div className="flex flex-col items-center text-center">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-purple-50"><FileQuestion className="h-7 w-7 text-purple-600" /></div>
@@ -3552,62 +3570,19 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
               <span className="flex items-center gap-1"><Target className="h-3.5 w-3.5" />Pass: {quiz.passingScore}%</span>
               <span className="flex items-center gap-1"><Route className="h-3.5 w-3.5" />Max attempts: {quiz.maxAttempts}</span>
             </div>
-            {quiz.instructions && (
-              <div className="mt-6 w-full rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-600">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Instructions</p>
-                {quiz.instructions}
-              </div>
-            )}
+            {quiz.instructions && <div className="mt-6 w-full rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-600"><p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Instructions</p>{quiz.instructions}</div>}
             {error && <div className="mt-4 w-full rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-            {!isTeacher && (
-              <Button onClick={handleStart} disabled={startAttempt.isPending || !matchingEnrollment} className="mt-6 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
-                {startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}
-              </Button>
-            )}
+            {!isTeacher && <Button onClick={handleStart} disabled={startAttempt.isPending || !matchingEnrollment} className="mt-6 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">{startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}</Button>}
             {!matchingEnrollment && !isTeacher && <p className="mt-2 text-xs text-amber-600">You need an active enrollment to take this quiz.</p>}
-
-            {/* Teacher Analytics Panel */}
             {isTeacher && analyticsData && (
               <div className="mt-6 w-full border-t border-slate-200 pt-4 text-left">
                 <h3 className="mb-3 text-sm font-semibold text-slate-900">Quiz Analytics</h3>
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-lg border border-slate-100 p-3 text-center">
-                    <p className="text-2xl font-bold text-purple-600">{(analyticsData as any)?.totalAttempts ?? 0}</p>
-                    <p className="text-xs text-slate-400">Total Attempts</p>
-                  </div>
-                  <div className="rounded-lg border border-slate-100 p-3 text-center">
-                    <p className="text-2xl font-bold text-emerald-600">{(analyticsData as any)?.passRate != null ? `${(analyticsData as any).passRate}%` : '—'}</p>
-                    <p className="text-xs text-slate-400">Pass Rate</p>
-                  </div>
-                  <div className="rounded-lg border border-slate-100 p-3 text-center">
-                    <p className="text-2xl font-bold text-amber-600">{(analyticsData as any)?.averageScore != null ? `${(analyticsData as any).averageScore}%` : '—'}</p>
-                    <p className="text-xs text-slate-400">Avg Score</p>
-                  </div>
+                  <div className="rounded-lg border border-slate-100 p-3 text-center"><p className="text-2xl font-bold text-purple-600">{(analyticsData as any)?.totalAttempts ?? 0}</p><p className="text-xs text-slate-400">Total Attempts</p></div>
+                  <div className="rounded-lg border border-slate-100 p-3 text-center"><p className="text-2xl font-bold text-emerald-600">{(analyticsData as any)?.passRate != null ? `${(analyticsData as any).passRate}%` : '—'}</p><p className="text-xs text-slate-400">Pass Rate</p></div>
+                  <div className="rounded-lg border border-slate-100 p-3 text-center"><p className="text-2xl font-bold text-amber-600">{(analyticsData as any)?.averageScore != null ? `${(analyticsData as any).averageScore}%` : '—'}</p><p className="text-xs text-slate-400">Avg Score</p></div>
                 </div>
-                {(analyticsData as any)?.questionStats?.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Per-Question Breakdown</p>
-                    {(analyticsData as any).questionStats.map((qs: any, i: number) => (
-                      <div key={i} className="flex items-center gap-3 rounded-lg border border-slate-100 p-2.5">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600">{i + 1}</div>
-                        <div className="flex-1 overflow-hidden">
-                          <p className="truncate text-xs font-medium text-slate-700">{qs.questionText ?? qs.questionId}</p>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="text-slate-400">{qs.correctCount ?? 0}/{qs.totalResponses ?? 0} correct</span>
-                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
-                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${qs.totalResponses > 0 ? ((qs.correctCount / qs.totalResponses) * 100) : 0}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {quiz?.status === 'DRAFT' && (
-                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-                    ⚠️ This quiz is a <strong>Draft</strong>. Students cannot see it until you publish it. Use the Quiz Editor to change the status.
-                  </div>
-                )}
+                {quiz?.status === 'DRAFT' && <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">⚠️ This quiz is a <strong>Draft</strong>. Students cannot see it until published.</div>}
               </div>
             )}
           </div>
@@ -3616,202 +3591,234 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
     );
   }
 
-  // In-progress quiz screen
-  if (questions.length === 0) {
-    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center text-sm text-amber-700">This quiz has no questions yet.</div></main>;
-  }
+  if (questions.length === 0) return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center text-sm text-amber-700">This quiz has no questions yet.</div></main>;
 
   const currentQuestion = questions[currentQ];
-  const isTrueFalse = currentQuestion.type === 'TRUE_FALSE';
-  const isMCQSingle = currentQuestion.type === 'MULTIPLE_CHOICE_SINGLE';
+  const qType = currentQuestion.type;
   const options: any[] = currentQuestion.options ?? [];
+
+  // Drag-and-drop handlers for sorting
+  const handleDragStart = (type: string, idx: number) => setDraggedItem({ type, idx });
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+  const handleDrop = (type: string, targetIdx: number) => {
+    if (!draggedItem || draggedItem.type !== type) return;
+    const currentAnswer = (answers[currentQuestion.id] as any[]) ?? [];
+    if (type === 'sort') {
+      const newArr = [...currentAnswer];
+      const [moved] = newArr.splice(draggedItem.idx, 1);
+      newArr.splice(targetIdx, 0, moved);
+      setAnswers({ ...answers, [currentQuestion.id]: newArr });
+    }
+    setDraggedItem(null);
+  };
+
+  // Render question input based on type
+  const renderQuestionInput = () => {
+    switch (qType) {
+      case 'MULTIPLE_CHOICE_SINGLE':
+      case 'TRUE_FALSE': {
+        const opts = qType === 'TRUE_FALSE' ? [{ text: 'True' }, { text: 'False' }] : options;
+        return (
+          <div className="space-y-2">
+            {opts.map((opt, idx) => {
+              const optValue = qType === 'TRUE_FALSE' ? opt.text === 'True' : opt.text;
+              const selected = answers[currentQuestion.id] === optValue;
+              return (
+                <button key={idx} onClick={() => setAnswers({ ...answers, [currentQuestion.id]: optValue })} className={cn('flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition-all', selected ? 'border-purple-500 bg-purple-50 text-purple-900' : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50')}>
+                  <div className={cn('flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold', selected ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300 text-slate-400')}>{String.fromCharCode(65 + idx)}</div>
+                  {opt.text}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+      case 'MULTIPLE_CHOICE_MULTIPLE': {
+        const selected = (answers[currentQuestion.id] as string[]) ?? [];
+        return (
+          <div className="space-y-2">
+            {options.map((opt, idx) => {
+              const isSelected = selected.includes(opt.text);
+              return (
+                <button key={idx} onClick={() => setAnswers({ ...answers, [currentQuestion.id]: isSelected ? selected.filter((s) => s !== opt.text) : [...selected, opt.text] })} className={cn('flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition-all', isSelected ? 'border-purple-500 bg-purple-50 text-purple-900' : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50')}>
+                  <div className={cn('flex h-7 w-7 items-center justify-center rounded border-2 text-xs font-bold', isSelected ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300 text-slate-400')}>{isSelected ? '✓' : ''}</div>
+                  {opt.text}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
+      case 'FILL_IN_BLANK': {
+        const correctBlanks = Array.isArray(currentQuestion.correctAnswer) ? currentQuestion.correctAnswer : [currentQuestion.correctAnswer];
+        const userBlanks = (answers[currentQuestion.id] as string[]) ?? new Array(correctBlanks.length).fill('');
+        return (
+          <div className="space-y-3">
+            {correctBlanks.map((_: any, idx: number) => (
+              <div key={idx}><Label className="mb-1 block text-xs text-slate-500">Blank {idx + 1}</Label><Input value={userBlanks[idx] ?? ''} onChange={(e) => { const n = [...userBlanks]; n[idx] = e.target.value; setAnswers({ ...answers, [currentQuestion.id]: n }); }} placeholder="Type your answer..." className="text-sm" /></div>
+            ))}
+          </div>
+        );
+      }
+      case 'MATCHING': {
+        // options.pairs = [{left, right}], correctAnswer = {left: right}
+        const pairs = options?.pairs ?? [];
+        const rightItems = pairs.map((p: any) => p.right).sort(() => Math.random() - 0.5); // shuffled
+        const userMatches = (answers[currentQuestion.id] as Record<string, string>) ?? {};
+        return (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">Drag items from the right column to match with the left column.</p>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Left column — fixed */}
+              <div className="space-y-2">
+                {pairs.map((p: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <span className="font-medium text-slate-700">{p.left}</span>
+                    <Badge className={cn('ml-2', userMatches[p.left] ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-400')}>{userMatches[p.left] ?? '?'}</Badge>
+                  </div>
+                ))}
+              </div>
+              {/* Right column — draggable items */}
+              <div className="space-y-2">
+                {rightItems.map((item: string, idx: number) => {
+                  const used = Object.values(userMatches).includes(item);
+                  return (
+                    <div
+                      key={idx}
+                      draggable={!used}
+                      onDragStart={() => setDraggedMatch(item)}
+                      onDragEnd={() => setDraggedMatch(null)}
+                      onClick={() => {
+                        // Also support click-to-assign: find first unmatched left item
+                        const unmatched = pairs.find((p: any) => !userMatches[p.left]);
+                        if (unmatched) setAnswers({ ...answers, [currentQuestion.id]: { ...userMatches, [unmatched.left]: item } });
+                      }}
+                      className={cn('cursor-grab rounded-lg border p-3 text-sm font-medium transition-all active:cursor-grabbing', used ? 'border-slate-100 bg-slate-50 text-slate-300 line-through' : 'border-purple-200 bg-purple-50 text-purple-700 hover:border-purple-400 hover:shadow-sm', draggedMatch === item && 'opacity-50')}
+                    >
+                      <GripVertical className="mr-1.5 inline h-3.5 w-3.5 text-slate-400" />{item}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Drop zones for left items */}
+            <div className="space-y-1.5">
+              {pairs.map((p: any, idx: number) => (
+                <div
+                  key={idx}
+                  onDragOver={handleDragOver}
+                  onDrop={() => { if (draggedMatch) setAnswers({ ...answers, [currentQuestion.id]: { ...userMatches, [p.left]: draggedMatch } }); }}
+                  onClick={() => { // Click left item to clear
+                    if (userMatches[p.left]) { const n = { ...userMatches }; delete n[p.left]; setAnswers({ ...answers, [currentQuestion.id]: n }); }
+                  }}
+                  className={cn('flex items-center gap-2 rounded-lg border-2 border-dashed p-2 text-xs cursor-pointer', userMatches[p.left] ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 hover:border-purple-300')}
+                >
+                  <span className="font-medium text-slate-600">{p.left}</span>
+                  <span className="text-slate-400">→</span>
+                  <span className={cn('font-medium', userMatches[p.left] ? 'text-emerald-600' : 'text-slate-300')}>{userMatches[p.left] ?? 'Drop here or click right item'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+      case 'SORTING': {
+        const correctItems = (currentQuestion.correctAnswer as string[]) ?? [];
+        const userOrder = (answers[currentQuestion.id] as string[]) ?? correctItems.slice().sort(() => Math.random() - 0.5); // shuffled initial
+        // Shuffled order initialized via useEffect when question loads
+        return (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">Drag the items to arrange them in the correct order.</p>
+            {userOrder.map((item: string, idx: number) => (
+              <div
+                key={idx}
+                draggable
+                onDragStart={() => handleDragStart('sort', idx)}
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop('sort', idx)}
+                className={cn('flex cursor-grab items-center gap-3 rounded-lg border-2 border-slate-200 bg-white p-3 text-sm font-medium transition-all hover:border-purple-300 active:cursor-grabbing', draggedItem?.type === 'sort' && draggedItem.idx === idx && 'opacity-50')}
+              >
+                <GripVertical className="h-4 w-4 text-slate-400" />
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600">{idx + 1}</span>
+                {item}
+              </div>
+            ))}
+          </div>
+        );
+      }
+      case 'SHORT_ANSWER':
+        return <div><Label className="mb-1.5 block text-xs text-slate-500">Your Answer</Label><Input value={(answers[currentQuestion.id] as string) ?? ''} onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.value })} placeholder="Type your answer..." className="text-sm" /></div>;
+      case 'ESSAY':
+        return <div><Label className="mb-1.5 block text-xs text-slate-500">Your Essay</Label><textarea value={(answers[currentQuestion.id] as string) ?? ''} onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.value })} rows={6} placeholder="Write your essay..." className="w-full rounded-lg border border-slate-200 p-3 text-sm text-slate-700 focus:border-purple-500 focus:outline-none" /></div>;
+      case 'FILE_UPLOAD':
+        return <div><Label className="mb-1.5 block text-xs text-slate-500">Upload your file</Label><div className="rounded-lg border-2 border-dashed border-slate-200 p-6 text-center"><Upload className="mx-auto mb-2 h-8 w-8 text-slate-300" /><p className="text-sm text-slate-500">Click to upload or drag and drop</p><input type="file" className="mt-2 text-xs text-slate-400" onChange={(e) => { const f = e.target.files?.[0]; if (f) setAnswers({ ...answers, [currentQuestion.id]: { fileName: f.name, fileSize: f.size } }); }} /></div></div>;
+      case 'HOTSPOT': {
+        const zones = options?.zones ?? [];
+        const userZone = (answers[currentQuestion.id] as string) ?? null;
+        return (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">Click on the correct area of the image.</p>
+            {options?.imageUrl && <div className="relative overflow-hidden rounded-lg border border-slate-200"><img src={options.imageUrl} alt="Hotspot" className="w-full" onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; // Find which zone was clicked
+              const hit = zones.find((z: any) => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
+              if (hit) setAnswers({ ...answers, [currentQuestion.id]: hit.label });
+            }} />{/* Render zone overlays (hidden in real quiz, visible for demo) */}
+            {zones.map((z: any, idx: number) => (<div key={idx} className={cn('absolute border-2 transition-all', userZone === z.label ? 'border-emerald-500 bg-emerald-500/20' : 'border-transparent')} style={{ left: `${z.x}%`, top: `${z.y}%`, width: `${z.w}%`, height: `${z.h}%` }} />))}
+            </div>}
+            {userZone && <p className="text-sm text-emerald-600">✓ Selected: {userZone}</p>}
+          </div>
+        );
+      }
+      default:
+        return <p className="text-sm text-slate-400">Unsupported question type.</p>;
+    }
+  };
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
-      {/* Breadcrumb */}
-      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-medium text-slate-700">{quiz.title}</span>
-      </div>
-
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500"><button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button><ChevronRight className="h-3.5 w-3.5" /><span className="font-medium text-slate-700">{quiz.title}</span></div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-        {/* Question Area */}
         <div className="lg:col-span-3">
-          {/* Quiz Header */}
           <Card className="mb-4 border border-slate-200 p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">{quiz.title}</h1>
-                <p className="mt-0.5 text-sm text-slate-500">{questions.length} questions · Passing score: {quiz.passingScore}%</p>
-              </div>
-              <div className={cn('flex items-center gap-2 rounded-lg px-3 py-2', timeLeft < 300 ? 'bg-red-50' : 'bg-slate-50')}>
-                <Clock className={cn('h-4 w-4', timeLeft < 300 ? 'text-red-500' : 'text-slate-500')} />
-                <span className={cn('text-sm font-semibold', timeLeft < 300 ? 'text-red-600' : 'text-slate-700')}>{mins}:{secs.toString().padStart(2, '0')}</span>
-              </div>
+              <div><h1 className="text-xl font-bold text-slate-900">{quiz.title}</h1><p className="mt-0.5 text-sm text-slate-500">{questions.length} questions · Passing: {quiz.passingScore}%</p></div>
+              <div className={cn('flex items-center gap-2 rounded-lg px-3 py-2', timeLeft < 300 ? 'bg-red-50' : 'bg-slate-50')}><Clock className={cn('h-4 w-4', timeLeft < 300 ? 'text-red-500' : 'text-slate-500')} /><span className={cn('text-sm font-semibold', timeLeft < 300 ? 'text-red-600' : 'text-slate-700')}>{mins}:{secs.toString().padStart(2, '0')}</span></div>
             </div>
-            {/* Progress */}
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-purple-600 transition-all" style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }} />
-            </div>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-purple-600 transition-all" style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }} /></div>
             <p className="mt-1.5 text-xs text-slate-400">Question {currentQ + 1} of {questions.length}</p>
           </Card>
-
-          {/* Question Card */}
           <Card className="border border-slate-200 p-6 shadow-sm">
-            {/* Question content area — orange/amber background per reference */}
-            <div className="mb-6 flex aspect-[16/3] items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-100">
-              <div className="text-center">
-                <FileQuestion className="mx-auto h-12 w-12 text-amber-400" />
-                <p className="mt-2 text-sm text-amber-600">Question {currentQ + 1} of {questions.length}</p>
-              </div>
-            </div>
-            <div className="mb-4">
-              <Badge className="mb-2 bg-purple-50 text-purple-600 hover:bg-purple-50">{currentQuestion.type.replace(/_/g, ' ')}</Badge>
-              <h2 className="text-lg font-semibold text-slate-900">{currentQuestion.questionText}</h2>
-            </div>
-            <div className="space-y-2">
-              {options.map((opt, idx) => {
-                const optValue = isTrueFalse ? opt.text === 'True' : opt.text;
-                const selected = isTrueFalse
-                  ? answers[currentQuestion.id] === (opt.text === 'True')
-                  : answers[currentQuestion.id] === opt.text;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setAnswers({ ...answers, [currentQuestion.id]: optValue })}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition-all',
-                      selected
-                        ? 'border-purple-500 bg-purple-50 text-purple-900'
-                        : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50',
-                    )}
-                  >
-                    <div className={cn(
-                      'flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors',
-                      selected
-                        ? 'border-purple-600 bg-purple-600 text-white'
-                        : 'border-slate-300 text-slate-400',
-                    )}>
-                      {String.fromCharCode(65 + idx)}
-                    </div>
-                    {opt.text}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* I'm not sure checkbox */}
-            <label className="mt-4 flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={answers[currentQuestion.id] === 'not_sure'}
-                onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.checked ? 'not_sure' : undefined })}
-                className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-              />
-              <span className="text-sm text-slate-500">I'm not sure</span>
-            </label>
-
-            {/* Navigation */}
+            <div className="mb-4"><Badge className="mb-2 bg-purple-50 text-purple-600 hover:bg-purple-50">{currentQuestion.type.replace(/_/g, ' ')}</Badge><h2 className="text-lg font-semibold text-slate-900">{currentQuestion.questionText}</h2></div>
+            {renderQuestionInput()}
+            <label className="mt-4 flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={answers[currentQuestion.id] === 'not_sure'} onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.checked ? 'not_sure' : undefined })} className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500" /><span className="text-sm text-slate-500">I'm not sure</span></label>
             <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-              <Button
-                variant="outline"
-                disabled={currentQ === 0}
-                onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
-                className="border-slate-200 text-slate-600"
-              >
-                <ArrowLeft className="mr-1.5 h-4 w-4" />
-                Previous
-              </Button>
-              {currentQ === questions.length - 1 ? (
-                <Button onClick={() => setShowSubmit(true)} className="bg-amber-500 text-white hover:bg-amber-600">
-                  Submit Quiz
-                </Button>
-              ) : (
-                <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-amber-500 text-white hover:bg-amber-600">
-                  Continue
-                  <ChevronRight className="ml-1.5 h-4 w-4" />
-                </Button>
-              )}
+              <Button variant="outline" disabled={currentQ === 0} onClick={() => setCurrentQ(Math.max(0, currentQ - 1))} className="border-slate-200 text-slate-600"><ArrowLeft className="mr-1.5 h-4 w-4" />Previous</Button>
+              {currentQ === questions.length - 1 ? <Button onClick={() => setShowSubmit(true)} className="bg-amber-500 text-white hover:bg-amber-600">Submit Quiz</Button> : <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-amber-500 text-white hover:bg-amber-600">Continue<ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
             </div>
           </Card>
         </div>
-
         {/* Quiz Navigation Sidebar */}
         <div>
           <Card className="border border-slate-200 shadow-sm">
-            <div className="border-b border-slate-200 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Quiz Navigation</h3>
-              <p className="mt-0.5 text-xs text-slate-400">{answered}/{questions.length} answered</p>
-            </div>
-            {/* Status filters */}
-            <div className="border-b border-slate-100 p-3">
-              <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">All Questions</span>
-                <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-600">Answered</span>
-                <span className="rounded-md bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-600">Not Sure</span>
-              </div>
-            </div>
+            <div className="border-b border-slate-200 p-4"><h3 className="text-sm font-semibold text-slate-900">Quiz Navigation</h3><p className="mt-0.5 text-xs text-slate-400">{answered}/{questions.length} answered</p></div>
             <div className="grid grid-cols-5 gap-2 p-4">
-              {questions.map((q, idx) => (
-                <button
-                  key={q.id}
-                  onClick={() => setCurrentQ(idx)}
-                  className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors',
-                    idx === currentQ
-                      ? 'bg-purple-600 text-white'
-                      : answers[q.id] === 'not_sure'
-                        ? 'bg-amber-100 text-amber-700'
-                        : answers[q.id] !== undefined
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
-                  )}
-                >
-                  {idx + 1}
-                </button>
-              ))}
+              {questions.map((q, idx) => (<button key={q.id} onClick={() => setCurrentQ(idx)} className={cn('flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors', idx === currentQ ? 'bg-purple-600 text-white' : answers[q.id] === 'not_sure' ? 'bg-amber-100 text-amber-700' : answers[q.id] !== undefined ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}>{idx + 1}</button>))}
             </div>
-            <div className="border-t border-slate-200 p-4">
-              <div className="mb-3 space-y-1.5 text-xs">
-                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-purple-600" /><span className="text-slate-500">Current</span></div>
-                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-emerald-100" /><span className="text-slate-500">Answered</span></div>
-                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-amber-100" /><span className="text-slate-500">Not Sure</span></div>
-                <div className="flex items-center gap-2"><div className="h-3 w-3 rounded bg-slate-100" /><span className="text-slate-500">Not Answered</span></div>
-              </div>
-              <Button onClick={() => setShowSubmit(true)} className="w-full bg-amber-500 text-white hover:bg-amber-600">
-                Submit Quiz
-              </Button>
-            </div>
+            <div className="border-t border-slate-200 p-4"><Button onClick={() => setShowSubmit(true)} className="w-full bg-amber-500 text-white hover:bg-amber-600">Submit Quiz</Button></div>
           </Card>
         </div>
       </div>
-
-      {/* Submission Modal */}
       {showSubmit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md border-0 p-6 shadow-xl">
-            <div className="mb-4 flex flex-col items-center text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50"><AlertCircle className="h-7 w-7 text-amber-500" /></div>
-              <h2 className="text-lg font-bold text-slate-900">Submit Quiz?</h2>
-              <p className="mt-1 text-sm text-slate-500">You have answered {answered} out of {questions.length} questions.</p>
-              {answered < questions.length && (
-                <p className="mt-2 text-xs font-medium text-amber-600">{questions.length - answered} questions are still unanswered.</p>
-              )}
-              {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setShowSubmit(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-              <Button onClick={handleSubmit} disabled={submitAttempt.isPending} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">
-                {submitAttempt.isPending ? 'Submitting…' : 'Finish!'}
-              </Button>
-            </div>
+            <div className="mb-4 flex flex-col items-center text-center"><div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50"><AlertCircle className="h-7 w-7 text-amber-500" /></div><h2 className="text-lg font-bold text-slate-900">Submit Quiz?</h2><p className="mt-1 text-sm text-slate-500">You have answered {answered} out of {questions.length} questions.</p>{answered < questions.length && <p className="mt-2 text-xs font-medium text-amber-600">{questions.length - answered} questions are still unanswered.</p>}{error && <p className="mt-2 text-xs text-red-600">{error}</p>}</div>
+            <div className="flex gap-3"><Button variant="outline" onClick={() => setShowSubmit(false)} className="flex-1 border-slate-200 text-slate-600">Cancel</Button><Button onClick={handleSubmit} disabled={submitAttempt.isPending} className="flex-1 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50">{submitAttempt.isPending ? 'Submitting…' : 'Finish!'}</Button></div>
           </Card>
         </div>
       )}
     </main>
   );
 }
+
 
 // ─── Quiz Results View ────────────────────────────────────────────────────
 function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavigate: (v: View) => void }) {
