@@ -30,7 +30,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'verify-certificate' | 'dashboard' | 'catalog' | 'my-courses' | 'my-sections' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
+type View = 'login' | 'verify-certificate' | 'dashboard' | 'catalog' | 'my-courses' | 'my-sections' | 'academic-management' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
 
 interface Course {
   id: string; title: string; description: string; instructor: string;
@@ -74,7 +74,7 @@ const navItems: NavItem[] = [
   { label: 'Messages', icon: MessageSquare, view: 'messages', roles: ['TEACHER', 'STUDENT'] },
 
   // ── Admin ──
-  { label: 'Sections', icon: Layers, view: 'my-sections', roles: ['ADMIN'] },
+  { label: 'Academic Structure', icon: Layers, view: 'academic-management', roles: ['ADMIN'] },
   { label: 'Admin Panel', icon: BarChart3, view: 'admin', roles: ['ADMIN'] },
   { label: 'Users', icon: Users, view: 'users', roles: ['ADMIN'] },
   { label: 'Audit Logs', icon: FileText, view: 'audit', roles: ['ADMIN'] },
@@ -1775,6 +1775,501 @@ function MyCoursesView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: st
 }
 
 // ─── My Sections View (School-based: students see their sections, teachers see assigned sections) ──
+// ─── Academic Structure Management (Admin) ───────────────────────────────
+function AcademicManagementView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const [activeTab, setActiveTab] = useState<'years' | 'grades' | 'subjects' | 'sections'>('sections');
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+
+  const tabs = [
+    { id: 'sections' as const, label: 'Sections', icon: Layers },
+    { id: 'grades' as const, label: 'Grades', icon: BookOpen },
+    { id: 'subjects' as const, label: 'Subjects', icon: BookMarked },
+    { id: 'years' as const, label: 'Academic Years', icon: Calendar },
+  ];
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">Academic Structure</span>
+      </div>
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Academic Structure Management</h1>
+        <p className="mt-1 text-sm text-slate-500">Create sections, assign students and teachers, manage the school hierarchy.</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-6 flex gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
+              activeTab === tab.id ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+            )}
+          >
+            <tab.icon className="h-4 w-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'years' && <AcademicYearsTab />}
+      {activeTab === 'grades' && <GradesTab />}
+      {activeTab === 'subjects' && <SubjectsTab />}
+      {activeTab === 'sections' && (
+        <SectionsTab
+          selectedSectionId={selectedSectionId}
+          onSelectSection={setSelectedSectionId}
+        />
+      )}
+    </main>
+  );
+}
+
+// ── Academic Years Tab ──
+function AcademicYearsTab() {
+  const { data, isLoading } = useAcademicYears();
+  const createMut = useCreateAcademicYear();
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [isCurrent, setIsCurrent] = useState(false);
+
+  const years = (data?.data ?? []) as any[];
+
+  const handleCreate = () => {
+    if (!name || !startDate || !endDate) return;
+    createMut.mutate({ name, startDate, endDate, isCurrent }, {
+      onSuccess: () => { setShowForm(false); setName(''); setStartDate(''); setEndDate(''); setIsCurrent(false); },
+    });
+  };
+
+  return (
+    <Card className="border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-slate-900">Academic Years</h2>
+        <Button size="sm" onClick={() => setShowForm(!showForm)} className="bg-purple-600 text-white hover:bg-purple-700">
+          <Plus className="mr-1.5 h-4 w-4" />{showForm ? 'Cancel' : 'New Year'}
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50/50 p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-xs text-slate-600">Name (e.g. 2026-2027)</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="2026-2027" />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-600">Start Date</Label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-600">End Date</Label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div className="flex items-end gap-2">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" checked={isCurrent} onChange={(e) => setIsCurrent(e.target.checked)} className="rounded" />
+                Set as current year
+              </label>
+            </div>
+          </div>
+          <Button size="sm" onClick={handleCreate} disabled={createMut.isPending} className="mt-3 bg-purple-600 text-white hover:bg-purple-700">
+            {createMut.isPending ? 'Creating...' : 'Create Academic Year'}
+          </Button>
+        </div>
+      )}
+
+      {isLoading && <p className="py-4 text-center text-sm text-slate-400">Loading...</p>}
+      {!isLoading && years.length === 0 && <p className="py-4 text-center text-sm text-slate-400">No academic years yet.</p>}
+
+      <div className="space-y-2">
+        {years.map((y: any) => (
+          <div key={y.id} className="flex items-center justify-between rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50"><Calendar className="h-5 w-5 text-purple-600" /></div>
+              <div>
+                <p className="text-sm font-medium text-slate-900">{y.name}</p>
+                <p className="text-xs text-slate-500">{formatDate(y.startDate)} - {formatDate(y.endDate)}</p>
+              </div>
+            </div>
+            {y.isCurrent && <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">Current</Badge>}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ── Grades Tab ──
+function GradesTab() {
+  const { data, isLoading } = useGrades();
+  const createMut = useCreateGrade();
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [level, setLevel] = useState('');
+
+  const grades = (data?.data ?? []) as any[];
+
+  const handleCreate = () => {
+    if (!name || !level) return;
+    createMut.mutate({ name, level: Number(level) }, {
+      onSuccess: () => { setShowForm(false); setName(''); setLevel(''); },
+    });
+  };
+
+  return (
+    <Card className="border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-slate-900">Grade Levels</h2>
+        <Button size="sm" onClick={() => setShowForm(!showForm)} className="bg-purple-600 text-white hover:bg-purple-700">
+          <Plus className="mr-1.5 h-4 w-4" />{showForm ? 'Cancel' : 'New Grade'}
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50/50 p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-xs text-slate-600">Name (e.g. Grade 9)</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Grade 9" />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-600">Level (numeric, e.g. 9)</Label>
+              <Input type="number" value={level} onChange={(e) => setLevel(e.target.value)} placeholder="9" />
+            </div>
+          </div>
+          <Button size="sm" onClick={handleCreate} disabled={createMut.isPending} className="mt-3 bg-purple-600 text-white hover:bg-purple-700">
+            {createMut.isPending ? 'Creating...' : 'Create Grade'}
+          </Button>
+        </div>
+      )}
+
+      {isLoading && <p className="py-4 text-center text-sm text-slate-400">Loading...</p>}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {grades.map((g: any) => (
+          <div key={g.id} className="rounded-lg border border-slate-200 p-4 text-center">
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100"><BookOpen className="h-6 w-6 text-purple-600" /></div>
+            <p className="text-sm font-semibold text-slate-900">{g.name}</p>
+            <p className="text-xs text-slate-400">{g._count?.sections ?? 0} sections</p>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ── Subjects Tab ──
+function SubjectsTab() {
+  const { data, isLoading } = useSubjects();
+  const createMut = useCreateSubject();
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+
+  const subjects = (data?.data ?? []) as any[];
+
+  const handleCreate = () => {
+    if (!name) return;
+    createMut.mutate({ name, code: code || undefined }, {
+      onSuccess: () => { setShowForm(false); setName(''); setCode(''); },
+    });
+  };
+
+  return (
+    <Card className="border border-slate-200 p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-slate-900">Subjects</h2>
+        <Button size="sm" onClick={() => setShowForm(!showForm)} className="bg-purple-600 text-white hover:bg-purple-700">
+          <Plus className="mr-1.5 h-4 w-4" />{showForm ? 'Cancel' : 'New Subject'}
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50/50 p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-xs text-slate-600">Name (e.g. Mathematics)</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Mathematics" />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-600">Code (optional, e.g. MATH)</Label>
+              <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="MATH" />
+            </div>
+          </div>
+          <Button size="sm" onClick={handleCreate} disabled={createMut.isPending} className="mt-3 bg-purple-600 text-white hover:bg-purple-700">
+            {createMut.isPending ? 'Creating...' : 'Create Subject'}
+          </Button>
+        </div>
+      )}
+
+      {isLoading && <p className="py-4 text-center text-sm text-slate-400">Loading...</p>}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {subjects.map((s: any) => (
+          <div key={s.id} className="rounded-lg border border-slate-200 p-3 text-center">
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50"><BookMarked className="h-5 w-5 text-blue-600" /></div>
+            <p className="text-sm font-semibold text-slate-900">{s.name}</p>
+            {s.code && <p className="text-xs text-slate-400">{s.code}</p>}
+            <p className="text-[10px] text-slate-400">{s._count?.sectionSubjects ?? 0} assignments</p>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ── Sections Tab (the main one — create sections, view students/teachers, assign) ──
+function SectionsTab({ selectedSectionId, onSelectSection }: { selectedSectionId: string | null; onSelectSection: (id: string | null) => void }) {
+  const { data: sectionsData, isLoading } = useSections();
+  const { data: gradesData } = useGrades();
+  const { data: ayData } = useCurrentAcademicYear();
+  const createMut = useCreateSection();
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [gradeId, setGradeId] = useState('');
+  const [capacity, setCapacity] = useState('40');
+
+  const sections = (sectionsData?.data ?? []) as any[];
+  const grades = (gradesData?.data ?? []) as any[];
+  const ay = ayData?.academicYear;
+
+  const handleCreate = () => {
+    if (!name || !gradeId || !ay) return;
+    createMut.mutate({ name, gradeId, academicYearId: ay.id, capacity: Number(capacity) }, {
+      onSuccess: () => { setShowForm(false); setName(''); setCapacity('40'); },
+    });
+  };
+
+  // If a section is selected, show the detail view
+  if (selectedSectionId) {
+    return <SectionDetailView sectionId={selectedSectionId} onBack={() => onSelectSection(null)} />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="border border-slate-200 p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Sections</h2>
+            <p className="text-xs text-slate-500">{ay ? `Academic Year: ${ay.name}` : 'No current academic year set'}</p>
+          </div>
+          <Button size="sm" onClick={() => setShowForm(!showForm)} disabled={!ay} className="bg-purple-600 text-white hover:bg-purple-700">
+            <Plus className="mr-1.5 h-4 w-4" />{showForm ? 'Cancel' : 'New Section'}
+          </Button>
+        </div>
+
+        {showForm && (
+          <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50/50 p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <Label className="text-xs text-slate-600">Section Name (e.g. 9A)</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="9A" />
+              </div>
+              <div>
+                <Label className="text-xs text-slate-600">Grade</Label>
+                <select value={gradeId} onChange={(e) => setGradeId(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <option value="">Select grade...</option>
+                  {grades.map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-slate-600">Capacity</Label>
+                <Input type="number" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+              </div>
+            </div>
+            <Button size="sm" onClick={handleCreate} disabled={createMut.isPending} className="mt-3 bg-purple-600 text-white hover:bg-purple-700">
+              {createMut.isPending ? 'Creating...' : 'Create Section'}
+            </Button>
+          </div>
+        )}
+
+        {isLoading && <p className="py-4 text-center text-sm text-slate-400">Loading...</p>}
+        {!isLoading && sections.length === 0 && (
+          <p className="py-8 text-center text-sm text-slate-400">No sections yet. Create one to get started.</p>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {sections.map((s: any) => (
+            <button
+              key={s.id}
+              onClick={() => onSelectSection(s.id)}
+              className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-left shadow-sm transition-all hover:border-purple-200 hover:shadow-md"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-lg font-bold text-purple-600">{s.name}</div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{s.name}</p>
+                  <p className="text-xs text-slate-500">{s.grade?.name}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-400">Students</p>
+                <p className="text-lg font-bold text-slate-900">{s._count?.studentSections ?? 0}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ── Section Detail View (students + teachers + assignment forms) ──
+function SectionDetailView({ sectionId, onBack }: { sectionId: string; onBack: () => void }) {
+  const { data: sectionsData } = useSections();
+  const { data: studentsData, isLoading: studentsLoading } = useSectionStudents(sectionId);
+  const { data: ssData, isLoading: ssLoading } = useSectionSubjects({ sectionId });
+  const { data: usersData } = useUsers({ limit: 100 });
+  const { data: subjectsData } = useSubjects();
+  const assignStudentMut = useAssignStudent();
+  const assignTeacherMut = useAssignTeacher();
+  const removeStudentMut = useRemoveStudentFromSection();
+  const { data: ayData } = useCurrentAcademicYear();
+
+  const section = (sectionsData?.data ?? []).find((s: any) => s.id === sectionId);
+  const students = (studentsData?.data ?? []) as any[];
+  const sectionSubjects = (ssData?.data ?? []) as any[];
+  const allUsers = (usersData?.data ?? []) as any[];
+  const allSubjects = (subjectsData?.data ?? []) as any[];
+  const ay = ayData?.academicYear;
+
+  // Form state
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+
+  const availableStudents = allUsers.filter((u: any) => u.role === 'STUDENT');
+  const availableTeachers = allUsers.filter((u: any) => u.role === 'TEACHER');
+
+  const handleAssignStudent = () => {
+    if (!selectedStudentId || !ay) return;
+    assignStudentMut.mutate({ studentId: selectedStudentId, sectionId, academicYearId: ay.id }, {
+      onSuccess: () => setSelectedStudentId(''),
+    });
+  };
+
+  const handleAssignTeacher = () => {
+    if (!selectedTeacherId || !selectedSubjectId) return;
+    assignTeacherMut.mutate({ sectionId, subjectId: selectedSubjectId, teacherId: selectedTeacherId }, {
+      onSuccess: () => { setSelectedTeacherId(''); setSelectedSubjectId(''); },
+    });
+  };
+
+  const handleRemoveStudent = (studentId: string) => {
+    if (!confirm('Remove this student from the section?')) return;
+    removeStudentMut.mutate({ studentId, sectionId });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="outline" size="sm" onClick={onBack} className="border-slate-200"><ArrowLeft className="mr-1.5 h-4 w-4" />Back</Button>
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">{section?.name ?? 'Section'}</h2>
+          <p className="text-sm text-slate-500">{section?.grade?.name} · {section?.academicYear?.name}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Students column */}
+        <Card className="border border-slate-200 p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-slate-900">Students ({students.length})</h3>
+          </div>
+
+          {/* Assign student form */}
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+            <Label className="mb-1 text-xs text-slate-600">Assign student to this section</Label>
+            <div className="flex gap-2">
+              <select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <option value="">Select student...</option>
+                {availableStudents.map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email})</option>)}
+              </select>
+              <Button size="sm" onClick={handleAssignStudent} disabled={!selectedStudentId || assignStudentMut.isPending} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                {assignStudentMut.isPending ? '...' : 'Add'}
+              </Button>
+            </div>
+          </div>
+
+          {studentsLoading && <p className="py-4 text-center text-sm text-slate-400">Loading...</p>}
+          {!studentsLoading && students.length === 0 && <p className="py-4 text-center text-sm text-slate-400">No students assigned.</p>}
+
+          <div className="space-y-2">
+            {students.map((ss: any) => (
+              <div key={ss.id} className="flex items-center justify-between rounded-lg border border-slate-100 p-2 hover:bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-600">{getInitials(`${ss.student.firstName} ${ss.student.lastName}`)}</div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{ss.student.firstName} {ss.student.lastName}</p>
+                    <p className="text-xs text-slate-400">{ss.student.email}</p>
+                  </div>
+                </div>
+                <button onClick={() => handleRemoveStudent(ss.student.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Teachers / Subjects column */}
+        <Card className="border border-slate-200 p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-slate-900">Subjects & Teachers ({sectionSubjects.length})</h3>
+          </div>
+
+          {/* Assign teacher form */}
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+            <Label className="mb-1 text-xs text-slate-600">Assign teacher to a subject</Label>
+            <div className="space-y-2">
+              <select value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <option value="">Select subject...</option>
+                {allSubjects.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <div className="flex gap-2">
+                <select value={selectedTeacherId} onChange={(e) => setSelectedTeacherId(e.target.value)} className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <option value="">Select teacher...</option>
+                  {availableTeachers.map((u: any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+                </select>
+                <Button size="sm" onClick={handleAssignTeacher} disabled={!selectedTeacherId || !selectedSubjectId || assignTeacherMut.isPending} className="bg-blue-600 text-white hover:bg-blue-700">
+                  {assignTeacherMut.isPending ? '...' : 'Assign'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {ssLoading && <p className="py-4 text-center text-sm text-slate-400">Loading...</p>}
+          {!ssLoading && sectionSubjects.length === 0 && <p className="py-4 text-center text-sm text-slate-400">No subjects assigned yet.</p>}
+
+          <div className="space-y-2">
+            {sectionSubjects.map((ss: any) => (
+              <div key={ss.id} className="flex items-center justify-between rounded-lg border border-slate-100 p-2 hover:bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50"><BookMarked className="h-4 w-4 text-blue-600" /></div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{ss.subject?.name}</p>
+                    <p className="text-xs text-slate-400">{ss.teacher ? `${ss.teacher.firstName} ${ss.teacher.lastName}` : <span className="text-amber-600">No teacher assigned</span>}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+
 function MySectionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const user = useAuthStore((s) => s.user);
   const role = (user?.role ?? 'STUDENT') as Role;
@@ -5288,7 +5783,7 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
           { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-purple-600 bg-purple-50', desc: 'Create & manage accounts' },
           { label: 'Audit Logs', icon: FileText, view: 'audit' as View, color: 'text-amber-600 bg-amber-50', desc: 'View all platform actions' },
           { label: 'Settings', icon: Settings, view: 'settings' as View, color: 'text-slate-600 bg-slate-100', desc: 'Platform configuration' },
-          { label: 'Sections', icon: Layers, view: 'my-sections' as View, color: 'text-blue-600 bg-blue-50', desc: 'Academic structure' },
+          { label: 'Academic Structure', icon: Layers, view: 'academic-management' as View, color: 'text-blue-600 bg-blue-50', desc: 'Sections and assignments' },
         ].map((action) => (
           <button key={action.label} onClick={() => onNavigate(action.view)} className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-purple-200 hover:shadow-md">
             <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', action.color)}><action.icon className="h-5 w-5" /></div>
@@ -7055,6 +7550,7 @@ export default function App() {
     'settings': ['ADMIN'],
     'course-create': ['TEACHER'],
     'my-courses': ['TEACHER'],
+    'academic-management': ['ADMIN'],
   };
 
   const handleNavigate = (v: View) => {
@@ -7127,6 +7623,7 @@ export default function App() {
         {view === 'catalog' && <CatalogView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
         {view === 'my-courses' && <MyCoursesView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
         {view === 'my-sections' && <MySectionsView onNavigate={handleNavigate} />}
+        {view === 'academic-management' && <AcademicManagementView onNavigate={handleNavigate} />}
         {view === 'course-detail' && <CourseDetailView courseId={selectedCourseId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSelectAssignment={handleSelectAssignment} />}
         {view === 'quiz' && <QuizView quizId={selectedQuizId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSubmitted={handleQuizSubmitted} />}
         {view === 'quiz-results' && <QuizResultsView attemptId={lastAttemptId} onNavigate={handleNavigate} />}
