@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { getSocket } from '@/lib/socket';
 import { RichTextEditor, RichTextRenderer } from '@/components/rich-text-editor';
@@ -30,7 +30,7 @@ import {
 } from 'recharts';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
-type View = 'login' | 'verify-certificate' | 'dashboard' | 'catalog' | 'my-courses' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
+type View = 'login' | 'verify-certificate' | 'dashboard' | 'catalog' | 'my-courses' | 'my-sections' | 'course-detail' | 'quiz' | 'quiz-results' | 'assignment' | 'discussions' | 'discussion-detail' | 'announcements' | 'admin' | 'audit' | 'users' | 'gamification' | 'course-create' | 'settings' | 'messages' | 'profile';
 
 interface Course {
   id: string; title: string; description: string; instructor: string;
@@ -56,6 +56,7 @@ const navItems: NavItem[] = [
   { label: 'Home', icon: LayoutDashboard, view: 'dashboard', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   // Students: catalog to find new courses. Teachers/Admins: their own courses.
   { label: 'Catalog', icon: Layers, view: 'catalog', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { label: 'My Sections', icon: Layers, view: 'my-sections', roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   // Teachers: My Courses (manage own courses). Admins review via Admin Panel.
   { label: 'My Courses', icon: BookMarked, view: 'my-courses', roles: ['TEACHER'] },
   // Students: their learning content
@@ -760,6 +761,7 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
   const user = useAuthStore((s) => s.user);
   const { data: studentData, isLoading } = useStudentDashboard();
   const { data: leaderboardData } = useLeaderboard({ limit: 5 });
+  const { data: schoolData } = useStudentSchoolDashboard();
   const firstName = user?.firstName ?? 'Learner';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -828,6 +830,27 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {/* My Sections (school-based) */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <SectionHeader title="My Sections" action="View all" onAction={() => onNavigate('my-sections')} />
+            {(schoolData?.sections ?? []).length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-400">No sections assigned yet. Contact your administrator.</p>
+            ) : (
+              <div className="space-y-2">
+                {(schoolData?.sections ?? []).slice(0, 3).map((ss: any) => (
+                  <div key={ss.id} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50"><Layers className="h-4 w-4 text-purple-600" /></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900">{ss.section.name} · {ss.section.grade.name}</p>
+                      <p className="text-xs text-slate-500">{ss.section.sectionSubjects?.length ?? 0} subjects</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-300" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           {/* Upcoming deadlines */}
           <Card className="border border-slate-200 p-5 shadow-sm">
             <SectionHeader title="Upcoming deadlines" action="View assignments" onAction={() => onNavigate('assignment')} />
@@ -919,6 +942,7 @@ function TeacherDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
   const user = useAuthStore((s) => s.user);
   const { data: teacherData, isLoading } = useTeacherDashboard();
   const { data: myCoursesData } = useMyCourses({ limit: 5 });
+  const { data: schoolData } = useTeacherSchoolDashboard();
   const firstName = user?.firstName ?? 'Teacher';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -1002,6 +1026,27 @@ function TeacherDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
             )}
           </Card>
 
+          {/* My Teaching Assignments (school-based) */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <SectionHeader title="My Teaching Assignments" action="View all" onAction={() => onNavigate('my-sections')} />
+            {(schoolData?.sectionSubjects ?? []).length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-400">No teaching assignments yet. Contact your administrator.</p>
+            ) : (
+              <div className="space-y-2">
+                {(schoolData?.sectionSubjects ?? []).slice(0, 5).map((ts: any) => (
+                  <div key={ts.id} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50"><BookOpen className="h-4 w-4 text-purple-600" /></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900">{ts.subject.name}</p>
+                      <p className="text-xs text-slate-500">{ts.section.name} · {ts.section.grade.name}</p>
+                    </div>
+                    <Badge className="bg-purple-50 text-purple-600 hover:bg-purple-50">{ts.studentCount} students</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           {/* At-risk students */}
           <Card className="border border-slate-200 p-5 shadow-sm">
             <SectionHeader title="At-risk students" />
@@ -1074,6 +1119,7 @@ function AdminDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void 
   const { data: platformData, isLoading } = usePlatformDashboard();
   const { data: alerts } = useAdminAlerts();
   const { data: activity } = useRecentActivity(8);
+  const { data: schoolData } = useAdminSchoolDashboard();
   const firstName = user?.firstName ?? 'Admin';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -1361,6 +1407,45 @@ function AdminDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void 
                 </div>
               </div>
             </div>
+          </Card>
+          {/* School structure (school-based) */}
+          <Card className="border border-slate-200 p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-900">School Structure</h2>
+              <Button variant="ghost" size="sm" onClick={() => onNavigate('my-sections')} className="text-purple-600 hover:bg-purple-50">Manage</Button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-slate-100 p-3">
+                <p className="text-xs text-slate-500">Academic Years</p>
+                <p className="text-xl font-bold text-slate-900">{schoolData?.stats?.academicYears ?? 0}</p>
+              </div>
+              <div className="rounded-lg border border-slate-100 p-3">
+                <p className="text-xs text-slate-500">Grades</p>
+                <p className="text-xl font-bold text-slate-900">{schoolData?.stats?.grades ?? 0}</p>
+              </div>
+              <div className="rounded-lg border border-slate-100 p-3">
+                <p className="text-xs text-slate-500">Sections</p>
+                <p className="text-xl font-bold text-slate-900">{schoolData?.stats?.sections ?? 0}</p>
+              </div>
+              <div className="rounded-lg border border-slate-100 p-3">
+                <p className="text-xs text-slate-500">Subjects</p>
+                <p className="text-xl font-bold text-slate-900">{schoolData?.stats?.subjects ?? 0}</p>
+              </div>
+              <div className="rounded-lg border border-slate-100 p-3">
+                <p className="text-xs text-slate-500">Teacher Assignments</p>
+                <p className="text-xl font-bold text-slate-900">{schoolData?.stats?.sectionSubjects ?? 0}</p>
+              </div>
+              <div className="rounded-lg border border-slate-100 p-3">
+                <p className="text-xs text-slate-500">Student Assignments</p>
+                <p className="text-xl font-bold text-slate-900">{schoolData?.stats?.studentSections ?? 0}</p>
+              </div>
+            </div>
+            {(schoolData?.stats?.unassignedSectionSubjects ?? 0) > 0 && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-700">
+                <AlertCircle className="h-4 w-4" />
+                {schoolData.stats.unassignedSectionSubjects} section-subjects have no teacher assigned
+              </div>
+            )}
           </Card>
         </div>
       </div>
@@ -1675,6 +1760,163 @@ function MyCoursesView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: st
                         )}
                       </div>
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </main>
+  );
+}
+
+// ─── My Sections View (School-based: students see their sections, teachers see assigned sections) ──
+function MySectionsView({ onNavigate }: { onNavigate: (v: View) => void }) {
+  const user = useAuthStore((s) => s.user);
+  const role = (user?.role ?? 'STUDENT') as Role;
+  const isStudent = role === 'STUDENT';
+  const isTeacher = role === 'TEACHER';
+  const isAdmin = role === 'ADMIN';
+
+  // Students: their assigned sections
+  // Teachers: their assigned section-subjects
+  // Admins: all sections (with student/teacher counts)
+  const { data: studentSectionsData, isLoading: studentLoading } = useUserSections(isStudent ? user?.id : null);
+  const { data: teacherSectionsData, isLoading: teacherLoading } = useTeacherSections(isTeacher ? user?.id : null);
+  const { data: allSectionsData, isLoading: adminLoading } = useSections();
+  const { data: gradesData } = useGrades();
+
+  const studentSections = (studentSectionsData?.data ?? []) as any[];
+  const teacherSections = (teacherSectionsData?.data ?? []) as any[];
+  const allSections = (allSectionsData?.data ?? []) as any[];
+  const loading = isStudent ? studentLoading : isTeacher ? teacherLoading : adminLoading;
+
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">My Sections</span>
+      </div>
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">
+          {isStudent ? 'My Sections' : isTeacher ? 'My Teaching Assignments' : 'All Sections'}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {isStudent
+            ? 'Your assigned sections and subjects for this academic year'
+            : isTeacher
+              ? 'Sections and subjects you are assigned to teach'
+              : 'All sections across the platform'}
+        </p>
+      </div>
+
+      {loading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading…</div>}
+
+      {/* Student view: sections with subjects */}
+      {isStudent && !loading && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {studentSections.length === 0 && (
+            <Card className="border border-dashed border-slate-300 p-8 text-center">
+              <Layers className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              <h3 className="text-base font-semibold text-slate-700">No sections assigned</h3>
+              <p className="mt-1 text-sm text-slate-500">Contact your administrator to be assigned to a section.</p>
+            </Card>
+          )}
+          {studentSections.map((ss: any) => (
+            <Card key={ss.id} className="border border-slate-200 p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">{ss.section.name}</h3>
+                  <p className="text-sm text-slate-500">{ss.section.grade.name} · {ss.section.academicYear.name}</p>
+                </div>
+                <Badge className="bg-purple-50 text-purple-600 hover:bg-purple-50">{ss.section.sectionSubjects?.length ?? 0} subjects</Badge>
+              </div>
+              <div className="space-y-2">
+                {(ss.section.sectionSubjects ?? []).map((subj: any) => (
+                  <div key={subj.id} className="flex items-center justify-between rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50"><BookOpen className="h-4 w-4 text-purple-600" /></div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{subj.subject.name}</p>
+                        <p className="text-xs text-slate-500">{subj.teacher ? `${subj.teacher.firstName} ${subj.teacher.lastName}` : 'No teacher assigned'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span className="flex items-center gap-1"><FileText className="h-3 w-3" />{subj._count?.sectionContents ?? 0}</span>
+                      <span className="flex items-center gap-1"><FileQuestion className="h-3 w-3" />{subj._count?.sectionQuizzes ?? 0}</span>
+                      <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />{subj._count?.sectionAssignments ?? 0}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Teacher view: section-subjects */}
+      {isTeacher && !loading && (
+        <div className="space-y-4">
+          {teacherSections.length === 0 && (
+            <Card className="border border-dashed border-slate-300 p-8 text-center">
+              <BookMarked className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              <h3 className="text-base font-semibold text-slate-700">No teaching assignments</h3>
+              <p className="mt-1 text-sm text-slate-500">Contact your administrator to be assigned to teach a section-subject.</p>
+            </Card>
+          )}
+          {teacherSections.map((ts: any) => (
+            <Card key={ts.id} className="border border-slate-200 p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100"><BookOpen className="h-6 w-6 text-purple-600" /></div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">{ts.subject.name}</h3>
+                    <p className="text-sm text-slate-500">{ts.section.name} · {ts.section.grade.name} · {ts.section.academicYear.name}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="text-center">
+                    <p className="text-xs text-slate-400">Students</p>
+                    <p className="font-bold text-slate-900">{ts.section._count?.studentSections ?? 0}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-slate-400">Content</p>
+                    <p className="font-bold text-slate-900">{ts._count?.sectionContents ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Admin view: all sections */}
+      {isAdmin && !loading && (
+        <Card className="border border-slate-200 shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
+                  <th className="px-4 py-3 text-left font-medium">Section</th>
+                  <th className="px-4 py-3 text-left font-medium">Grade</th>
+                  <th className="px-4 py-3 text-left font-medium">Academic Year</th>
+                  <th className="px-4 py-3 text-right font-medium">Students</th>
+                  <th className="px-4 py-3 text-right font-medium">Subjects</th>
+                  <th className="px-4 py-3 text-right font-medium">Capacity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allSections.map((s: any) => (
+                  <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
+                    <td className="px-4 py-3 text-slate-600">{s.grade?.name}</td>
+                    <td className="px-4 py-3 text-slate-500">{s.academicYear?.name}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{s._count?.studentSections ?? 0}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{s._count?.sectionSubjects ?? 0}</td>
+                    <td className="px-4 py-3 text-right text-slate-500">{s.capacity}</td>
                   </tr>
                 ))}
               </tbody>
@@ -5574,6 +5816,7 @@ function GamificationView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { data: levelData } = useUserLevel();
   const { data: badgesData } = useUserBadges();
   const { data: leaderboardData } = useLeaderboard({ limit: 10 });
+  const { data: schoolData } = useStudentSchoolDashboard();
   const { data: certData } = useMyCertificates();
 
   const level = (levelData as any)?.level;
@@ -7038,6 +7281,7 @@ export default function App() {
         {view === 'dashboard' && <DashboardView onNavigate={handleNavigate} />}
         {view === 'catalog' && <CatalogView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
         {view === 'my-courses' && <MyCoursesView onSelectCourse={handleSelectCourse} onNavigate={handleNavigate} />}
+        {view === 'my-sections' && <MySectionsView onNavigate={handleNavigate} />}
         {view === 'course-detail' && <CourseDetailView courseId={selectedCourseId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSelectAssignment={handleSelectAssignment} />}
         {view === 'quiz' && <QuizView quizId={selectedQuizId} onNavigate={handleNavigate} onSelectQuiz={handleSelectQuiz} onSubmitted={handleQuizSubmitted} />}
         {view === 'quiz-results' && <QuizResultsView attemptId={lastAttemptId} onNavigate={handleNavigate} />}
