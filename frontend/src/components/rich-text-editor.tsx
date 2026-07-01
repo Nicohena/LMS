@@ -14,7 +14,6 @@ import {
   UndoRedo,
   CreateLink,
   InsertThematicBreak,
-  InsertFrontmatter,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 
@@ -48,7 +47,6 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
                 <ListsToggle />
                 <CreateLink />
                 <InsertThematicBreak />
-                <InsertFrontmatter />
               </>
             ),
           }),
