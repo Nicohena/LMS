@@ -3445,7 +3445,18 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 {/* Matching (drag & drop) */}
                 {qType === 'MATCHING' && (
                   <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Matching Pairs (students drag right items to match left)</Label><div className="space-y-2">
-                    {qMatchingPairs.map((pair, idx) => (<div key={idx} className="flex items-center gap-2"><Input value={pair.left} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], left: e.target.value }; setQMatchingPairs(n); }} placeholder="Left item" className="text-sm" /><span className="text-slate-400">↔</span><Input value={pair.right} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], right: e.target.value }; setQMatchingPairs(n); }} placeholder="Right item" className="text-sm" />{qMatchingPairs.length > 2 && <button type="button" onClick={() => setQMatchingPairs(qMatchingPairs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button></div>))}
+                    {qMatchingPairs.map((pair, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input value={pair.left} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], left: e.target.value }; setQMatchingPairs(n); }} placeholder="Left item" className="text-sm" />
+                        <span className="text-slate-400">{'↔'}</span>
+                        <Input value={pair.right} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], right: e.target.value }; setQMatchingPairs(n); }} placeholder="Right item" className="text-sm" />
+                        {qMatchingPairs.length > 2 && (
+                          <button type="button" onClick={() => setQMatchingPairs(qMatchingPairs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                     <button type="button" onClick={() => setQMatchingPairs([...qMatchingPairs, { left: '', right: '' }])} className="text-xs text-purple-600 hover:underline">+ Add pair</button>
                   </div></div>
                 )}
