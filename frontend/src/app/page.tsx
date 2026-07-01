@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { toast } from "@/hooks/use-toast";
 import { getSocket } from '@/lib/socket';
@@ -7307,6 +7307,10 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { data: profile } = useMyProfile();
   const { data: levelData } = useUserLevel();
   const { data: studentData } = useStudentDashboard();
+  const { data: badgesData } = useUserBadges();
+  const { data: certificatesData } = useMyCertificates();
+  const { data: streakData } = useStreak();
+  const { data: xpHistoryData } = useXPHistory(15);
   const updateProfile = useUpdateMyProfile();
   const updateUserStore = useAuthStore((s) => s.updateUser);
 
@@ -7354,14 +7358,14 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
       { firstName: editFirst, lastName: editLast, bio: editBio },
       {
         onSuccess: (data: any) => {
-          // Update the Zustand auth store too so the header reflects the new name immediately
           const updated = data?.user ?? data;
           if (updated) {
             updateUserStore({ firstName: updated.firstName, lastName: updated.lastName });
           }
           setShowEdit(false);
+          toast({ title: 'Profile updated', description: 'Your changes have been saved.' });
         },
-        onError: (err: any) => setEditErr(err.response?.data?.message || 'Failed to update profile.'),
+        onError: (err: any) => { setEditErr(err.response?.data?.message || 'Failed to update profile.'); toast({ title: 'Error', description: err.response?.data?.message || 'Failed to update profile.', variant: 'destructive' }); },
       },
     );
   };
@@ -7369,30 +7373,33 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const myCourses = (studentData?.courses ?? []).map((c: any) => ({
     title: c.course?.title ?? 'Untitled',
     progress: c.progressPercentage ?? 0,
-    instructor: '—',
-    difficulty: c.course?.difficulty ?? 'Beginner',
+    instructor: c.course?.createdBy ? `${c.course.createdBy.firstName} ${c.course.createdBy.lastName}` : '—',
+    difficulty: c.course?.difficulty ? c.course.difficulty.charAt(0) + c.course.difficulty.slice(1).toLowerCase() : 'Beginner',
   }));
-  const courses = myCourses.length > 0 ? myCourses : [
-    { title: 'UI Design Fundamentals', progress: 75, instructor: 'Sarah Chen', difficulty: 'Beginner' },
-    { title: 'Advanced TypeScript', progress: 40, instructor: 'Mike Rodriguez', difficulty: 'Advanced' },
-    { title: 'Project Management', progress: 90, instructor: 'Emily Davis', difficulty: 'Intermediate' },
-    { title: 'Data Science with Python', progress: 15, instructor: 'James Park', difficulty: 'Intermediate' },
-  ];
+  const courses = myCourses;
+
+  const earnedBadges = ((badgesData as any)?.badges ?? []).filter((b: any) => b.earnedAt);
+  const certificates = ((certificatesData as any)?.certificates ?? (certificatesData as any)?.data ?? []);
+  const streak = (streakData as any)?.streak;
+  const currentStreak = streak?.currentStreak ?? 0;
+  const longestStreak = streak?.longestStreak ?? currentStreak;
 
   const achievements = [
     { icon: Trophy, label: `Level ${currentLevel}`, sublabel: `${totalXP.toLocaleString()} XP`, color: 'bg-amber-50 text-amber-600' },
-    { icon: Flame, label: '12-day streak', sublabel: 'Longest: 21 days', color: 'bg-orange-50 text-orange-600' },
-    { icon: BookOpen, label: `${studentData?.stats?.totalEnrollments ?? 0} courses`, sublabel: `${studentData?.stats?.active ?? 0} in progress`, color: 'bg-purple-50 text-purple-600' },
-    { icon: Award, label: '2 certificates', sublabel: 'This year', color: 'bg-emerald-50 text-emerald-600' },
+    { icon: Flame, label: `${currentStreak}-day streak`, sublabel: longestStreak > 0 ? `Longest: ${longestStreak} days` : 'Start learning today!', color: 'bg-orange-50 text-orange-600' },
+    { icon: BookOpen, label: `${studentData?.stats?.enrollments?.total ?? 0} courses`, sublabel: `${studentData?.stats?.enrollments?.active ?? 0} in progress`, color: 'bg-purple-50 text-purple-600' },
+    { icon: Award, label: `${certificates.length} certificates`, sublabel: certificates.length > 0 ? 'Earned' : 'None yet', color: 'bg-emerald-50 text-emerald-600' },
   ];
 
-  const activity = [
-    { type: 'quiz', title: 'Scored 92% on Design Principles Quiz', time: '2 hours ago', icon: FileQuestion, color: 'text-emerald-600' },
-    { type: 'lesson', title: 'Completed: Introduction to Generics', time: '5 hours ago', icon: CheckCircle2, color: 'text-purple-600' },
-    { type: 'badge', title: 'Earned Badge: Quick Learner (+50 XP)', time: '1 day ago', icon: Zap, color: 'text-amber-600' },
-    { type: 'assignment', title: 'Submitted: User Research Report', time: '2 days ago', icon: FileText, color: 'text-blue-600' },
-    { type: 'certificate', title: 'Earned Certificate: UI Design Fundamentals', time: '3 days ago', icon: Award, color: 'text-purple-600' },
-  ];
+  const xpTransactions = ((xpHistoryData as any)?.transactions ?? (xpHistoryData as any)?.data ?? []);
+
+  const activity = xpTransactions.map((tx: any) => ({
+    type: 'xp',
+    title: `${tx.source?.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase()) ?? 'Activity'}: ${tx.points > 0 ? '+' : ''}${tx.points} XP`,
+    time: tx.createdAt ? timeAgo(tx.createdAt) : '',
+    icon: tx.points > 0 ? Zap : AlertCircle,
+    color: tx.points > 0 ? 'text-amber-600' : 'text-red-500',
+  }));
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -7421,7 +7428,7 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <p className="text-sm capitalize text-slate-500">{roleLabel} · Joined {joinedDate}</p>
                 <div className="mt-1 flex items-center gap-2">
                   <Badge className="bg-purple-50 text-purple-600 hover:bg-purple-50"><Trophy className="mr-1 h-3 w-3" />Level {currentLevel}</Badge>
-                  <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50"><Flame className="mr-1 h-3 w-3" />12-day streak</Badge>
+                  <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50"><Flame className="mr-1 h-3 w-3" />{currentStreak}-day streak</Badge>
                 </div>
               </div>
             </div>
@@ -7458,16 +7465,19 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card className="border border-slate-200 p-5 shadow-sm">
             <h2 className="mb-3 text-base font-semibold text-slate-900">About</h2>
-            <p className="text-sm text-slate-600">Passionate UI/UX designer in training. Focused on creating intuitive, accessible digital experiences. Currently learning wireframing, design systems, and usability principles.</p>
+            <p className="text-sm text-slate-600">{(me as any)?.bio || `No bio yet. Click "Edit Profile" to add one.`}</p>
             <div className="mt-4 space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-slate-500"><Mail className="h-4 w-4 text-slate-400" />ricky@trenning.com</div>
-              <div className="flex items-center gap-2 text-slate-500"><BookOpen className="h-4 w-4 text-slate-400" />4 enrolled courses</div>
-              <div className="flex items-center gap-2 text-slate-500"><Award className="h-4 w-4 text-slate-400" />2 certificates earned</div>
+              <div className="flex items-center gap-2 text-slate-500"><Mail className="h-4 w-4 text-slate-400" />{me?.email ?? '—'}</div>
+              <div className="flex items-center gap-2 text-slate-500"><BookOpen className="h-4 w-4 text-slate-400" />{studentData?.stats?.enrollments?.total ?? 0} enrolled courses</div>
+              <div className="flex items-center gap-2 text-slate-500"><Award className="h-4 w-4 text-slate-400" />{certificates.length} certificates earned</div>
             </div>
           </Card>
           <Card className="border border-slate-200 p-5 shadow-sm">
             <h2 className="mb-3 text-base font-semibold text-slate-900">Recent Activity</h2>
             <div className="space-y-3">
+              {activity.length === 0 && (
+                <p className="py-4 text-center text-sm text-slate-400">No recent activity yet.</p>
+              )}
               {activity.slice(0, 4).map((act, idx) => (
                 <div key={idx} className="flex items-start gap-3">
                   <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50', act.color)}>
@@ -7486,6 +7496,13 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {activeTab === 'courses' && (
         <div className="space-y-3">
+          {courses.length === 0 && (
+            <Card className="border border-dashed border-slate-300 p-8 text-center">
+              <BookOpen className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              <h3 className="text-base font-semibold text-slate-700">No courses yet</h3>
+              <p className="mt-1 text-sm text-slate-500">You haven't enrolled in any courses yet.</p>
+            </Card>
+          )}
           {courses.map((course) => (
             <Card key={course.title} className="border border-slate-200 p-4 shadow-sm">
               <div className="flex items-center justify-between">
@@ -7506,6 +7523,9 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
       {activeTab === 'activity' && (
         <Card className="border border-slate-200 p-5 shadow-sm">
           <div className="space-y-4">
+            {activity.length === 0 && (
+              <p className="py-8 text-center text-sm text-slate-400">No recent activity. Start learning to earn XP!</p>
+            )}
             {activity.map((act, idx) => (
               <div key={idx} className="flex items-start gap-3 border-b border-slate-100 pb-4 last:border-0 last:pb-0">
                 <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-50', act.color)}>
@@ -7523,24 +7543,31 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       {activeTab === 'badges' && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { name: 'Quick Learner', icon: Zap, color: 'bg-amber-50 text-amber-600', earned: true },
-            { name: 'Quiz Master', icon: FileQuestion, color: 'bg-purple-50 text-purple-600', earned: true },
-            { name: 'Perfect Score', icon: Star, color: 'bg-purple-50 text-purple-600', earned: true },
-            { name: 'Course Completer', icon: CheckCircle2, color: 'bg-emerald-50 text-emerald-600', earned: true },
-            { name: '7-Day Streak', icon: Flame, color: 'bg-orange-50 text-orange-600', earned: true },
-            { name: 'Discussion Pro', icon: MessageSquare, color: 'bg-blue-50 text-blue-600', earned: false },
-            { name: 'Design Master', icon: Award, color: 'bg-pink-50 text-pink-600', earned: false },
-            { name: 'Top 10', icon: Trophy, color: 'bg-yellow-50 text-yellow-600', earned: false },
-          ].map((badge) => (
+          {(() => {
+            const allBadges = (badgesData as any)?.badges ?? (badgesData as any)?.data ?? [];
+            if (allBadges.length === 0) {
+              return <div className="col-span-full py-12 text-center text-sm text-slate-400">No badges available yet. Complete courses and quizzes to earn badges!</div>;
+            }
+            return allBadges.map((badge: any) => {
+              const earned = !!badge.earnedAt;
+              return (
+            <Card key={badge.id ?? badge.name} className={cn('flex flex-col items-center p-4 text-center border shadow-sm', earned ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-60')}>
+              <div className={cn('mb-2 flex h-12 w-12 items-center justify-center rounded-full', earned ? 'bg-amber-50 text-amber-600' : 'bg-slate-200 text-slate-400')}>
+                {badge.iconUrl ? <img src={badge.iconUrl} alt={badge.name} className="h-6 w-6" /> : <Award className="h-6 w-6" />}
+              </div>
+              <p className="text-xs font-medium text-slate-900">{badge.name}</p>
+              <p className="text-[10px] text-slate-400">{earned ? 'Earned' : 'Locked'}</p>
+              {badge.description && <p className="mt-1 text-[10px] text-slate-400 line-clamp-2">{badge.description}</p>}
+            </Card>
+              );
+            });
+          })()}
             <Card key={badge.name} className={cn('flex flex-col items-center p-4 text-center border shadow-sm', badge.earned ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-60')}>
               <div className={cn('mb-2 flex h-12 w-12 items-center justify-center rounded-full', badge.earned ? badge.color : 'bg-slate-200 text-slate-400')}>
                 <badge.icon className="h-6 w-6" />
               </div>
               <p className="text-xs font-medium text-slate-900">{badge.name}</p>
               <p className="text-[10px] text-slate-400">{badge.earned ? 'Earned' : 'Locked'}</p>
-            </Card>
-          ))}
         </div>
       )}
 

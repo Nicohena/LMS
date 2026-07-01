@@ -1755,3 +1755,16 @@ export function useAdminSchoolDashboard() {
     refetchInterval: 30000,
   });
 }
+
+// ─── XP History (for profile activity feed) ──────────────────────────────
+
+export function useXPHistory(limit: number = 20) {
+  return useQuery({
+    queryKey: ['xp-history', limit],
+    queryFn: async () => {
+      const res = await api.get('/gamification/xp/history', { params: { limit } });
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
