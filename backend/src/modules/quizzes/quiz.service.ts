@@ -145,7 +145,7 @@ export async function createQuiz(
 
   const quiz = await prisma.quiz.create({
     data: {
-      contentId: data.contentId,
+      ...(data.contentId ? { contentId: data.contentId } : {}),
       title: data.title,
       description: data.description,
       instructions: data.instructions,
@@ -256,9 +256,14 @@ export async function updateQuiz(
     }
   }
 
+  const updateData = { ...data };
+  // Don't set contentId to null/undefined — MongoDB unique constraint treats null as a value
+  if (updateData.contentId === null || updateData.contentId === undefined) {
+    delete updateData.contentId;
+  }
   const updated = await prisma.quiz.update({
     where: { id: quizId },
-    data,
+    data: updateData,
     include: { _count: { select: { questions: true, attempts: true } } },
   });
 

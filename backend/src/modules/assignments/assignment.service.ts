@@ -128,7 +128,7 @@ export async function createAssignment(
 
   const assignment = await prisma.assignment.create({
     data: {
-      contentId: data.contentId,
+      ...(data.contentId ? { contentId: data.contentId } : {}),
       title: data.title,
       description: data.description,
       instructions: data.instructions,
@@ -228,9 +228,13 @@ export async function updateAssignment(
     throw new ValidationError('Late submission deadline must be after the due date');
   }
 
+  const updateData = { ...data };
+  if (updateData.contentId === null || updateData.contentId === undefined) {
+    delete updateData.contentId;
+  }
   const updated = await prisma.assignment.update({
     where: { id: assignmentId },
-    data,
+    data: updateData,
     include: {
       creator: { select: { id: true, email: true, firstName: true, lastName: true, role: true } },
       _count: { select: { submissions: true } },
