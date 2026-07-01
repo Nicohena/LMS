@@ -2577,6 +2577,9 @@ function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: strin
   const { data: courseData } = useCourse(courseId || null);
   const updateContent = useUpdateContent(courseId || null);
   const [markdown, setMarkdown] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [externalUrl, setExternalUrl] = useState('');
+  const [fileUrl, setFileUrl] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ type: 'idle' | 'success' | 'error'; msg?: string }>({ type: 'idle' });
 
@@ -2599,23 +2602,34 @@ function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: strin
     } else {
       setMarkdown('');
     }
+    setVideoUrl(content?.videoUrl ?? '');
+    setExternalUrl(content?.externalUrl ?? '');
+    setFileUrl(content?.fileUrl ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contentId, content?.contentJson]);
+  }, [contentId, content?.contentJson, content?.videoUrl, content?.externalUrl, content?.fileUrl]);
 
   const handleSave = () => {
     setSaveStatus({ type: 'idle' });
+    const updateData: any = {};
+    if (content?.type === 'PAGE') {
+      updateData.contentJson = { type: 'markdown', content: markdown, updatedAt: new Date().toISOString() };
+    } else if (content?.type === 'VIDEO' && videoUrl !== undefined) {
+      updateData.videoUrl = videoUrl || undefined;
+    } else if (content?.type === 'EXTERNAL_LINK' && externalUrl !== undefined) {
+      updateData.externalUrl = externalUrl || undefined;
+    } else if (content?.type === 'DOCUMENT' && fileUrl !== undefined) {
+      updateData.fileUrl = fileUrl || undefined;
+    }
     updateContent.mutate(
-      {
-        contentId,
-        data: { contentJson: { type: 'markdown', content: markdown, updatedAt: new Date().toISOString() } },
-      },
+      { contentId, data: updateData },
       {
         onSuccess: () => {
           setSaveStatus({ type: 'success', msg: 'Content saved.' });
           setIsEditing(false);
+          toast({ title: 'Content saved', description: 'Your changes have been saved.' });
           setTimeout(() => setSaveStatus({ type: 'idle' }), 3000);
         },
-        onError: (err: any) => setSaveStatus({ type: 'error', msg: err.response?.data?.message || 'Failed to save.' }),
+        onError: (err: any) => { setSaveStatus({ type: 'error', msg: err.response?.data?.message || 'Failed to save.' }); toast({ title: 'Error', description: err.response?.data?.message || 'Failed to save.', variant: 'destructive' }); },
       },
     );
   };
@@ -2647,23 +2661,78 @@ function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: strin
 
       {canAuthor && isEditing ? (
         <div className="space-y-3">
-          <RichTextEditor value={markdown} onChange={setMarkdown} placeholder="Write your lesson content here. Supports markdown: **bold**, *italic*, # headings, - lists, > quotes, [links](url)..." />
+          {content.type === 'PAGE' && (
+            <RichTextEditor value={markdown} onChange={setMarkdown} placeholder="Write your lesson content here. Supports markdown: **bold**, *italic*, # headings, - lists, > quotes, [links](url)..." />
+          )}
+          {content.type === 'VIDEO' && (
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-600">Video URL (YouTube, Vimeo, or direct MP4 link)</Label>
+              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." />
+              {videoUrl && (
+                <div className="mt-2 aspect-video overflow-hidden rounded-lg bg-slate-900">
+                  {videoUrl.includes('youtube') || videoUrl.includes('youtu.be') ? (
+                    <iframe src={videoUrl.replace('watch?v=', 'embed/')} className="h-full w-full" allowFullScreen />
+                  ) : (
+                    <video src={videoUrl} controls className="h-full w-full" />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {content.type === 'EXTERNAL_LINK' && (
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-600">External URL</Label>
+              <Input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} placeholder="https://..." />
+              {externalUrl && (
+                <a href={externalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-purple-600 hover:underline">
+                  <Link2 className="h-3.5 w-3.5" />Test link
+                </a>
+              )}
+            </div>
+          )}
+          {content.type === 'DOCUMENT' && (
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-600">Document URL (PDF, DOCX, etc.)</Label>
+              <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://.../document.pdf" />
+              {fileUrl && (
+                <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-purple-600 hover:underline">
+                  <File className="h-3.5 w-3.5" />View document
+                </a>
+              )}
+            </div>
+          )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setIsEditing(false); setSaveStatus({ type: 'idle' }); }} className="border-slate-200 text-slate-600">Cancel</Button>
             <Button onClick={handleSave} disabled={updateContent.isPending} className="bg-purple-600 text-white hover:bg-purple-700">
-              {updateContent.isPending ? 'Saving…' : 'Save Content'}
+              {updateContent.isPending ? 'Saving...' : 'Save Content'}
             </Button>
           </div>
         </div>
       ) : (
         <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
-          {markdown.trim() ? (
-            <RichTextRenderer content={markdown} />
-          ) : (
-            <p className="text-sm italic text-slate-400">
-              {canAuthor ? 'No content yet. Click "Edit Content" to add lesson material.' : 'No content available for this lesson yet.'}
-            </p>
+          {content.type === 'PAGE' && (markdown.trim() ? <RichTextRenderer content={markdown} /> : <p className="text-sm italic text-slate-400">{canAuthor ? 'No content yet. Click "Edit Content" to add lesson material.' : 'No content available for this lesson yet.'}</p>)}
+          {content.type === 'VIDEO' && videoUrl && (
+            <div className="aspect-video overflow-hidden rounded-lg bg-slate-900">
+              {videoUrl.includes('youtube') || videoUrl.includes('youtu.be') ? (
+                <iframe src={videoUrl.replace('watch?v=', 'embed/')} className="h-full w-full" allowFullScreen />
+              ) : (
+                <video src={videoUrl} controls className="h-full w-full" />
+              )}
+            </div>
           )}
+          {content.type === 'VIDEO' && !videoUrl && <p className="text-sm italic text-slate-400">{canAuthor ? 'No video URL set. Click "Edit Content" to add one.' : 'No video available.'}</p>}
+          {content.type === 'EXTERNAL_LINK' && externalUrl && (
+            <a href={externalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-medium text-purple-600 hover:bg-purple-100">
+              <Link2 className="h-4 w-4" />Open external resource
+            </a>
+          )}
+          {content.type === 'EXTERNAL_LINK' && !externalUrl && <p className="text-sm italic text-slate-400">{canAuthor ? 'No URL set. Click "Edit Content" to add one.' : 'No link available.'}</p>}
+          {content.type === 'DOCUMENT' && fileUrl && (
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-100">
+              <File className="h-4 w-4" />View document
+            </a>
+          )}
+          {content.type === 'DOCUMENT' && !fileUrl && <p className="text-sm italic text-slate-400">{canAuthor ? 'No document URL set. Click "Edit Content" to add one.' : 'No document available.'}</p>}
         </div>
       )}
     </div>
@@ -2761,8 +2830,8 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
     createModuleMut.mutate(
       { title: newModuleTitle },
       {
-        onSuccess: () => { setNewModuleTitle(''); setShowAddModule(false); },
-        onError: (err: any) => setAuthorErr(err.response?.data?.message || 'Failed to create module.'),
+        onSuccess: () => { setNewModuleTitle(''); setShowAddModule(false); toast({ title: 'Module created', description: 'New module added to course.' }); },
+        onError: (err: any) => { setAuthorErr(err.response?.data?.message || 'Failed to create module.'); toast({ title: 'Error', description: err.response?.data?.message || 'Failed to create module.', variant: 'destructive' }); },
       },
     );
   };
@@ -2779,20 +2848,27 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
         onSuccess: () => {
           setNewContentTitle('');
           setShowAddContent(null);
+          toast({ title: 'Content created', description: `${newContentType.charAt(0) + newContentType.slice(1).toLowerCase()} content added.` });
         },
-        onError: (err: any) => setAuthorErr(err.response?.data?.message || 'Failed to create content.'),
+        onError: (err: any) => { setAuthorErr(err.response?.data?.message || 'Failed to create content.'); toast({ title: 'Error', description: err.response?.data?.message || 'Failed to create content.', variant: 'destructive' }); },
       },
     );
   };
 
   const handleDeleteModule = (moduleId: string) => {
     if (!confirm('Delete this module and all its content? This cannot be undone.')) return;
-    deleteModuleMut.mutate(moduleId);
+    deleteModuleMut.mutate(moduleId, {
+      onSuccess: () => toast({ title: 'Module deleted', description: 'The module and its content have been removed.' }),
+      onError: () => toast({ title: 'Error', description: 'Failed to delete module.', variant: 'destructive' }),
+    });
   };
 
   const handleDeleteContent = (contentId: string) => {
     if (!confirm('Delete this content? This cannot be undone.')) return;
-    deleteContentMut.mutate(contentId);
+    deleteContentMut.mutate(contentId, {
+      onSuccess: () => toast({ title: 'Content deleted', description: 'The content has been removed.' }),
+      onError: () => toast({ title: 'Error', description: 'Failed to delete content.', variant: 'destructive' }),
+    });
   };
 
   const completedLessons = course.modules?.reduce((acc, m) => acc + m.lessons.filter(l => l.completed).length, 0) || 0;
@@ -2844,12 +2920,12 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
             </Button>
             {/* Self-service: teachers can publish/archive their own courses */}
             {canAuthor && (apiCourse?.course?.status ?? apiCourse?.status) === 'DRAFT' && (
-              <Button onClick={() => publishMut.mutate(courseId)} disabled={publishMut.isPending} className="bg-amber-500 text-white hover:bg-amber-600">
+              <Button onClick={() => publishMut.mutate(courseId, { onSuccess: () => toast({ title: 'Course published', description: 'Students can now see this course.' }), onError: () => toast({ title: 'Error', variant: 'destructive' }) })} disabled={publishMut.isPending} className="bg-amber-500 text-white hover:bg-amber-600">
                 {publishMut.isPending ? 'Publishing…' : 'Publish Now'}
               </Button>
             )}
             {canAuthor && (apiCourse?.course?.status ?? apiCourse?.status) === 'PUBLISHED' && (
-              <Button onClick={() => { if (confirm('Archive this course? Students will no longer see it.')) archiveMut.mutate(courseId); }} disabled={archiveMut.isPending} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+              <Button onClick={() => { if (confirm('Archive this course? Students will no longer see it.')) archiveMut.mutate(courseId, { onSuccess: () => toast({ title: 'Course archived', description: 'Students will no longer see this course.' }), onError: () => toast({ title: 'Error', variant: 'destructive' }) }); }} disabled={archiveMut.isPending} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
                 {archiveMut.isPending ? 'Archiving…' : 'Archive'}
               </Button>
             )}
