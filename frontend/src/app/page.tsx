@@ -3341,7 +3341,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     if (!qData) return;
 
     addQuestion.mutate(
-      { type: qType as any, questionText: qText, points: Number(qPoints) || 1, options: qData.options, correctAnswer: qData.correctAnswer, explanation: qExplanation.trim() || undefined },
+      { quizId: createdQuizId!, data: { type: qType as any, questionText: qText, points: Number(qPoints) || 1, options: qData.options, correctAnswer: qData.correctAnswer, explanation: qExplanation.trim() || undefined } },
       { onSuccess: () => { resetQuestionForm(); toast({ title: 'Question added', description: 'The question has been added to the quiz.' }); }, onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add question.') },
     );
   };

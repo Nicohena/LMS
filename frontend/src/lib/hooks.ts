@@ -982,19 +982,19 @@ export function useDeleteQuiz() {
 export function useAddQuestion(quizId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: {
-      type: 'MULTIPLE_CHOICE_SINGLE' | 'MULTIPLE_CHOICE_MULTIPLE' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'SHORT_ANSWER' | 'ESSAY';
+    mutationFn: async ({ quizId: qId, data }: { quizId: string; data: {
+      type: string;
       questionText: string;
       points?: number;
       options?: any;
       correctAnswer?: any;
       explanation?: string;
-    }) => {
-      const res = await api.post(`/quizzes/${quizId}/questions`, data);
+    } }) => {
+      const res = await api.post(`/quizzes/${qId}/questions`, data);
       return res.data;
     },
-    onSuccess: () => {
-      if (quizId) queryClient.invalidateQueries({ queryKey: ['quiz', quizId] });
+    onSuccess: (_data, variables) => {
+      if (variables.quizId) queryClient.invalidateQueries({ queryKey: ['quiz', variables.quizId] });
     },
   });
 }
