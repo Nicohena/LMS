@@ -5220,253 +5220,95 @@ function ActivityFeed() {
 // ─── Admin Dashboard View ─────────────────────────────────────────────────
 function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const queryClient = useQueryClient();
-  const { data: platformData, isLoading } = usePlatformDashboard();
-  const stats = platformData?.stats;
+  const { data: alerts } = useAdminAlerts();
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  // Real-time WebSocket updates — same pattern as AdminDashboardHomeView
+  // Real-time WebSocket updates
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
-    const onStatsUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['platform-dashboard'] });
+    const onUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ['admin-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
       setLastUpdate(new Date());
     };
-    const onActivityUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
-      setLastUpdate(new Date());
-    };
-    socket.on('platform-stats-update', onStatsUpdate);
-    socket.on('activity-update', onActivityUpdate);
+    socket.on('platform-stats-update', onUpdate);
+    socket.on('activity-update', onUpdate);
     return () => {
-      socket.off('platform-stats-update', onStatsUpdate);
-      socket.off('activity-update', onActivityUpdate);
+      socket.off('platform-stats-update', onUpdate);
+      socket.off('activity-update', onUpdate);
     };
   }, [queryClient]);
 
-  const platformStats = [
-    { label: 'Total Users', value: String(stats?.users?.total ?? 0), icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: `+${stats?.users?.newThisWeek ?? 0}` },
-    { label: 'Active Courses', value: String(stats?.courses?.total ?? 0), icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50', trend: `+${stats?.courses?.published ?? 0}` },
-    { label: 'Enrollments', value: String(stats?.enrollments?.total ?? 0), icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: `+${stats?.enrollments?.newThisWeek ?? 0}` },
-    { label: 'Certificates', value: String(stats?.engagement?.certificatesIssued ?? 0), icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', trend: '' },
-    { label: 'Quiz Attempts', value: String(stats?.engagement?.quizAttempts ?? 0), icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50', trend: '' },
-    { label: 'Submissions', value: String(stats?.engagement?.assignmentSubmissions ?? 0), icon: Target, color: 'text-cyan-600', bg: 'bg-cyan-50', trend: '' },
-  ];
-
-  const userDistribution = [
-    { name: 'Students', value: stats?.users?.students ?? 0, color: '#4F46E5' },
-    { name: 'Teachers', value: stats?.users?.teachers ?? 0, color: '#10B981' },
-    { name: 'Admins', value: stats?.users?.admins ?? 0, color: '#F59E0B' },
-  ];
-  const totalUsers = stats?.users?.total ?? 0;
-
-  // Charts with mock fallback — the API doesn't expose these yet
-  const enrollmentTrend = [
-    { month: 'Jan', enrollments: 420, revenue: 18 },
-    { month: 'Feb', enrollments: 510, revenue: 22 },
-    { month: 'Mar', enrollments: 680, revenue: 28 },
-    { month: 'Apr', enrollments: 590, revenue: 25 },
-    { month: 'May', enrollments: 720, revenue: 32 },
-    { month: 'Jun', enrollments: 890, revenue: 38 },
-    { month: 'Jul', enrollments: 950, revenue: 42 },
-    { month: 'Aug', enrollments: 1120, revenue: 48 },
-  ];
-  const topCourses = [
-    { id: 1, title: 'UI Design Fundamentals', students: 1248, revenue: '$12,480', completion: 78 },
-    { id: 2, title: 'Advanced TypeScript', students: 892, revenue: '$8,920', completion: 65 },
-    { id: 3, title: 'Project Management', students: 634, revenue: '$6,340', completion: 82 },
-    { id: 4, title: 'Data Science with Python', students: 521, revenue: '$5,210', completion: 45 },
-    { id: 5, title: 'Digital Marketing', students: 387, revenue: '$3,870', completion: 71 },
-  ];
-
-  if (isLoading) {
-    return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading admin dashboard…</div></main>;
-  }
+  const alertItems = [
+    { label: 'Escalations', value: alerts?.pendingEscalations ?? 0, color: 'text-amber-600 bg-amber-50', icon: AlertCircle, view: 'admin' as View },
+    { label: 'Flagged Content', value: alerts?.flaggedContent ?? 0, color: 'text-red-600 bg-red-50', icon: AlertCircle, view: 'admin' as View },
+    { label: 'Low Quality', value: alerts?.lowQualityCourses ?? 0, color: 'text-red-600 bg-red-50', icon: TrendingUp, view: 'admin' as View },
+    { label: 'At-Risk Students', value: alerts?.atRiskStudents ?? 0, color: 'text-amber-600 bg-amber-50', icon: Users, view: 'admin' as View },
+    { label: 'Grade Disputes', value: alerts?.openGradeDisputes ?? 0, color: 'text-amber-600 bg-amber-50', icon: FileQuestion, view: 'admin' as View },
+  ].filter(i => i.value > 0);
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
-      <div className="mb-6 flex items-center justify-between">
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Admin Panel</h1>
           <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
-            Platform overview
+            Moderation &amp; management tools
             <span className="flex items-center gap-1 text-xs text-emerald-600">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Live · WebSocket + 30s polling · updated {timeAgo(lastUpdate.toISOString())}
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Live · {timeAgo(lastUpdate.toISOString())}
             </span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => downloadCSV('platform-stats.csv', platformStats.map((s: any) => ({ Label: s.label, Value: s.value, Trend: s.trend })), ['Label', 'Value', 'Trend'])} className="border-slate-200 text-slate-600"><Download className="mr-1.5 h-4 w-4" />Export</Button>
-          <Button variant="outline" onClick={() => onNavigate('users')} className="border-slate-200 text-slate-600"><UserPlus className="mr-1.5 h-4 w-4" />Users</Button>
+          <Button variant="outline" onClick={() => onNavigate('users')} className="border-slate-200 text-slate-600"><UserPlus className="mr-1.5 h-4 w-4" />Manage Users</Button>
+          <Button variant="outline" onClick={() => onNavigate('audit')} className="border-slate-200 text-slate-600"><FileText className="mr-1.5 h-4 w-4" />Audit Logs</Button>
           <Button variant="outline" onClick={() => onNavigate('settings')} className="border-slate-200 text-slate-600"><Settings className="mr-1.5 h-4 w-4" />Settings</Button>
-          <Button variant="outline" onClick={() => onNavigate('audit')} className="border-slate-200 text-slate-600"><FileText className="mr-1.5 h-4 w-4" />Audit</Button>
         </div>
       </div>
 
-      {/* Real-time alerts bar */}
-      <AdminAlertsBar />
+      {/* Active alerts bar */}
+      {alertItems.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+          <span className="mr-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+            <AlertCircle className="h-4 w-4" />Active alerts:
+          </span>
+          {alertItems.map((item) => (
+            <div key={item.label} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium', item.color)}>
+              <item.icon className="h-3.5 w-3.5" />{item.value} {item.label}
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Stats Grid */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {platformStats.map((stat) => (
-          <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm">
-            <div className={cn('mb-2 flex h-9 w-9 items-center justify-center rounded-lg', stat.bg)}>
-              <stat.icon className={cn('h-4 w-4', stat.color)} />
+      {/* Quick navigation cards */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {[
+          { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-purple-600 bg-purple-50', desc: 'Create & manage accounts' },
+          { label: 'Audit Logs', icon: FileText, view: 'audit' as View, color: 'text-amber-600 bg-amber-50', desc: 'View all platform actions' },
+          { label: 'Settings', icon: Settings, view: 'settings' as View, color: 'text-slate-600 bg-slate-100', desc: 'Platform configuration' },
+          { label: 'Sections', icon: Layers, view: 'my-sections' as View, color: 'text-blue-600 bg-blue-50', desc: 'Academic structure' },
+        ].map((action) => (
+          <button key={action.label} onClick={() => onNavigate(action.view)} className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-purple-200 hover:shadow-md">
+            <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', action.color)}><action.icon className="h-5 w-5" /></div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">{action.label}</p>
+              <p className="text-xs text-slate-400">{action.desc}</p>
             </div>
-            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-lg font-bold text-slate-900">{stat.value}</p>
-              <span className="text-[10px] font-semibold text-emerald-600">{stat.trend}</span>
-            </div>
-          </Card>
+          </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left: Enrollment Chart + Top Courses */}
-        <div className="space-y-6 lg:col-span-2">
-          <Card className="border border-slate-200 p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Enrollment & Revenue Trend</h2>
-                <p className="text-sm text-slate-500">Monthly enrollment count and revenue</p>
-              </div>
-              <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">+18% YoY</Badge>
-            </div>
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={enrollmentTrend}>
-                <defs>
-                  <linearGradient id="colorEnroll" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                <XAxis dataKey="month" stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '13px' }} />
-                <Area type="monotone" dataKey="enrollments" stroke="#4F46E5" strokeWidth={2} fill="url(#colorEnroll)" name="Enrollments" />
-                <Area type="monotone" dataKey="revenue" stroke="#10B981" strokeWidth={2} fill="url(#colorRev)" name="Revenue ($K)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Top Courses Table */}
-          <Card className="border border-slate-200 p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">Top Performing Courses</h2>
-              <Button variant="ghost" size="sm" onClick={() => onNavigate('catalog')} className="text-purple-600 hover:bg-purple-50">View all</Button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-xs text-slate-500">
-                    <th className="pb-2 pr-4 text-left font-medium">Course</th>
-                    <th className="pb-2 pr-4 text-right font-medium">Students</th>
-                    <th className="pb-2 pr-4 text-right font-medium">Revenue</th>
-                    <th className="pb-2 text-right font-medium">Completion</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topCourses.map((course) => (
-                    <tr key={course.id} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 pr-4 font-medium text-slate-900">{course.title}</td>
-                      <td className="py-3 pr-4 text-right text-slate-600">{course.students.toLocaleString()}</td>
-                      <td className="py-3 pr-4 text-right font-semibold text-emerald-600">{course.revenue}</td>
-                      <td className="py-3 text-right">
-                        <div className="ml-auto flex w-20 items-center gap-2">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                            <div className="h-full rounded-full bg-purple-600" style={{ width: `${course.completion}%` }} />
-                          </div>
-                          <span className="text-xs text-slate-500">{course.completion}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-
-        {/* Right: User Distribution + Quick Actions */}
-        <div className="space-y-6">
-          <Card className="border border-slate-200 p-5 shadow-sm">
-            <h2 className="mb-4 text-base font-semibold text-slate-900">User Distribution</h2>
-            <div className="relative h-40">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={userDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value">
-                    {userDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '12px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-xl font-bold text-slate-900">{totalUsers.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-400">Total Users</p>
-              </div>
-            </div>
-            <div className="mt-3 space-y-1.5">
-              {userDistribution.map((item) => (
-                <div key={item.name} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-slate-600">{item.name}</span>
-                  </div>
-                  <span className="font-semibold text-slate-900">{item.value.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="border border-slate-200 p-5 shadow-sm">
-            <h2 className="mb-3 text-base font-semibold text-slate-900">Quick Actions</h2>
-            <div className="space-y-2">
-              {[
-                { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-purple-600 bg-purple-50' },
-                { label: 'Review Flagged', icon: AlertCircle, view: 'admin' as View, color: 'text-red-600 bg-red-50' },
-                { label: 'View Reports', icon: BarChart3, view: 'admin' as View, color: 'text-amber-600 bg-amber-50' },
-                { label: 'Gamification', icon: Trophy, view: 'gamification' as View, color: 'text-purple-600 bg-purple-50' },
-              ].map((action) => (
-                <button key={action.label} onClick={() => onNavigate(action.view)} className="flex w-full items-center gap-3 rounded-lg border border-slate-100 p-3 text-sm font-medium text-slate-700 transition-all hover:border-purple-200 hover:bg-slate-50">
-                  <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', action.color)}>
-                    <action.icon className="h-4 w-4" />
-                  </div>
-                  {action.label}
-                  <ChevronRight className="ml-auto h-4 w-4 text-slate-300" />
-                </button>
-              ))}
-            </div>
-          </Card>
-          {/* Recent Activity Feed */}
-          <ActivityFeed />
-        </div>
+      {/* ── Moderation & Management Sections ── */}
+      <div className="space-y-6">
+        <FlaggedContentSection />
+        <GradeDisputesSection />
+        <EscalationsSection />
+        <AutoEnrollmentRulesSection />
+        <QualityMonitoringSection />
+        <AdminSubRolesSection />
       </div>
-
-      {/* Flagged Content Section (post-moderation) */}
-      <FlaggedContentSection />
-
-      {/* Grade Disputes Section */}
-      <GradeDisputesSection />
-
-      {/* Escalations Section (Student → Teacher → Admin) */}
-      <EscalationsSection />
-
-      {/* Auto-Enrollment Rules Section */}
-      <AutoEnrollmentRulesSection />
-
-      {/* Quality Monitoring Section */}
-      <QualityMonitoringSection />
-
-      {/* Admin Sub-Roles Section */}
-      <AdminSubRolesSection />
     </main>
   );
 }
