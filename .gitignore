@@ -1,0 +1,7 @@
+skills/
+node_modules/
+.env
+backend/.env
+backend/start-dev.js
+backend/test-imports.js
+*.log

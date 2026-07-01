@@ -10,17 +10,18 @@ async function main() {
 
   // 1. Academic Year
   const currentYear = new Date().getFullYear();
-  const academicYear = await prisma.academicYear.upsert({
-    where: { name: `${currentYear}-${currentYear + 1}` },
-    update: {},
-    create: {
-      name: `${currentYear}-${currentYear + 1}`,
-      startDate: new Date(`${currentYear}-09-01`),
-      endDate: new Date(`${currentYear + 1}-06-30`),
-      isCurrent: true,
-      status: 'ACTIVE',
-    },
-  });
+  let academicYear = await prisma.academicYear.findFirst({ where: { name: `${currentYear}-${currentYear + 1}` } });
+  if (!academicYear) {
+    academicYear = await prisma.academicYear.create({
+      data: {
+        name: `${currentYear}-${currentYear + 1}`,
+        startDate: new Date(`${currentYear}-09-01`),
+        endDate: new Date(`${currentYear + 1}-06-30`),
+        isCurrent: true,
+        status: 'ACTIVE',
+      },
+    });
+  }
   console.log(`  ✓ Academic Year: ${academicYear.name}`);
 
   // 2. Grades (9-12, Ethiopian secondary school)
@@ -32,7 +33,8 @@ async function main() {
   ];
   const grades: any[] = [];
   for (const g of gradeData) {
-    const grade = await prisma.grade.upsert({ where: { name: g.name }, update: {}, create: g });
+    let grade = await prisma.grade.findUnique({ where: { name: g.name } });
+    if (!grade) grade = await prisma.grade.create({ data: g });
     grades.push(grade);
   }
   console.log(`  ✓ Grades: ${grades.map((g) => g.name).join(', ')}`);
@@ -52,7 +54,8 @@ async function main() {
   ];
   const subjects: any[] = [];
   for (const s of subjectData) {
-    const subject = await prisma.subject.upsert({ where: { name: s.name }, update: {}, create: s });
+    let subject = await prisma.subject.findUnique({ where: { name: s.name } });
+    if (!subject) subject = await prisma.subject.create({ data: s });
     subjects.push(subject);
   }
   console.log(`  ✓ Subjects: ${subjects.length} subjects`);
@@ -62,16 +65,17 @@ async function main() {
   for (const grade of grades) {
     for (const suffix of ['A', 'B']) {
       const sectionName = `${grade.level}${suffix}`;
-      const section = await prisma.section.upsert({
-        where: { name_academicYearId: { name: sectionName, academicYearId: academicYear.id } },
-        update: {},
-        create: {
-          name: sectionName,
-          gradeId: grade.id,
-          academicYearId: academicYear.id,
-          capacity: 40,
-        },
-      });
+      let section = await prisma.section.findUnique({ where: { name_academicYearId: { name: sectionName, academicYearId: academicYear.id } } });
+      if (!section) {
+        section = await prisma.section.create({
+          data: {
+            name: sectionName,
+            gradeId: grade.id,
+            academicYearId: academicYear.id,
+            capacity: 40,
+          },
+        });
+      }
       sections.push(section);
     }
   }
@@ -85,15 +89,12 @@ async function main() {
     for (const section of sections) {
       for (const subject of subjects) {
         const teacher = teachers[teacherIdx % teachers.length];
-        await prisma.sectionSubject.upsert({
-          where: { sectionId_subjectId: { sectionId: section.id, subjectId: subject.id } },
-          update: { teacherId: teacher.id },
-          create: {
-            sectionId: section.id,
-            subjectId: subject.id,
-            teacherId: teacher.id,
-          },
-        });
+        const existingSS = await prisma.sectionSubject.findUnique({ where: { sectionId_subjectId: { sectionId: section.id, subjectId: subject.id } } });
+        if (existingSS) {
+          await prisma.sectionSubject.update({ where: { id: existingSS.id }, data: { teacherId: teacher.id } });
+        } else {
+          await prisma.sectionSubject.create({ data: { sectionId: section.id, subjectId: subject.id, teacherId: teacher.id } });
+        }
         teacherIdx++;
       }
     }
@@ -106,22 +107,10 @@ async function main() {
     console.log(`  ✓ Assigning ${students.length} students to sections...`);
     for (let i = 0; i < students.length; i++) {
       const section = sections[i % sections.length];
-      await prisma.studentSection.upsert({
-        where: {
-          studentId_sectionId_academicYearId: {
-            studentId: students[i].id,
-            sectionId: section.id,
-            academicYearId: academicYear.id,
-          },
-        },
-        update: {},
-        create: {
-          studentId: students[i].id,
-          sectionId: section.id,
-          academicYearId: academicYear.id,
-          status: 'ACTIVE',
-        },
-      });
+      const existingStu = await prisma.studentSection.findUnique({ where: { studentId_sectionId_academicYearId: { studentId: students[i].id, sectionId: section.id, academicYearId: academicYear.id } } });
+      if (!existingStu) {
+        await prisma.studentSection.create({ data: { studentId: students[i].id, sectionId: section.id, academicYearId: academicYear.id, status: 'ACTIVE' } });
+      }
     }
     console.log(`    ✓ All students assigned to sections`);
   }
