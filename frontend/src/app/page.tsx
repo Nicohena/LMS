@@ -7562,12 +7562,6 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
               );
             });
           })()}
-            <Card key={badge.name} className={cn('flex flex-col items-center p-4 text-center border shadow-sm', badge.earned ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-60')}>
-              <div className={cn('mb-2 flex h-12 w-12 items-center justify-center rounded-full', badge.earned ? badge.color : 'bg-slate-200 text-slate-400')}>
-                <badge.icon className="h-6 w-6" />
-              </div>
-              <p className="text-xs font-medium text-slate-900">{badge.name}</p>
-              <p className="text-[10px] text-slate-400">{badge.earned ? 'Earned' : 'Locked'}</p>
         </div>
       )}
 
