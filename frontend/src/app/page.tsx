@@ -3413,7 +3413,19 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 {/* MCQ Single */}
                 {qType === 'MULTIPLE_CHOICE_SINGLE' && (
                   <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Options (select correct one)</Label><div className="space-y-1.5">
-                    {qOptions.map((opt, idx) => (<div key={idx} className="flex items-center gap-2"><button type="button" onClick={() => setQCorrectIdx(idx)} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold', idx === qCorrectIdx ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>{idx === qCorrectIdx ? '✓' : String.fromCharCode(65 + idx)}</button><Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={`Option ${String.fromCharCode(65 + idx)}`} className="text-sm" />{qOptions.length > 2 && <button type="button" onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}</div>))}
+                    {qOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <button type="button" onClick={() => setQCorrectIdx(idx)} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold', idx === qCorrectIdx ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>
+                          {idx === qCorrectIdx ? '✓' : String.fromCharCode(65 + idx)}
+                        </button>
+                        <Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={'Option ' + String.fromCharCode(65 + idx)} className="text-sm" />
+                        {qOptions.length > 2 && (
+                          <button type="button" onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                     <button type="button" onClick={() => setQOptions([...qOptions, ''])} className="text-xs text-purple-600 hover:underline">+ Add option</button>
                   </div></div>
                 )}
@@ -3421,7 +3433,19 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 {/* MCQ Multiple */}
                 {qType === 'MULTIPLE_CHOICE_MULTIPLE' && (
                   <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Options (check all correct answers)</Label><div className="space-y-1.5">
-                    {qOptions.map((opt, idx) => (<div key={idx} className="flex items-center gap-2"><button type="button" onClick={() => setQCorrectIdxs(qCorrectIdxs.includes(idx) ? qCorrectIdxs.filter((i) => i !== idx) : [...qCorrectIdxs, idx])} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 text-xs font-bold', qCorrectIdxs.includes(idx) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>{qCorrectIdxs.includes(idx) ? '✓' : ''}</button><Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={`Option ${String.fromCharCode(65 + idx)}`} className="text-sm" />{qOptions.length > 2 && <button type="button" onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}</div>))}
+                    {qOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <button type="button" onClick={() => setQCorrectIdxs(qCorrectIdxs.includes(idx) ? qCorrectIdxs.filter((i) => i !== idx) : [...qCorrectIdxs, idx])} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 text-xs font-bold', qCorrectIdxs.includes(idx) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>
+                          {qCorrectIdxs.includes(idx) ? '✓' : ''}
+                        </button>
+                        <Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={'Option ' + String.fromCharCode(65 + idx)} className="text-sm" />
+                        {qOptions.length > 2 && (
+                          <button type="button" onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                     <button type="button" onClick={() => setQOptions([...qOptions, ''])} className="text-xs text-purple-600 hover:underline">+ Add option</button>
                   </div></div>
                 )}
@@ -3464,7 +3488,18 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 {/* Sorting (drag & drop) */}
                 {qType === 'SORTING' && (
                   <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Items in Correct Order (students will drag to rearrange)</Label><div className="space-y-1.5">
-                    {qSortItems.map((item, idx) => (<div key={idx} className="flex items-center gap-2"><GripVertical className="h-4 w-4 text-slate-300" /><span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-400">{idx + 1}</span><Input value={item} onChange={(e) => { const n = [...qSortItems]; n[idx] = e.target.value; setQSortItems(n); }} placeholder={`Item ${idx + 1}`} className="text-sm" />{qSortItems.length > 2 && <button type="button" onClick={() => setQSortItems(qSortItems.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button></div>))}
+                    {qSortItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4 text-slate-300" />
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-400">{idx + 1}</span>
+                        <Input value={item} onChange={(e) => { const n = [...qSortItems]; n[idx] = e.target.value; setQSortItems(n); }} placeholder={'Item ' + (idx + 1)} className="text-sm" />
+                        {qSortItems.length > 2 && (
+                          <button type="button" onClick={() => setQSortItems(qSortItems.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                     <button type="button" onClick={() => setQSortItems([...qSortItems, ''])} className="text-xs text-purple-600 hover:underline">+ Add item</button>
                   </div></div>
                 )}
