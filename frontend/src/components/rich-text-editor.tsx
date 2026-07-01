@@ -14,6 +14,18 @@ import {
   UndoRedo,
   CreateLink,
   InsertThematicBreak,
+  InsertCodeBlock,
+  InsertImage,
+  InsertTable,
+  codeBlockPlugin,
+  imagePlugin,
+  tablePlugin,
+  linkDialogPlugin,
+  linkPlugin,
+  diffSourcePlugin,
+  DiffSourceToggleWrapper,
+  HighlightToggle,
+  KitchenSinkToolbar,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 
@@ -26,12 +38,12 @@ interface RichTextEditorProps {
 
 /**
  * Markdown-based rich text editor powered by MDXEditor.
- * Stores content as markdown string — the backend's `contentJson` field
- * accepts any JSON, so we store `{ type: 'markdown', content: '...' }`.
+ * Supports: headings, bold/italic/underline, lists, quotes, links,
+ * code blocks, images, tables, thematic breaks, source view toggle.
  */
 export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichTextEditorProps) {
   return (
-    <div className="rich-text-editor-wrapper rounded-lg border border-slate-200 bg-white">
+    <div className="rich-text-editor-wrapper rounded-lg border border-slate-200 bg-white overflow-hidden">
       <MDXEditor
         markdown={value || ''}
         onChange={onChange}
@@ -40,14 +52,18 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
         plugins={[
           toolbarPlugin({
             toolbarContents: () => (
-              <>
+              <DiffSourceToggleWrapper>
                 <UndoRedo />
                 <BlockTypeSelect />
                 <BoldItalicUnderlineToggles />
+                <HighlightToggle />
                 <ListsToggle />
                 <CreateLink />
+                <InsertCodeBlock />
+                <InsertImage />
+                <InsertTable />
                 <InsertThematicBreak />
-              </>
+              </DiffSourceToggleWrapper>
             ),
           }),
           headingsPlugin(),
@@ -55,6 +71,12 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
           quotePlugin(),
           thematicBreakPlugin(),
           markdownShortcutPlugin(),
+          codeBlockPlugin(),
+          imagePlugin(),
+          tablePlugin(),
+          linkPlugin(),
+          linkDialogPlugin(),
+          diffSourcePlugin(),
         ]}
         contentEditableClassName="prose max-w-none min-h-[200px] p-4 focus:outline-none"
       />
@@ -80,6 +102,10 @@ export function RichTextRenderer({ content }: { content: string }) {
           listsPlugin(),
           quotePlugin(),
           thematicBreakPlugin(),
+          codeBlockPlugin(),
+          imagePlugin(),
+          tablePlugin(),
+          linkPlugin(),
         ]}
         contentEditableClassName="focus:outline-none"
       />
