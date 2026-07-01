@@ -1503,3 +1503,255 @@ export function useHealthCheck() {
     refetchInterval: 60000, // Check every minute
   });
 }
+
+// ─── School-Based LMS: Academic Structure ────────────────────────────────
+
+export function useAcademicYears() {
+  return useQuery({
+    queryKey: ['academic-years'],
+    queryFn: async () => {
+      const res = await api.get('/academic/academic-years');
+      return res.data;
+    },
+  });
+}
+
+export function useCurrentAcademicYear() {
+  return useQuery({
+    queryKey: ['academic-year-current'],
+    queryFn: async () => {
+      const res = await api.get('/academic/academic-years/current');
+      return res.data;
+    },
+  });
+}
+
+export function useGrades() {
+  return useQuery({
+    queryKey: ['grades'],
+    queryFn: async () => {
+      const res = await api.get('/academic/grades');
+      return res.data;
+    },
+  });
+}
+
+export function useSubjects() {
+  return useQuery({
+    queryKey: ['subjects'],
+    queryFn: async () => {
+      const res = await api.get('/academic/subjects');
+      return res.data;
+    },
+  });
+}
+
+export function useSections(filters?: { gradeId?: string; academicYearId?: string }) {
+  return useQuery({
+    queryKey: ['sections', filters],
+    queryFn: async () => {
+      const res = await api.get('/academic/sections', { params: filters });
+      return res.data;
+    },
+  });
+}
+
+export function useSectionStudents(sectionId: string | null) {
+  return useQuery({
+    queryKey: ['section-students', sectionId],
+    queryFn: async () => {
+      const res = await api.get(`/academic/sections/${sectionId}/students`);
+      return res.data;
+    },
+    enabled: !!sectionId,
+  });
+}
+
+export function useSectionSubjects(filters?: { sectionId?: string; teacherId?: string }) {
+  return useQuery({
+    queryKey: ['section-subjects', filters],
+    queryFn: async () => {
+      const res = await api.get('/academic/section-subjects', { params: filters });
+      return res.data;
+    },
+  });
+}
+
+export function useCreateAcademicYear() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { name: string; startDate: string; endDate: string; isCurrent?: boolean }) => {
+      const res = await api.post('/academic/academic-years', data);
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academic-years'] }),
+  });
+}
+
+export function useCreateGrade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { name: string; level: number }) => {
+      const res = await api.post('/academic/grades', data);
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grades'] }),
+  });
+}
+
+export function useCreateSubject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { name: string; code?: string; description?: string }) => {
+      const res = await api.post('/academic/subjects', data);
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['subjects'] }),
+  });
+}
+
+export function useCreateSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { name: string; gradeId: string; academicYearId: string; capacity?: number }) => {
+      const res = await api.post('/academic/sections', data);
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sections'] }),
+  });
+}
+
+export function useAssignTeacher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { sectionId: string; subjectId: string; teacherId: string }) => {
+      const res = await api.post('/academic/section-subjects', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['section-subjects'] });
+    },
+  });
+}
+
+export function useAssignStudent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { studentId: string; sectionId: string; academicYearId: string }) => {
+      const res = await api.post('/academic/student-sections', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['section-students'] });
+      qc.invalidateQueries({ queryKey: ['student-sections'] });
+    },
+  });
+}
+
+export function useRemoveStudentFromSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ studentId, sectionId }: { studentId: string; sectionId: string }) => {
+      const res = await api.delete(`/academic/users/${studentId}/sections/${sectionId}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['section-students'] });
+      qc.invalidateQueries({ queryKey: ['student-sections'] });
+    },
+  });
+}
+
+// --- User section/subject queries ---
+
+export function useUserSections(userId: string | null) {
+  return useQuery({
+    queryKey: ['student-sections', userId],
+    queryFn: async () => {
+      const res = await api.get(`/academic/users/${userId}/sections`);
+      return res.data;
+    },
+    enabled: !!userId,
+  });
+}
+
+export function useTeacherSections(userId: string | null) {
+  return useQuery({
+    queryKey: ['teacher-sections', userId],
+    queryFn: async () => {
+      const res = await api.get(`/academic/users/${userId}/teacher-sections`);
+      return res.data;
+    },
+    enabled: !!userId,
+  });
+}
+
+// --- Section content / quizzes / assignments ---
+
+export function useSectionContent(filters?: { sectionSubjectId?: string }) {
+  return useQuery({
+    queryKey: ['section-content', filters],
+    queryFn: async () => {
+      const res = await api.get('/school/section-content', { params: filters });
+      return res.data;
+    },
+  });
+}
+
+export function useSectionQuizzes(filters?: { sectionSubjectId?: string }) {
+  return useQuery({
+    queryKey: ['section-quizzes', filters],
+    queryFn: async () => {
+      const res = await api.get('/school/section-quizzes', { params: filters });
+      return res.data;
+    },
+  });
+}
+
+export function useSectionAssignments(filters?: { sectionSubjectId?: string }) {
+  return useQuery({
+    queryKey: ['section-assignments', filters],
+    queryFn: async () => {
+      const res = await api.get('/school/section-assignments', { params: filters });
+      return res.data;
+    },
+  });
+}
+
+// --- Dashboards ---
+
+export function useTeacherSchoolDashboard() {
+  return useQuery({
+    queryKey: ['teacher-school-dashboard'],
+    queryFn: async () => {
+      const res = await api.get('/school/teacher/dashboard');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+    refetchInterval: 30000,
+  });
+}
+
+export function useStudentSchoolDashboard() {
+  return useQuery({
+    queryKey: ['student-school-dashboard'],
+    queryFn: async () => {
+      const res = await api.get('/school/student/dashboard');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+    refetchInterval: 30000,
+  });
+}
+
+export function useAdminSchoolDashboard() {
+  return useQuery({
+    queryKey: ['admin-school-dashboard'],
+    queryFn: async () => {
+      const res = await api.get('/school/admin/school-dashboard');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+    refetchInterval: 30000,
+  });
+}

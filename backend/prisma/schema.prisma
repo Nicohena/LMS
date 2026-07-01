@@ -71,6 +71,13 @@ model User {
   escalationsHandled   Escalation[]   @relation("escalationTeacher")
   escalationsAdmin     Escalation[]   @relation("escalationAdmin")
   adminAssignment      Admin?
+
+  // --- School-based LMS relations ---
+  sectionSubjects     SectionSubject[]    @relation("sectionSubjectTeacher")
+  studentSections     StudentSection[]   @relation("studentSectionUser")
+  sectionContents     SectionContent[]   @relation("sectionContentCreator")
+  sectionQuizzes      SectionQuiz[]      @relation("sectionQuizCreator")
+  sectionAssignments  SectionAssignment[] @relation("sectionAssignmentCreator")
 }
 
 model RefreshToken {
@@ -1056,6 +1063,8 @@ model AcademicYear {
   updatedAt DateTime           @updatedAt
 
   courses Course[]
+  sections       Section[]
+  studentSections StudentSection[]
 }
 
 model Favorite {
@@ -1189,4 +1198,186 @@ model Admin {
 
   user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   role AdminRole @relation(fields: [roleId], references: [id])
+}
+
+// ===========================================================================
+// SCHOOL-BASED LMS — Academic Structure Models (Ethiopian Education System)
+// ===========================================================================
+
+model Grade {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique // e.g. "Grade 9", "Grade 10"
+  level     Int      @unique // numeric level for ordering (9, 10, 11, 12)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sections  Section[]
+}
+
+model Section {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String   // e.g. "9A", "9B"
+  gradeId        String   @db.ObjectId
+  academicYearId String   @db.ObjectId
+  capacity       Int      @default(40)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  grade        Grade        @relation(fields: [gradeId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  sectionSubjects SectionSubject[]
+  studentSections StudentSection[]
+
+  @@unique([name, academicYearId])
+}
+
+model Subject {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique // e.g. "Mathematics", "English", "Biology"
+  code        String?  @unique // e.g. "MATH", "ENG"
+  description String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sectionSubjects SectionSubject[]
+}
+
+model SectionSubject {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  sectionId   String   @db.ObjectId
+  subjectId   String   @db.ObjectId
+  teacherId   String?  @db.ObjectId // teacher assigned to teach this subject in this section
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  section       Section       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject       Subject       @relation(fields: [subjectId], references: [id])
+  teacher       User?         @relation("sectionSubjectTeacher", fields: [teacherId], references: [id])
+  sectionContents   SectionContent[]
+  sectionQuizzes    SectionQuiz[]
+  sectionAssignments SectionAssignment[]
+
+  @@unique([sectionId, subjectId])
+}
+
+model StudentSection {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String   @db.ObjectId
+  sectionId   String   @db.ObjectId
+  academicYearId String @db.ObjectId
+  enrolledAt  DateTime @default(now())
+  status      String   @default("ACTIVE") // ACTIVE | TRANSFERRED | GRADUATED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student       User          @relation("studentSectionUser", fields: [studentId], references: [id])
+  section       Section       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  academicYear  AcademicYear  @relation(fields: [academicYearId], references: [id])
+  sectionProgress SectionProgress[]
+
+  @@unique([studentId, sectionId, academicYearId])
+}
+
+// --- Content linked to Section-Subject (replaces courseId on Content) ---
+model SectionContent {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  sectionSubjectId String        @db.ObjectId
+  type             ContentType
+  title            String
+  description      String?
+  contentJson      Json?
+  videoUrl         String?
+  fileUrl          String?
+  externalUrl      String?
+  duration         Int?
+  order            Int           @default(0)
+  isPublished      Boolean       @default(true)
+  status           ContentStatus @default(PUBLISHED)
+  flagReason       String?
+  qualityScore     Float?
+  moderatedAt      DateTime?
+  moderatedBy      String?       @db.ObjectId
+  createdBy        String        @db.ObjectId
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  sectionSubject SectionSubject @relation(fields: [sectionSubjectId], references: [id], onDelete: Cascade)
+  creator        User           @relation("sectionContentCreator", fields: [createdBy], references: [id])
+  sectionProgress SectionProgress[]
+  sectionQuiz       SectionQuiz?
+  sectionAssignment SectionAssignment?
+}
+
+// --- Quiz linked to Section-Subject ---
+model SectionQuiz {
+  id                 String      @id @default(auto()) @map("_id") @db.ObjectId
+  sectionContentId   String?     @unique @db.ObjectId
+  sectionSubjectId   String      @db.ObjectId
+  title              String
+  description        String?
+  instructions       String?
+  timeLimit          Int?
+  passingScore       Float       @default(70)
+  maxAttempts        Int         @default(1)
+  shuffleQuestions   Boolean     @default(false)
+  shuffleAnswers     Boolean     @default(false)
+  showFeedback       Boolean     @default(true)
+  showCorrectAnswers Boolean     @default(false)
+  status             QuizStatus  @default(DRAFT)
+  createdBy          String      @db.ObjectId
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  sectionSubject SectionSubject @relation(fields: [sectionSubjectId], references: [id], onDelete: Cascade)
+  sectionContent SectionContent? @relation(fields: [sectionContentId], references: [id])
+  creator        User            @relation("sectionQuizCreator", fields: [createdBy], references: [id])
+}
+
+// --- Assignment linked to Section-Subject ---
+model SectionAssignment {
+  id                     String           @id @default(auto()) @map("_id") @db.ObjectId
+  sectionContentId       String?          @unique @db.ObjectId
+  sectionSubjectId       String           @db.ObjectId
+  title                  String
+  description            String?
+  instructions           String?
+  dueDate                DateTime?
+  lateSubmissionDeadline DateTime?
+  latePenaltyPercentage  Float            @default(0)
+  maxPoints              Float            @default(100)
+  allowResubmissions     Boolean          @default(true)
+  maxResubmissions       Int              @default(3)
+  allowPeerReview        Boolean          @default(false)
+  peerReviewDeadline     DateTime?
+  peerReviewCount        Int              @default(2)
+  requiresFileUpload     Boolean          @default(true)
+  allowedFileTypes       String[]
+  maxFileSizeMB          Int              @default(10)
+  status                 AssignmentStatus @default(DRAFT)
+  createdBy              String           @db.ObjectId
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  sectionSubject SectionSubject @relation(fields: [sectionSubjectId], references: [id], onDelete: Cascade)
+  sectionContent SectionContent? @relation(fields: [sectionContentId], references: [id])
+  creator        User            @relation("sectionAssignmentCreator", fields: [createdBy], references: [id])
+}
+
+// --- Progress linked to StudentSection + SectionContent ---
+model SectionProgress {
+  id                String         @id @default(auto()) @map("_id") @db.ObjectId
+  studentSectionId  String         @db.ObjectId
+  sectionContentId  String         @db.ObjectId
+  status            ProgressStatus @default(NOT_STARTED)
+  progressPercent   Float          @default(0)
+  timeSpent         Int            @default(0)
+  lastAccessedAt    DateTime       @default(now())
+  completedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  studentSection StudentSection @relation(fields: [studentSectionId], references: [id], onDelete: Cascade)
+  sectionContent SectionContent @relation(fields: [sectionContentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentSectionId, sectionContentId])
 }

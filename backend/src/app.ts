@@ -17,6 +17,8 @@ import gamificationRouter from './modules/gamification/gamification.routes';
 import { dashboardRouter, reportRouter, scheduleRouter } from './modules/reports/report.routes';
 import auditRouter from './modules/audit/audit.routes';
 import { settingRouter, emailTemplateRouter, gradingScaleRouter, academicYearRouter, healthRouter, maintenanceRouter } from './modules/settings/setting.routes';
+import academicRouter from './modules/academic/academic.routes';
+import sectionContentRouter from './modules/academic/section-content.routes';
 import { authenticate } from './common/middlewares/auth.middleware';
 import { authorize } from './common/middlewares/rbac.middleware';
 
@@ -188,6 +190,10 @@ app.use('/api/v1/quizzes', quizRouter);
 
 // --- Assignments module ---
 app.use('/api/v1/assignments', assignmentRouter);
+
+// --- School-based LMS: Academic structure ---
+app.use('/api/v1/academic', academicRouter);
+app.use('/api/v1/school', sectionContentRouter);
 
 // --- Notifications & Communication module (Step 9) ---
 app.use('/api/v1/notifications', notificationRouter);
