@@ -193,8 +193,8 @@ model Content {
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   progress Progress[]
-  quiz     Quiz?
-  assignment Assignment?
+  quizzes     Quiz[]
+  assignments     Assignment[]
 }
 
 model AuditLog {
@@ -315,7 +315,7 @@ enum AttemptStatus {
 
 model Quiz {
   id                 String      @id @default(auto()) @map("_id") @db.ObjectId
-  contentId          String?     @unique @db.ObjectId
+  contentId          String?     @db.ObjectId
   title              String
   description        String?
   instructions       String?
@@ -457,7 +457,7 @@ enum PeerReviewStatus {
 
 model Assignment {
   id                     String           @id @default(auto()) @map("_id") @db.ObjectId
-  contentId              String?          @unique @db.ObjectId
+  contentId              String?          @db.ObjectId
   title                  String
   description            String?
   instructions           String?
@@ -1304,14 +1304,14 @@ model SectionContent {
   sectionSubject SectionSubject @relation(fields: [sectionSubjectId], references: [id], onDelete: Cascade)
   creator        User           @relation("sectionContentCreator", fields: [createdBy], references: [id])
   sectionProgress SectionProgress[]
-  sectionQuiz       SectionQuiz?
-  sectionAssignment SectionAssignment?
+  sectionQuizzes       SectionQuiz[]
+  sectionAssignments SectionAssignment[]
 }
 
 // --- Quiz linked to Section-Subject ---
 model SectionQuiz {
   id                 String      @id @default(auto()) @map("_id") @db.ObjectId
-  sectionContentId   String?     @unique @db.ObjectId
+  sectionContentId   String?     @db.ObjectId
   sectionSubjectId   String      @db.ObjectId
   title              String
   description        String?
@@ -1336,7 +1336,7 @@ model SectionQuiz {
 // --- Assignment linked to Section-Subject ---
 model SectionAssignment {
   id                     String           @id @default(auto()) @map("_id") @db.ObjectId
-  sectionContentId       String?          @unique @db.ObjectId
+  sectionContentId       String?          @db.ObjectId
   sectionSubjectId       String           @db.ObjectId
   title                  String
   description            String?
