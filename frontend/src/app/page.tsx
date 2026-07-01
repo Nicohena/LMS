@@ -5822,14 +5822,13 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const queryClient = useQueryClient();
   const { data: alerts } = useAdminAlerts();
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [activeTab, setActiveTab] = useState<'flagged' | 'disputes' | 'escalations' | 'rules' | 'quality' | 'roles'>('flagged');
 
-  // Real-time WebSocket updates
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
     const onUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ['admin-alerts'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
       setLastUpdate(new Date());
     };
     socket.on('platform-stats-update', onUpdate);
@@ -5840,13 +5839,14 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
     };
   }, [queryClient]);
 
-  const alertItems = [
-    { label: 'Escalations', value: alerts?.pendingEscalations ?? 0, color: 'text-amber-600 bg-amber-50', icon: AlertCircle, view: 'admin' as View },
-    { label: 'Flagged Content', value: alerts?.flaggedContent ?? 0, color: 'text-red-600 bg-red-50', icon: AlertCircle, view: 'admin' as View },
-    { label: 'Low Quality', value: alerts?.lowQualityCourses ?? 0, color: 'text-red-600 bg-red-50', icon: TrendingUp, view: 'admin' as View },
-    { label: 'At-Risk Students', value: alerts?.atRiskStudents ?? 0, color: 'text-amber-600 bg-amber-50', icon: Users, view: 'admin' as View },
-    { label: 'Grade Disputes', value: alerts?.openGradeDisputes ?? 0, color: 'text-amber-600 bg-amber-50', icon: FileQuestion, view: 'admin' as View },
-  ].filter(i => i.value > 0);
+  const tabs = [
+    { id: 'flagged' as const, label: 'Flagged Content', count: alerts?.flaggedContent ?? 0, icon: AlertCircle },
+    { id: 'disputes' as const, label: 'Grade Disputes', count: alerts?.openGradeDisputes ?? 0, icon: FileQuestion },
+    { id: 'escalations' as const, label: 'Escalations', count: alerts?.pendingEscalations ?? 0, icon: ArrowUpRight },
+    { id: 'rules' as const, label: 'Auto-Enrollment', count: null, icon: Route },
+    { id: 'quality' as const, label: 'Quality', count: alerts?.lowQualityCourses ?? 0, icon: TrendingUp },
+    { id: 'roles' as const, label: 'Admin Roles', count: null, icon: Crown },
+  ];
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
@@ -5855,60 +5855,49 @@ function AdminView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Admin Panel</h1>
           <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
-            Moderation &amp; management tools
+            Moderation tools
             <span className="flex items-center gap-1 text-xs text-emerald-600">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Live · {timeAgo(lastUpdate.toISOString())}
             </span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => onNavigate('users')} className="border-slate-200 text-slate-600"><UserPlus className="mr-1.5 h-4 w-4" />Manage Users</Button>
-          <Button variant="outline" onClick={() => onNavigate('audit')} className="border-slate-200 text-slate-600"><FileText className="mr-1.5 h-4 w-4" />Audit Logs</Button>
-          <Button variant="outline" onClick={() => onNavigate('settings')} className="border-slate-200 text-slate-600"><Settings className="mr-1.5 h-4 w-4" />Settings</Button>
+          <Button variant="outline" size="sm" onClick={() => onNavigate('academic-management')} className="border-slate-200 text-slate-600"><Layers className="mr-1.5 h-4 w-4" />Academic Structure</Button>
+          <Button variant="outline" size="sm" onClick={() => onNavigate('users')} className="border-slate-200 text-slate-600"><Users className="mr-1.5 h-4 w-4" />Users</Button>
+          <Button variant="outline" size="sm" onClick={() => onNavigate('settings')} className="border-slate-200 text-slate-600"><Settings className="mr-1.5 h-4 w-4" />Settings</Button>
         </div>
       </div>
 
-      {/* Active alerts bar */}
-      {alertItems.length > 0 && (
-        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/50 p-3">
-          <span className="mr-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700">
-            <AlertCircle className="h-4 w-4" />Active alerts:
-          </span>
-          {alertItems.map((item) => (
-            <div key={item.label} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium', item.color)}>
-              <item.icon className="h-3.5 w-3.5" />{item.value} {item.label}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Quick navigation cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {[
-          { label: 'Manage Users', icon: Users, view: 'users' as View, color: 'text-purple-600 bg-purple-50', desc: 'Create & manage accounts' },
-          { label: 'Audit Logs', icon: FileText, view: 'audit' as View, color: 'text-amber-600 bg-amber-50', desc: 'View all platform actions' },
-          { label: 'Settings', icon: Settings, view: 'settings' as View, color: 'text-slate-600 bg-slate-100', desc: 'Platform configuration' },
-          { label: 'Academic Structure', icon: Layers, view: 'academic-management' as View, color: 'text-blue-600 bg-blue-50', desc: 'Sections and assignments' },
-        ].map((action) => (
-          <button key={action.label} onClick={() => onNavigate(action.view)} className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-purple-200 hover:shadow-md">
-            <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', action.color)}><action.icon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">{action.label}</p>
-              <p className="text-xs text-slate-400">{action.desc}</p>
-            </div>
+      {/* Tabs */}
+      <div className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={cn(
+              'flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+              activeTab === tab.id ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+            )}
+          >
+            <tab.icon className="h-4 w-4" />
+            {tab.label}
+            {tab.count != null && tab.count > 0 && (
+              <span className={cn(
+                'flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold',
+                activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'
+              )}>{tab.count}</span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* ── Moderation & Management Sections ── */}
-      <div className="space-y-6">
-        <FlaggedContentSection />
-        <GradeDisputesSection />
-        <EscalationsSection />
-        <AutoEnrollmentRulesSection />
-        <QualityMonitoringSection />
-        <AdminSubRolesSection />
-      </div>
+      {/* Active tab content — only one section visible at a time */}
+      {activeTab === 'flagged' && <FlaggedContentSection />}
+      {activeTab === 'disputes' && <GradeDisputesSection />}
+      {activeTab === 'escalations' && <EscalationsSection />}
+      {activeTab === 'rules' && <AutoEnrollmentRulesSection />}
+      {activeTab === 'quality' && <QualityMonitoringSection />}
+      {activeTab === 'roles' && <AdminSubRolesSection />}
     </main>
   );
 }
