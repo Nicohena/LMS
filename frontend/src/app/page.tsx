@@ -3591,8 +3591,8 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
 function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
   imageUrl: string;
   onImageUrlChange: (url: string) => void;
-  zones: { x: number; y: number; w: number; h: number; label: string }[];
-  onZonesChange: (zones: { x: number; y: number; w: number; h: number; label: string }[]) => void;
+  zones: { x: number; y: number; w: number; h: number; label: string; isCorrect: boolean }[];
+  onZonesChange: (zones: { x: number; y: number; w: number; h: number; label: string; isCorrect: boolean }[]) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const drawRectRef = useRef<HTMLDivElement>(null);
@@ -3721,12 +3721,17 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
           {zones.map((zone, idx) => (
             <div
               key={idx}
-              className="absolute border-2 border-violet-500 bg-violet-500/20 transition-colors hover:bg-violet-500/30"
+              className={cn('absolute border-2 transition-colors', zone.isCorrect ? 'border-emerald-500 bg-emerald-500/20' : 'border-violet-500 bg-violet-500/20 hover:bg-violet-500/30')}
               style={{ left: zone.x + '%', top: zone.y + '%', width: zone.w + '%', height: zone.h + '%' }}
             >
-              <span className="absolute left-1 top-1 whitespace-nowrap rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+              <span className={cn('absolute left-1 top-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium text-white', zone.isCorrect ? 'bg-emerald-600' : 'bg-violet-600')}>
                 {zone.label || ('Zone ' + (idx + 1))}
               </span>
+              {zone.isCorrect && (
+                <div className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white">
+                  <CheckCircle2 className="h-3 w-3" />
+                </div>
+              )}
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onZonesChange(zones.filter((_, i) => i !== idx)); }}
@@ -3752,8 +3757,8 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
           <p className="mb-2 text-xs font-medium text-slate-500">Zones ({zones.length})</p>
           <div className="space-y-1.5">
             {zones.map((zone, idx) => (
-              <div key={idx} className="flex items-center gap-2 rounded-lg border border-slate-100 p-1.5">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-600">{idx + 1}</span>
+              <div key={idx} className={cn('flex items-center gap-2 rounded-lg border p-1.5', zone.isCorrect ? 'border-emerald-200 bg-emerald-50' : 'border-slate-100')}>
+                <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold', zone.isCorrect ? 'bg-emerald-100 text-emerald-600' : 'bg-violet-100 text-violet-600')}>{idx + 1}</span>
                 {editingLabel === idx ? (
                   <input
                     type="text"
@@ -3775,6 +3780,15 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
                     <span className="ml-2 text-slate-400">{Math.round(zone.x)},{Math.round(zone.y)} ({Math.round(zone.w)}x{Math.round(zone.h)})</span>
                   </button>
                 )}
+                {/* Correct answer toggle */}
+                <button
+                  type="button"
+                  onClick={() => { const n = [...zones]; n[idx] = { ...n[idx], isCorrect: !n[idx].isCorrect }; onZonesChange(n); }}
+                  title={zone.isCorrect ? 'Correct answer (click to remove)' : 'Mark as correct answer'}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded transition-colors', zone.isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-emerald-100 hover:text-emerald-600')}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </button>
                 <button type="button" onClick={() => onZonesChange(zones.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             ))}
@@ -3836,7 +3850,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [qSortItems, setQSortItems] = useState<string[]>(['', '']);
   const [qTextAnswer, setQTextAnswer] = useState('');
   const [qHotspotImage, setQHotspotImage] = useState('');
-  const [qHotspotZones, setQHotspotZones] = useState<{ x: number; y: number; w: number; h: number; label: string }[]>([]);
+  const [qHotspotZones, setQHotspotZones] = useState<{ x: number; y: number; w: number; h: number; label: string; isCorrect: boolean }[]>([]);
   const [qHotspotTool, setQHotspotTool] = useState<'point' | 'rectangle' | 'freeform'>('rectangle');
 
   const quiz = (existingQuizData as any)?.quiz;
@@ -3969,7 +3983,9 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
       case 'HOTSPOT': {
         if (!qHotspotImage.trim()) { setQError('Provide an image URL.'); return null; }
         if (qHotspotZones.length === 0) { setQError('Add at least one hotspot zone.'); return null; }
-        return { options: { imageUrl: qHotspotImage, zones: qHotspotZones }, correctAnswer: qHotspotZones.map((z) => z.label) };
+        const correctZones = qHotspotZones.filter((z) => z.isCorrect);
+        if (correctZones.length === 0) { setQError('Mark at least one zone as correct (click the checkmark).'); return null; }
+        return { options: { imageUrl: qHotspotImage, zones: qHotspotZones.map((z) => ({ x: z.x, y: z.y, w: z.w, h: z.h, label: z.label })) }, correctAnswer: correctZones.map((z) => z.label) };
       }
       default:
         setQError('Unsupported type.'); return null;

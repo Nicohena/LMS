@@ -41,11 +41,40 @@ export function gradeQuestion(
     case 'SHORT_ANSWER':
     case 'ESSAY':
     case 'FILE_UPLOAD':
-    case 'HOTSPOT':
       return { isCorrect: null, pointsAwarded: null, feedback: 'Awaiting manual grading.' };
+    case 'HOTSPOT':
+      return gradeHotspot(question, studentAnswer);
     default:
       return { isCorrect: null, pointsAwarded: null, feedback: `Unknown question type: ${question.type}` };
   }
+}
+
+/**
+ * HOTSPOT: student answer is a string (the label of the zone they clicked).
+ * Correct answer is an array of correct zone labels.
+ */
+function gradeHotspot(
+  question: { correctAnswer: Prisma.JsonValue | null; points: number },
+  studentAnswer: unknown,
+): GradeResult {
+  const correct = question.correctAnswer;
+  if (!correct) {
+    return zero('Question is misconfigured (no correct answer set).');
+  }
+  if (typeof studentAnswer !== 'string') {
+    return zero('Hotspot answer must be a string (zone label).');
+  }
+
+  const correctLabels = Array.isArray(correct)
+    ? correct.map((c) => String(c).trim())
+    : [String(correct).trim()];
+
+  const isCorrect = correctLabels.includes(studentAnswer.trim());
+  return {
+    isCorrect,
+    pointsAwarded: isCorrect ? question.points : 0,
+    feedback: isCorrect ? 'Correct!' : 'Incorrect zone selected.',
+  };
 }
 
 // ---------------------------------------------------------------------------
