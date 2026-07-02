@@ -1530,12 +1530,19 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
   const [selectedDifficulty, setSelectedDifficulty] = useState('All Levels');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('Popular');
-  // For students: only show PUBLISHED courses. For teachers/admins: show all visible.
-  const { data, isLoading, isError } = useCourses({ limit: 50, search: searchQuery || undefined, status: isStudent ? 'PUBLISHED' : undefined });
+  // Students: show only their enrolled courses (from student dashboard)
+  // Teachers/Admins: show all visible courses
+  const { data: coursesData, isLoading, isError } = useCourses({ limit: 50, search: searchQuery || undefined, status: isStudent ? 'PUBLISHED' : undefined });
+  const { data: studentData } = useStudentDashboard();
   const enrollMut = useSelfEnroll();
 
+  // For students: filter to only show enrolled courses
+  const enrolledCourseIds = isStudent
+    ? new Set((studentData?.courses ?? []).map((c: any) => c.course?.id).filter(Boolean))
+    : null;
+
   // Normalize API courses into the shape expected by the UI
-  const apiCourses: Course[] = (data?.data ?? []).map((c: any) => ({
+  const allApiCourses: Course[] = (coursesData?.data ?? []).map((c: any) => ({
     id: c.id,
     title: c.title,
     description: c.description ?? 'No description available.',
@@ -1551,6 +1558,21 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
     createdBy: c.createdBy?.id,
   }));
 
+  // Students: only show courses they're enrolled in
+  const apiCourses = isStudent && enrolledCourseIds
+    ? allApiCourses.filter(c => enrolledCourseIds.has(c.id))
+    : allApiCourses;
+
+  // For students: merge progress from studentData
+  if (isStudent && studentData?.courses) {
+    apiCourses.forEach(c => {
+      const enrollment = studentData.courses.find((ec: any) => ec.course?.id === c.id);
+      if (enrollment) {
+        (c as any).progress = Math.round(enrollment.progressPercentage ?? 0);
+      }
+    });
+  }
+
   const filtered = apiCourses.filter(c => {
     const catMatch = selectedCategory === 'All' || c.category === selectedCategory;
     const diffMatch = selectedDifficulty === 'All Levels' || c.difficulty === selectedDifficulty;
@@ -1558,9 +1580,9 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
   });
 
   // Role-aware title/subtitle
-  const heading = isStudent ? 'Course Catalog' : isTeacher ? 'Browse Courses' : 'All Courses';
+  const heading = isStudent ? 'My Courses' : isTeacher ? 'Browse Courses' : 'All Courses';
   const subtitle = isStudent
-    ? `Discover ${apiCourses.length} courses to enroll in`
+    ? `You have ${apiCourses.length} courses assigned to you`
     : isTeacher
       ? `Browse ${apiCourses.length} courses — visit "My Courses" to manage your own`
       : `Platform total: ${apiCourses.length} courses`;
@@ -1680,14 +1702,20 @@ function CatalogView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: stri
                     </div>
                     {/* Role-aware actions */}
                     {isStudent ? (
-                      <Button
-                        size="sm"
-                        disabled={enrollMut.isPending}
-                        onClick={(e) => { e.stopPropagation(); enrollMut.mutate(course.id); }}
-                        className="h-7 bg-violet-600 px-3 text-xs text-white hover:bg-violet-700"
-                      >
-                        {enrollMut.isPending ? 'Enrolling…' : 'Enroll'}
-                      </Button>
+                      <Badge className={cn(
+                        'text-xs',
+                        (course as any).progress !== undefined && (course as any).progress === 100
+                          ? 'bg-emerald-50 text-emerald-600'
+                          : (course as any).progress !== undefined && (course as any).progress > 0
+                            ? 'bg-violet-50 text-violet-600'
+                            : 'bg-slate-100 text-slate-500'
+                      )}>
+                        {(course as any).progress !== undefined && (course as any).progress === 100
+                          ? 'Completed'
+                          : (course as any).progress !== undefined && (course as any).progress > 0
+                            ? `${(course as any).progress}% Complete`
+                            : 'Not Started'}
+                      </Badge>
                     ) : (
                       <div className="flex items-center gap-1 text-xs"><Star className="h-3 w-3 fill-violet-400 text-violet-400" /><span className="font-semibold text-slate-700">{course.rating}</span></div>
                     )}
