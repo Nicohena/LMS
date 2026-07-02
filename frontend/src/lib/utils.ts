@@ -36,8 +36,10 @@ export function formatDateTime(date: string | Date): string {
   });
 }
 
-export function timeAgo(date: string | Date): string {
+export function timeAgo(date: string | Date | null | undefined): string {
+  if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
   const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
   const intervals: [number, string][] = [
     [31536000, 'year'],
