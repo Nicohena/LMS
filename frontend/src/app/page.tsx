@@ -3587,6 +3587,172 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
 // ─── Quiz Editor Modal (create quiz + add questions) ─────────────────────
 
 // ─── Quiz Editor Modal (supports all 10 question types) ──────────────────
+// ─── Hotspot Editor — draw zones on image by clicking and dragging ──────
+function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
+  imageUrl: string;
+  onImageUrlChange: (url: string) => void;
+  zones: { x: number; y: number; w: number; h: number; label: string }[];
+  onZonesChange: (zones: { x: number; y: number; w: number; h: number; label: string }[]) => void;
+}) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
+  const [drawCurrent, setDrawCurrent] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [editingLabel, setEditingLabel] = useState<number | null>(null);
+
+  // Convert mouse position to percentage
+  const getPercent = (e: React.MouseEvent) => {
+    if (!containerRef.current) return { x: 0, y: 0 };
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    return { x, y };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!imageUrl.trim()) return;
+    const pos = getPercent(e);
+    setIsDrawing(true);
+    setDrawStart(pos);
+    setDrawCurrent({ x: pos.x, y: pos.y, w: 0, h: 0 });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDrawing || !drawStart) return;
+    const pos = getPercent(e);
+    const x = Math.min(drawStart.x, pos.x);
+    const y = Math.min(drawStart.y, pos.y);
+    const w = Math.abs(pos.x - drawStart.x);
+    const h = Math.abs(pos.y - drawStart.y);
+    setDrawCurrent({ x, y, w, h });
+  };
+
+  const handleMouseUp = () => {
+    if (!isDrawing || !drawCurrent) return;
+    if (drawCurrent.w > 3 && drawCurrent.h > 3) {
+      // Only add zone if it's big enough (avoid accidental clicks)
+      onZonesChange([...zones, { ...drawCurrent, label: 'Zone ' + (zones.length + 1) }]);
+    }
+    setIsDrawing(false);
+    setDrawStart(null);
+    setDrawCurrent(null);
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Image URL */}
+      <div>
+        <Label className="mb-1.5 block text-xs text-slate-500">Image URL *</Label>
+        <Input
+          value={imageUrl}
+          onChange={(e) => onImageUrlChange(e.target.value)}
+          placeholder="https://example.com/image.jpg"
+          className="text-sm"
+        />
+        {imageUrl.trim() && (
+          <p className="mt-1 text-xs text-violet-500">↓ Click and drag on the image below to draw zones</p>
+        )}
+      </div>
+
+      {/* Image with drawing area */}
+      {imageUrl.trim() && (
+        <div
+          ref={containerRef}
+          className="relative w-full cursor-crosshair overflow-hidden rounded-lg border-2 border-slate-200"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          style={{ minHeight: '200px' }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={imgRef}
+            src={imageUrl}
+            alt="Hotspot"
+            className="block h-auto w-full select-none"
+            style={{ display: 'block', pointerEvents: 'none' }}
+            draggable={false}
+          />
+
+          {/* Existing zones */}
+          {zones.map((zone, idx) => (
+            <div
+              key={idx}
+              className="absolute border-2 border-violet-500 bg-violet-500/20 transition-colors hover:bg-violet-500/30"
+              style={{ left: zone.x + '%', top: zone.y + '%', width: zone.w + '%', height: zone.h + '%' }}
+            >
+              <span className="absolute left-1 top-1 whitespace-nowrap rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                {zone.label || ('Zone ' + (idx + 1))}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onZonesChange(zones.filter((_, i) => i !== idx)); }}
+                className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+
+          {/* Drawing preview rectangle */}
+          {isDrawing && drawCurrent && (
+            <div
+              className="absolute border-2 border-dashed border-violet-400 bg-violet-300/20"
+              style={{ left: drawCurrent.x + '%', top: drawCurrent.y + '%', width: drawCurrent.w + '%', height: drawCurrent.h + '%' }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Zone list */}
+      {zones.length > 0 && (
+        <div className="rounded-lg border border-slate-100 p-3">
+          <p className="mb-2 text-xs font-medium text-slate-500">Zones ({zones.length})</p>
+          <div className="space-y-1.5">
+            {zones.map((zone, idx) => (
+              <div key={idx} className="flex items-center gap-2 rounded-lg border border-slate-100 p-1.5">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-600">{idx + 1}</span>
+                {editingLabel === idx ? (
+                  <input
+                    type="text"
+                    value={zone.label}
+                    autoFocus
+                    onChange={(e) => { const n = [...zones]; n[idx] = { ...n[idx], label: e.target.value }; onZonesChange(n); }}
+                    onBlur={() => setEditingLabel(null)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setEditingLabel(null); }}
+                    className="flex-1 rounded border border-violet-300 px-2 py-0.5 text-xs"
+                    placeholder="Zone label"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditingLabel(idx)}
+                    className="flex-1 text-left text-xs text-slate-600 hover:text-violet-600"
+                  >
+                    {zone.label || ('Zone ' + (idx + 1))}
+                    <span className="ml-2 text-slate-400">{Math.round(zone.x)},{Math.round(zone.y)} ({Math.round(zone.w)}x{Math.round(zone.h)})</span>
+                  </button>
+                )}
+                <button type="button" onClick={() => onZonesChange(zones.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Instructions when no image */}
+      {!imageUrl.trim() && (
+        <div className="flex flex-col items-center rounded-lg border-2 border-dashed border-slate-200 p-8 text-center">
+          <Image className="mb-2 h-10 w-10 text-slate-300" />
+          <p className="text-sm text-slate-400">Paste an image URL above to start drawing zones</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => void; quizId?: string }) {
   const createQuiz = useCreateQuiz();
   const updateQuiz = useUpdateQuiz();
@@ -4021,85 +4187,12 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">Students will upload a file. Requires manual grading.</div>
               )}
               {qType === 'HOTSPOT' && (
-                <div className="space-y-3">
-                  {/* Image URL input */}
-                  <div>
-                    <Label className="mb-1.5 block text-xs text-slate-500">Image URL *</Label>
-                    <Input
-                      value={qHotspotImage}
-                      onChange={(e) => setQHotspotImage(e.target.value)}
-                      placeholder="https://example.com/image.jpg"
-                      className="text-sm"
-                    />
-                  </div>
-
-                  {/* Image preview — always visible when URL is entered */}
-                  {qHotspotImage.trim() && (
-                    <div className="overflow-hidden rounded-lg border border-slate-200">
-                      <div className="relative inline-block w-full">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={qHotspotImage}
-                          alt="Hotspot question"
-                          className="block h-auto w-full"
-                          style={{ display: 'block' }}
-                        />
-                        {/* Zone overlays */}
-                        {qHotspotZones.map((zone, idx) => (
-                          <div
-                            key={idx}
-                            className="absolute border-2 border-violet-500 bg-violet-500/30"
-                            style={{ left: zone.x + '%', top: zone.y + '%', width: zone.w + '%', height: zone.h + '%' }}
-                          >
-                            <span className="absolute left-0 top-4 whitespace-nowrap rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-medium text-white">{zone.label || ('Zone ' + (idx + 1))}</span>
-                            <button
-                              type="button"
-                              onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))}
-                              className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Simple zone list with add button */}
-                  <div className="rounded-lg border border-slate-100 p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs font-medium text-slate-500">Click zones ({qHotspotZones.length})</p>
-                      <button
-                        type="button"
-                        onClick={() => setQHotspotZones([...qHotspotZones, { x: 20, y: 20, w: 25, h: 25, label: 'Zone ' + (qHotspotZones.length + 1) }])}
-                        className="flex items-center gap-1 rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-100"
-                      >
-                        <Plus className="h-3 w-3" />Add Zone
-                      </button>
-                    </div>
-                    {qHotspotZones.map((zone, idx) => (
-                      <div key={idx} className="mb-2 flex items-center gap-2 rounded-lg border border-slate-100 p-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-600">{idx + 1}</span>
-                        <input
-                          type="range" min="0" max="90" value={zone.x}
-                          onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], x: Number(e.target.value) }; setQHotspotZones(n); }}
-                          className="flex-1" title="X position"
-                        />
-                        <input
-                          type="range" min="0" max="90" value={zone.y}
-                          onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], y: Number(e.target.value) }; setQHotspotZones(n); }}
-                          className="flex-1" title="Y position"
-                        />
-                        <Input
-                          value={zone.label}
-                          onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], label: e.target.value }; setQHotspotZones(n); }}
-                          placeholder="Label" className="w-24 text-xs"
-                        />
-                        <button type="button" onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>
-                      </div>
-                    ))}
-                    {qHotspotZones.length === 0 && <p className="text-xs text-slate-400">No zones yet. Click "Add Zone" to create a clickable area on the image.</p>}
-                  </div>
-                </div>
+                <HotspotEditor
+                  imageUrl={qHotspotImage}
+                  onImageUrlChange={setQHotspotImage}
+                  zones={qHotspotZones}
+                  onZonesChange={setQHotspotZones}
+                />
               )}
             </div>
 
