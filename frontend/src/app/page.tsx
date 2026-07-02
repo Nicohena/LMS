@@ -3594,14 +3594,13 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
   zones: { x: number; y: number; w: number; h: number; label: string }[];
   onZonesChange: (zones: { x: number; y: number; w: number; h: number; label: string }[]) => void;
 }) {
-  const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const drawRectRef = useRef<HTMLDivElement>(null);
+  const isDrawingRef = useRef(false);
+  const drawStartRef = useRef<{ x: number; y: number } | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
-  const [drawCurrent, setDrawCurrent] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [editingLabel, setEditingLabel] = useState<number | null>(null);
 
-  // Convert mouse position to percentage
   const getPercent = (e: React.MouseEvent) => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
@@ -3612,31 +3611,56 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!imageUrl.trim()) return;
+    e.preventDefault();
     const pos = getPercent(e);
+    isDrawingRef.current = true;
+    drawStartRef.current = pos;
     setIsDrawing(true);
-    setDrawStart(pos);
-    setDrawCurrent({ x: pos.x, y: pos.y, w: 0, h: 0 });
+    // Show the draw rect immediately at click point
+    if (drawRectRef.current) {
+      drawRectRef.current.style.display = 'block';
+      drawRectRef.current.style.left = pos.x + '%';
+      drawRectRef.current.style.top = pos.y + '%';
+      drawRectRef.current.style.width = '0%';
+      drawRectRef.current.style.height = '0%';
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDrawing || !drawStart) return;
+    if (!isDrawingRef.current || !drawStartRef.current) return;
     const pos = getPercent(e);
-    const x = Math.min(drawStart.x, pos.x);
-    const y = Math.min(drawStart.y, pos.y);
-    const w = Math.abs(pos.x - drawStart.x);
-    const h = Math.abs(pos.y - drawStart.y);
-    setDrawCurrent({ x, y, w, h });
+    const x = Math.min(drawStartRef.current.x, pos.x);
+    const y = Math.min(drawStartRef.current.y, pos.y);
+    const w = Math.abs(pos.x - drawStartRef.current.x);
+    const h = Math.abs(pos.y - drawStartRef.current.y);
+    // Update the draw rect DIRECTLY via ref (no state update needed — instant visual feedback)
+    if (drawRectRef.current) {
+      drawRectRef.current.style.left = x + '%';
+      drawRectRef.current.style.top = y + '%';
+      drawRectRef.current.style.width = w + '%';
+      drawRectRef.current.style.height = h + '%';
+    }
   };
 
   const handleMouseUp = () => {
-    if (!isDrawing || !drawCurrent) return;
-    if (drawCurrent.w > 3 && drawCurrent.h > 3) {
-      // Only add zone if it's big enough (avoid accidental clicks)
-      onZonesChange([...zones, { ...drawCurrent, label: 'Zone ' + (zones.length + 1) }]);
-    }
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
     setIsDrawing(false);
-    setDrawStart(null);
-    setDrawCurrent(null);
+    // Hide draw rect
+    if (drawRectRef.current) {
+      drawRectRef.current.style.display = 'none';
+    }
+    // Calculate final rect from the start position
+    if (drawStartRef.current && drawRectRef.current) {
+      const w = parseFloat(drawRectRef.current.style.width);
+      const h = parseFloat(drawRectRef.current.style.height);
+      const x = parseFloat(drawRectRef.current.style.left);
+      const y = parseFloat(drawRectRef.current.style.top);
+      if (w > 3 && h > 3) {
+        onZonesChange([...zones, { x, y, w, h, label: 'Zone ' + (zones.length + 1) }]);
+      }
+    }
+    drawStartRef.current = null;
   };
 
   return (
@@ -3659,7 +3683,7 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
       {imageUrl.trim() && (
         <div
           ref={containerRef}
-          className="relative w-full cursor-crosshair overflow-hidden rounded-lg border-2 border-slate-200"
+          className="relative w-full cursor-crosshair overflow-hidden rounded-lg border-2 border-slate-200 select-none"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -3668,11 +3692,10 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            ref={imgRef}
             src={imageUrl}
             alt="Hotspot"
-            className="block h-auto w-full select-none"
-            style={{ display: 'block', pointerEvents: 'none' }}
+            className="pointer-events-none block h-auto w-full"
+            style={{ display: 'block' }}
             draggable={false}
           />
 
@@ -3689,20 +3712,19 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onZonesChange(zones.filter((_, i) => i !== idx)); }}
-                className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
+                className="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
               >
                 <X className="h-3 w-3" />
               </button>
             </div>
           ))}
 
-          {/* Drawing preview rectangle */}
-          {isDrawing && drawCurrent && (
-            <div
-              className="absolute border-2 border-dashed border-violet-400 bg-violet-300/20"
-              style={{ left: drawCurrent.x + '%', top: drawCurrent.y + '%', width: drawCurrent.w + '%', height: drawCurrent.h + '%' }}
-            />
-          )}
+          {/* Drawing preview rectangle — controlled via ref for instant updates */}
+          <div
+            ref={drawRectRef}
+            className="pointer-events-none absolute border-2 border-dashed border-violet-500 bg-violet-400/20"
+            style={{ display: 'none', left: '0%', top: '0%', width: '0%', height: '0%' }}
+          />
         </div>
       )}
 
