@@ -3536,26 +3536,28 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
 // ─── Quiz Editor Modal (supports all 10 question types) ──────────────────
 function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => void; quizId?: string }) {
   const createQuiz = useCreateQuiz();
+  const updateQuiz = useUpdateQuiz();
   const addQuestion = useAddQuestion(existingQuizId ?? null);
   const deleteQuestion = useDeleteQuestion(existingQuizId ?? null);
-  const { data: existingQuizData } = useQuiz(existingQuizId ?? null);
+  const { data: existingQuizData, refetch: refetchQuiz } = useQuiz(existingQuizId ?? null);
   const authUser = useAuthStore((s) => s.user);
   const { data: teacherSectionsData } = useTeacherSections(authUser?.id ?? null);
   const teacherSectionSubjects = (teacherSectionsData?.data ?? []) as any[];
-  const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState('');
 
-  // Step 1: Quiz details form
+  // Step 1: Quiz details form | Step 2: Question editor
   const [step, setStep] = useState<'details' | 'editor'>(existingQuizId ? 'editor' : 'details');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
   const [timeLimit, setTimeLimit] = useState('15');
   const [passingScore, setPassingScore] = useState('60');
   const [maxAttempts, setMaxAttempts] = useState('3');
   const [error, setError] = useState('');
   const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState('');
+  const [publishStatus, setPublishStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
 
-  // Question form state
+  // Question editing state
   const [qType, setQType] = useState<string>('MULTIPLE_CHOICE_SINGLE');
   const [qText, setQText] = useState('');
   const [qPoints, setQPoints] = useState('1');
@@ -3564,6 +3566,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [qEstimate, setQEstimate] = useState('2');
   const [qError, setQError] = useState('');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [editingQuestionIdx, setEditingQuestionIdx] = useState<number | null>(null);
 
   // Answer state
   const [qOptions, setQOptions] = useState<string[]>(['', '', '', '']);
@@ -3577,37 +3580,89 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const quiz = (existingQuizData as any)?.quiz;
   const existingQuestions = ((existingQuizData as any)?.questions ?? []) as any[];
 
-  const questionTypeLabels: Record<string, { label: string; icon: any }> = {
-    MULTIPLE_CHOICE_SINGLE: { label: 'Multiple Choice', icon: CheckCircle2 },
-    MULTIPLE_CHOICE_MULTIPLE: { label: 'Multiple Response', icon: CheckCircle2 },
-    TRUE_FALSE: { label: 'True / False', icon: CircleDot },
-    FILL_IN_BLANK: { label: 'Fill in the Blank', icon: Edit },
-    MATCHING: { label: 'Matching', icon: ArrowLeft },
-    SORTING: { label: 'Reorder', icon: GripVertical },
-    SHORT_ANSWER: { label: 'Short Answer', icon: FileText },
-    ESSAY: { label: 'Essay', icon: FileText },
-    FILE_UPLOAD: { label: 'File Upload', icon: Upload },
-    HOTSPOT: { label: 'Hotspot', icon: Target },
+  const questionTypeLabels: Record<string, { label: string; shortLabel: string; icon: any }> = {
+    MULTIPLE_CHOICE_SINGLE: { label: 'Multiple Choice', shortLabel: 'Multiple choice', icon: CheckCircle2 },
+    MULTIPLE_CHOICE_MULTIPLE: { label: 'Multiple Response', shortLabel: 'Multiple response', icon: CheckCircle2 },
+    TRUE_FALSE: { label: 'True / False', shortLabel: 'True/False', icon: CircleDot },
+    FILL_IN_BLANK: { label: 'Fill in the Blank', shortLabel: 'Fill in the Blank', icon: Edit },
+    MATCHING: { label: 'Matching', shortLabel: 'Matching', icon: ArrowLeft },
+    SORTING: { label: 'Reorder', shortLabel: 'Reorder', icon: GripVertical },
+    SHORT_ANSWER: { label: 'Short Answer', shortLabel: 'Short Answer', icon: FileText },
+    ESSAY: { label: 'Essay', shortLabel: 'Essay', icon: FileText },
+    FILE_UPLOAD: { label: 'File Upload', shortLabel: 'File Upload', icon: Upload },
+    HOTSPOT: { label: 'Hotspot', shortLabel: 'Hotspot', icon: Target },
   };
 
   const resetQuestionForm = () => {
     setQText(''); setQExplanation(''); setQError('');
     setQOptions(['', '', '', '']); setQCorrectIdx(0); setQCorrectIdxs([]);
-    setQBlanks(['']);
-    setQMatchingPairs([{ left: '', right: '' }, { left: '', right: '' }]);
-    setQSortItems(['', '']);
-    setQTextAnswer('');
+    setQBlanks(['']); setQMatchingPairs([{ left: '', right: '' }, { left: '', right: '' }]);
+    setQSortItems(['', '']); setQTextAnswer('');
+    setEditingQuestionIdx(null);
+  };
+
+  const loadQuestionForEdit = (q: any, idx: number) => {
+    setEditingQuestionIdx(idx);
+    setQType(q.type);
+    setQText(q.questionText || '');
+    setQPoints(String(q.points || 1));
+    setQExplanation(q.explanation || '');
+    // Load answers based on type
+    if (q.type === 'MULTIPLE_CHOICE_SINGLE' || q.type === 'MULTIPLE_CHOICE_MULTIPLE') {
+      const opts = (q.options || []).map((o: any) => o.text || '');
+      setQOptions(opts.length >= 2 ? opts : ['', '', '', '']);
+      if (q.type === 'MULTIPLE_CHOICE_SINGLE') {
+        const correctIdx = (q.options || []).findIndex((o: any) => o.isCorrect);
+        setQCorrectIdx(correctIdx >= 0 ? correctIdx : 0);
+      } else {
+        const correctIdxs = (q.options || []).map((o: any, i: number) => o.isCorrect ? i : -1).filter((i: number) => i >= 0);
+        setQCorrectIdxs(correctIdxs);
+      }
+    } else if (q.type === 'TRUE_FALSE') {
+      setQCorrectIdx(q.correctAnswer === true ? 0 : 1);
+    } else if (q.type === 'FILL_IN_BLANK') {
+      const ans = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
+      setQBlanks(ans.filter(Boolean).length > 0 ? ans : ['']);
+    } else if (q.type === 'MATCHING') {
+      const pairs = q.options?.pairs || [];
+      setQMatchingPairs(pairs.length >= 2 ? pairs : [{ left: '', right: '' }, { left: '', right: '' }]);
+    } else if (q.type === 'SORTING') {
+      const items = q.options?.items || q.correctAnswer || [];
+      setQSortItems(items.length >= 2 ? items : ['', '']);
+    } else if (q.type === 'SHORT_ANSWER' || q.type === 'ESSAY') {
+      setQTextAnswer(q.correctAnswer || '');
+    }
   };
 
   const handleCreate = () => {
     setError('');
-    if (!selectedSectionSubjectId && !existingQuizId) { setError('Please select a class.'); return; }
     if (!title.trim()) { setError('Title is required.'); return; }
     createQuiz.mutate(
       { title, description: description.trim() || undefined, timeLimit: Number(timeLimit) || 15, passingScore: Number(passingScore) || 60, maxAttempts: Number(maxAttempts) || 3, status: 'DRAFT' },
       {
-        onSuccess: (data: any) => { const id = data?.quiz?.id ?? data?.id; setCreatedQuizId(id); setStep('editor'); toast({ title: 'Quiz created', description: 'Now add questions.' }); },
+        onSuccess: (data: any) => {
+          const id = data?.quiz?.id ?? data?.id;
+          setCreatedQuizId(id);
+          setStep('editor');
+          toast({ title: 'Quiz created', description: 'Now add questions below.' });
+        },
         onError: (err: any) => setError(err.response?.data?.message || 'Failed to create quiz.'),
+      },
+    );
+  };
+
+  const handlePublish = () => {
+    if (!createdQuizId) return;
+    const newStatus = publishStatus === 'DRAFT' ? 'PUBLISHED' : 'DRAFT';
+    updateQuiz.mutate(
+      { quizId: createdQuizId, data: { status: newStatus } },
+      {
+        onSuccess: () => {
+          setPublishStatus(newStatus);
+          toast({ title: newStatus === 'PUBLISHED' ? 'Quiz published' : 'Quiz unpublished', description: newStatus === 'PUBLISHED' ? 'Students can now see this quiz.' : 'Quiz is now hidden from students.' });
+          refetchQuiz();
+        },
+        onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to update status.', variant: 'destructive' }),
       },
     );
   };
@@ -3662,18 +3717,36 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     if (!qData) return;
     addQuestion.mutate(
       { quizId: createdQuizId!, data: { type: qType as any, questionText: qText, points: Number(qPoints) || 1, options: qData.options, correctAnswer: qData.correctAnswer, explanation: qExplanation.trim() || undefined } },
-      { onSuccess: () => { resetQuestionForm(); toast({ title: 'Question added' }); }, onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add.') },
+      {
+        onSuccess: () => {
+          resetQuestionForm();
+          toast({ title: 'Question added', description: 'The question appears in the sidebar.' });
+          refetchQuiz();
+        },
+        onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add.'),
+      },
     );
+  };
+
+  const handleDeleteQuestion = (qId: string) => {
+    deleteQuestion.mutate(qId, {
+      onSuccess: () => { toast({ title: 'Question deleted' }); refetchQuiz(); if (editingQuestionIdx !== null) resetQuestionForm(); },
+      onError: () => toast({ title: 'Error', variant: 'destructive' }),
+    });
   };
 
   const CurrentTypeIcon = questionTypeLabels[qType]?.icon || CheckCircle2;
 
-  // ─── STEP 1: QUIZ DETAILS (Modal) ───────────────────────────────
+  // Update publishStatus when quiz loads
+  useEffect(() => {
+    if (quiz?.status) setPublishStatus(quiz.status);
+  }, [quiz?.status]);
+
+  // ─── STEP 1: QUIZ DETAILS ───────────────────────────────────────
   if (step === 'details') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 p-5">
             <h2 className="text-lg font-bold text-slate-900">Create new Quiz</h2>
             <div className="flex items-center gap-3">
@@ -3681,24 +3754,18 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
               <Button onClick={handleCreate} disabled={createQuiz.isPending} className="bg-violet-600 px-6 text-white hover:bg-violet-700">{createQuiz.isPending ? 'Creating...' : 'Continue'}</Button>
             </div>
           </div>
-
-          {/* Body */}
           <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-3">
-            {/* Left: Thumbnail */}
             <div className="md:col-span-1">
               <div className="flex aspect-video items-center justify-center rounded-xl bg-gradient-to-br from-blue-200 to-blue-300 p-4">
                 <FileQuestion className="h-16 w-16 text-blue-600" />
               </div>
               <p className="mt-2 text-center text-xs text-slate-400">Quiz thumbnail</p>
             </div>
-
-            {/* Right: Form fields */}
             <div className="space-y-4 md:col-span-2">
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Title *</Label>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Chapter 1 Quiz" />
               </div>
-
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Select Class *</Label>
                 <select value={selectedSectionSubjectId} onChange={(e) => setSelectedSectionSubjectId(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
@@ -3707,28 +3774,16 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 </select>
                 {teacherSectionSubjects.length === 0 && <p className="mt-1 text-xs text-amber-600">No teaching assignments. Contact admin.</p>}
               </div>
-
               <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (min)</Label>
-                  <Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Pass (%)</Label>
-                  <Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Attempts</Label>
-                  <Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} />
-                </div>
+                <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (min)</Label><Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} /></div>
+                <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Pass (%)</Label><Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} /></div>
+                <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Attempts</Label><Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} /></div>
               </div>
-
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Let your learner know a little about the quiz" className="w-full rounded-lg border border-slate-200 p-2.5 text-sm text-slate-700" />
                 <p className="mt-1 text-right text-xs text-slate-400">{description.length}/400</p>
               </div>
-
               {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
             </div>
           </div>
@@ -3737,18 +3792,21 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     );
   }
 
-  // ─── STEP 2: QUESTION EDITOR (Two-column layout) ────────────────
+  // ─── STEP 2: QUESTION EDITOR (full-screen two-column) ───────────
   return (
     <div className="fixed inset-0 z-50 bg-slate-50">
       {/* Top Bar */}
       <div className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-5">
         <div className="flex items-center gap-3">
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
-          <span className="text-sm text-slate-400">Edited just now</span>
+          <span className="text-sm font-medium text-slate-700">{quiz?.title || title}</span>
+          <Badge className={cn('text-xs', publishStatus === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600')}>{publishStatus === 'PUBLISHED' ? 'Published' : 'Draft'}</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="border-slate-200 text-slate-600">Preview</Button>
-          <Button className="bg-violet-600 text-white hover:bg-violet-700">Publish</Button>
+          <Button variant="outline" onClick={() => setShowPreview(true)} className="border-slate-200 text-slate-600"><PlayCircle className="mr-1.5 h-4 w-4" />Preview</Button>
+          <Button onClick={handlePublish} disabled={updateQuiz.isPending} className={cn('text-white', publishStatus === 'PUBLISHED' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-violet-600 hover:bg-violet-700')}>
+            {updateQuiz.isPending ? 'Updating...' : publishStatus === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+          </Button>
         </div>
       </div>
 
@@ -3758,27 +3816,43 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
         <div className="w-64 shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Questions</span>
-            <Badge className="bg-violet-50 text-violet-600">{existingQuestions.length}</Badge>
+            <button onClick={() => resetQuestionForm()} className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100" title="New question"><Plus className="h-4 w-4" /></button>
           </div>
+
           {existingQuestions.length === 0 ? (
-            <p className="py-4 text-center text-xs text-slate-400">No questions yet. Add your first question on the right.</p>
+            <div className="rounded-lg border border-dashed border-slate-200 p-4 text-center">
+              <FileQuestion className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+              <p className="text-xs text-slate-400">No questions yet. Add your first question on the right.</p>
+            </div>
           ) : (
             <div className="space-y-1">
               {existingQuestions.map((q: any, idx: number) => {
-                const TypeIcon = questionTypeLabels[q.type]?.icon || FileQuestion;
+                const QIcon = questionTypeLabels[q.type]?.icon || FileQuestion;
+                const isActive = editingQuestionIdx === idx;
                 return (
-                  <div key={q.id} className="group flex items-center gap-2 rounded-lg border border-slate-100 p-2 hover:bg-slate-50">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-500">{idx + 1}</div>
-                    <TypeIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                    <p className="flex-1 truncate text-xs text-slate-600">{q.questionText}</p>
-                    <button onClick={() => deleteQuestion.mutate(q.id, { onSuccess: () => toast({ title: 'Deleted' }) })} className="opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3 text-slate-300 hover:text-red-500" /></button>
+                  <div key={q.id} className={cn('group flex items-center gap-2 rounded-lg border p-2 cursor-pointer transition-all', isActive ? 'border-violet-300 bg-violet-50' : 'border-slate-100 hover:bg-slate-50')} onClick={() => loadQuestionForEdit(q, idx)}>
+                    <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold', isActive ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-500')}>{idx + 1}</div>
+                    <QIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-xs font-medium text-slate-700">{q.questionText}</p>
+                      <p className="text-[10px] text-slate-400">{questionTypeLabels[q.type]?.shortLabel || q.type}</p>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteQuestion(q.id); }} className="opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3 text-slate-300 hover:text-red-500" /></button>
                   </div>
                 );
               })}
             </div>
           )}
+
+          {/* Result Screen at bottom */}
           <div className="mt-4 border-t border-slate-100 pt-3">
-            <p className="text-xs font-medium text-slate-400">Total Points: {existingQuestions.reduce((s: number, q: any) => s + (q.points || 0), 0)}</p>
+            <div className="flex items-center gap-2 rounded-lg border border-slate-100 p-2 text-slate-400">
+              <Trophy className="h-4 w-4" />
+              <div className="flex-1">
+                <p className="text-xs font-medium">Result Screen</p>
+                <p className="text-[10px]">Set passed/failed message</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3796,7 +3870,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 {showTypeDropdown && (
                   <div className="absolute z-50 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                     {Object.entries(questionTypeLabels).map(([val, info]) => (
-                      <button key={val} onClick={() => { setQType(val); resetQuestionForm(); setShowTypeDropdown(false); }} className={cn('flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50', qType === val ? 'bg-violet-50 text-violet-600' : 'text-slate-700')}>
+                      <button key={val} onClick={() => { setQType(val); resetQuestionForm(); setQType(val); setShowTypeDropdown(false); }} className={cn('flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50', qType === val ? 'bg-violet-50 text-violet-600' : 'text-slate-700')}>
                         <info.icon className="h-4 w-4" />
                         {info.label}
                       </button>
@@ -3814,15 +3888,13 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 
             {/* Question Text */}
             <div className="mb-4">
-              <Label className="mb-1.5 block text-xs text-slate-500">Question {existingQuestions.length + 1}*</Label>
+              <Label className="mb-1.5 block text-xs text-slate-500">{editingQuestionIdx !== null ? 'Question ' + (editingQuestionIdx + 1) + '*' : 'New Question*'}</Label>
               <textarea value={qText} onChange={(e) => setQText(e.target.value)} rows={3} placeholder="Type your question here..." className="w-full rounded-lg border border-slate-200 p-3 text-sm text-slate-900 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400" />
             </div>
 
-            {/* Answer Options — varies by type */}
+            {/* Answer Options */}
             <div className="mb-4">
               <Label className="mb-2 block text-xs text-slate-500">Answers</Label>
-
-              {/* MCQ Single */}
               {(qType === 'MULTIPLE_CHOICE_SINGLE' || qType === 'MULTIPLE_CHOICE_MULTIPLE') && (
                 <div className="space-y-2">
                   {qOptions.map((opt, idx) => (
@@ -3837,8 +3909,6 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                   <button onClick={() => setQOptions([...qOptions, ''])} className="text-xs text-violet-600 hover:underline">+ Add answer</button>
                 </div>
               )}
-
-              {/* True/False */}
               {qType === 'TRUE_FALSE' && (
                 <div className="flex gap-3">
                   {[0, 1].map(idx => (
@@ -3846,8 +3916,6 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                   ))}
                 </div>
               )}
-
-              {/* Fill in the Blank */}
               {qType === 'FILL_IN_BLANK' && (
                 <div className="space-y-2">
                   {qBlanks.map((blank, idx) => (
@@ -3859,8 +3927,6 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                   <button onClick={() => setQBlanks([...qBlanks, ''])} className="text-xs text-violet-600 hover:underline">+ Add correct answer</button>
                 </div>
               )}
-
-              {/* Matching */}
               {qType === 'MATCHING' && (
                 <div className="space-y-2">
                   {qMatchingPairs.map((pair, idx) => (
@@ -3874,8 +3940,6 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                   <button onClick={() => setQMatchingPairs([...qMatchingPairs, { left: '', right: '' }])} className="text-xs text-violet-600 hover:underline">+ Add pair</button>
                 </div>
               )}
-
-              {/* Sorting */}
               {qType === 'SORTING' && (
                 <div className="space-y-2">
                   {qSortItems.map((item, idx) => (
@@ -3889,19 +3953,15 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                   <button onClick={() => setQSortItems([...qSortItems, ''])} className="text-xs text-violet-600 hover:underline">+ Add item</button>
                 </div>
               )}
-
-              {/* Short Answer / Essay */}
               {(qType === 'SHORT_ANSWER' || qType === 'ESSAY') && (
                 <textarea value={qTextAnswer} onChange={(e) => setQTextAnswer(e.target.value)} rows={qType === 'ESSAY' ? 4 : 2} placeholder="Reference answer (for manual grading)" className="w-full rounded-lg border border-slate-200 p-3 text-sm" />
               )}
-
-              {/* File Upload */}
               {qType === 'FILE_UPLOAD' && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">Students will upload a file. Requires manual grading.</div>
               )}
             </div>
 
-            {/* Scoring + Settings */}
+            {/* Scoring */}
             <div className="mb-4 flex items-center gap-6 border-t border-slate-100 pt-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-slate-400" />
@@ -3923,13 +3983,52 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 
             {qError && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{qError}</div>}
 
-            {/* Add Question Button */}
+            {/* Add/Update Question Button */}
             <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-violet-600 py-2.5 text-white hover:bg-violet-700">
-              {addQuestion.isPending ? 'Adding...' : '+ Add Question'}
+              {addQuestion.isPending ? 'Adding...' : editingQuestionIdx !== null ? 'Update Question' : '+ Add Question'}
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 p-4">
+              <h3 className="text-lg font-bold text-slate-900">Preview: {quiz?.title || title}</h3>
+              <button onClick={() => setShowPreview(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-6">
+              {existingQuestions.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-400">No questions to preview. Add questions first.</p>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-500">{existingQuestions.length} questions | Time: {quiz?.timeLimit || timeLimit} min | Pass: {quiz?.passingScore || passingScore}%</p>
+                  {existingQuestions.map((q: any, idx: number) => (
+                    <div key={q.id} className="rounded-lg border border-slate-200 p-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-600">{idx + 1}</span>
+                        <Badge className="bg-slate-100 text-slate-600 text-[10px]">{questionTypeLabels[q.type]?.shortLabel || q.type}</Badge>
+                      </div>
+                      <p className="mb-2 text-sm font-medium text-slate-900">{q.questionText}</p>
+                      {(q.options || []).map((opt: any, i: number) => (
+                        <div key={i} className={cn('flex items-center gap-2 rounded border p-2 text-sm', opt.isCorrect ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200')}>
+                          <div className={cn('h-4 w-4 rounded-full border-2', opt.isCorrect ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300')} />
+                          {opt.text}
+                          {opt.isCorrect && <Badge className="ml-auto bg-emerald-100 text-emerald-600 text-[10px]">Correct</Badge>}
+                        </div>
+                      ))}
+                      {q.correctAnswer && !q.options && <p className="text-sm text-slate-600">Answer: {String(q.correctAnswer)}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button onClick={() => setShowPreview(false)} className="mt-4 w-full bg-violet-600 text-white hover:bg-violet-700">Close Preview</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
