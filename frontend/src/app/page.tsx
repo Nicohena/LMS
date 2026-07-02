@@ -4032,9 +4032,9 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
               const optValue = qType === 'TRUE_FALSE' ? opt.text === 'True' : opt.text;
               const selected = answers[currentQuestion.id] === optValue;
               return (
-                <button key={idx} onClick={() => setAnswers({ ...answers, [currentQuestion.id]: optValue })} className={cn('flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition-all', selected ? 'border-violet-500 bg-violet-50 text-violet-900' : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50')}>
-                  <div className={cn('flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold', selected ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-300 text-slate-400')}>{String.fromCharCode(65 + idx)}</div>
-                  {opt.text}
+                <button key={idx} onClick={() => setAnswers({ ...answers, [currentQuestion.id]: optValue })} className={cn('flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm transition-all', selected ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300')}>
+                  <input type="radio" checked={selected} readOnly className="h-4 w-4 accent-violet-600" />
+                  <span className={cn(selected && 'font-medium text-violet-900')}>{opt.text}</span>
                 </button>
               );
             })}
@@ -4048,9 +4048,9 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             {options.map((opt, idx) => {
               const isSelected = selected.includes(opt.text);
               return (
-                <button key={idx} onClick={() => setAnswers({ ...answers, [currentQuestion.id]: isSelected ? selected.filter((s) => s !== opt.text) : [...selected, opt.text] })} className={cn('flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition-all', isSelected ? 'border-violet-500 bg-violet-50 text-violet-900' : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50')}>
-                  <div className={cn('flex h-7 w-7 items-center justify-center rounded border-2 text-xs font-bold', isSelected ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-300 text-slate-400')}>{isSelected ? '✓' : ''}</div>
-                  {opt.text}
+                <button key={idx} onClick={() => setAnswers({ ...answers, [currentQuestion.id]: isSelected ? selected.filter((s) => s !== opt.text) : [...selected, opt.text] })} className={cn('flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm transition-all', isSelected ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300')}>
+                  <input type="checkbox" checked={isSelected} readOnly className="h-4 w-4 accent-violet-600" />
+                  <span className={cn(isSelected && 'font-medium text-violet-900')}>{opt.text}</span>
                 </button>
               );
             })}
@@ -4186,44 +4186,72 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
       <div className="mb-4 flex items-center gap-2 text-sm text-slate-500"><button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button><ChevronRight className="h-3.5 w-3.5" /><span className="font-medium text-slate-700">{quiz.title}</span></div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3">
-          <Card className="mb-4 border border-slate-200 p-5 shadow-sm rounded-xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 text-sm font-bold text-violet-600">{currentQ + 1}</div>
-                <div>
-                  <h1 className="text-xl font-bold text-slate-900">{quiz.title}</h1>
-                  <p className="mt-0.5 text-sm text-slate-500">Question {currentQ + 1} of {questions.length} · Passing: {quiz.passingScore}%</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setFocusMode(!focusMode)} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors', focusMode ? 'bg-violet-50 text-violet-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100')}>
-                  <Zap className="h-3.5 w-3.5" />Focus Mode
-                </button>
-                <div className={cn('flex items-center gap-1.5 rounded-lg px-3 py-2', timeLeft < 300 ? 'bg-red-50' : 'bg-slate-900')}>
-                  <Clock className={cn('h-4 w-4', timeLeft < 300 ? 'text-red-400' : 'text-white/60')} />
-                  <span className={cn('font-mono text-sm font-semibold', timeLeft < 300 ? 'text-red-600' : 'text-white')}>{mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
-                </div>
+          {/* Quiz Header Bar — matches Trenning reference */}
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400 text-sm font-bold text-amber-900">?</div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Question {currentQ + 1} of {questions.length}</p>
+                <p className="text-xs text-slate-400">{quiz.title}</p>
               </div>
             </div>
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-violet-600 transition-all duration-500" style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }} /></div>
-          </Card>
-          <Card className="border border-slate-200 p-6 shadow-sm">
-            <div className="mb-4"><Badge className="mb-2 bg-violet-50 text-violet-600 hover:bg-violet-50">{currentQuestion.type.replace(/_/g, ' ')}</Badge><h2 className="text-lg font-semibold text-slate-900">{currentQuestion.questionText}</h2></div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setFocusMode(!focusMode)} className={cn('flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors', focusMode ? 'border-violet-300 bg-violet-50 text-violet-600' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50')}>
+                <Zap className="h-3.5 w-3.5" />Focus Mode
+              </button>
+              <div className={cn('flex items-center gap-1.5 rounded px-2 py-1.5', timeLeft < 300 ? 'bg-red-100' : 'bg-black')}>
+                <Clock className={cn('h-3.5 w-3.5', timeLeft < 300 ? 'text-red-500' : 'text-white/50')} />
+                <span className={cn('font-mono text-sm font-semibold tabular-nums', timeLeft < 300 ? 'text-red-600' : 'text-white')}>{mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
+              </div>
+            </div>
+          </div>
+          {/* Question Card — matches Trenning reference */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            {/* Question header */}
+            <div className="mb-5">
+              <div className="mb-2 flex items-center gap-2">
+                <FileQuestion className="h-4 w-4 text-slate-400" />
+                <span className="text-xs font-medium text-slate-500">Question {currentQ + 1} of {questions.length}</span>
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">{currentQuestion.questionText}</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                {currentQuestion.type === 'MULTIPLE_CHOICE_MULTIPLE' && 'Select all correct answers! (Answer can be more than one)'}
+                {currentQuestion.type === 'MULTIPLE_CHOICE_SINGLE' && 'Select the correct answer'}
+                {currentQuestion.type === 'TRUE_FALSE' && 'Select True or False'}
+                {currentQuestion.type === 'FILL_IN_BLANK' && 'Type the correct answer in the blank(s)'}
+                {currentQuestion.type === 'MATCHING' && 'Drag the answer to match with the correct item'}
+                {currentQuestion.type === 'SORTING' && 'Drag and drop to arrange in the correct order'}
+                {currentQuestion.type === 'SHORT_ANSWER' && 'Write your answer below'}
+                {currentQuestion.type === 'ESSAY' && 'Write your essay below'}
+                {currentQuestion.type === 'FILE_UPLOAD' && 'Upload your file below'}
+                {currentQuestion.type === 'HOTSPOT' && 'Click on the correct area in the image'}
+              </p>
+            </div>
+            {/* Answer area */}
             {renderQuestionInput()}
-            <label className="mt-4 flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={answers[currentQuestion.id] === 'not_sure'} onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.checked ? 'not_sure' : undefined })} className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" /><span className="text-sm text-slate-500">I'm not sure</span></label>
+            {/* I'm not sure checkbox */}
+            <label className="mt-5 flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={answers[currentQuestion.id] === 'not_sure'} onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.checked ? 'not_sure' : undefined })} className="h-4 w-4 rounded border-slate-300 accent-violet-600 focus:ring-violet-500" />
+              <span className="text-sm text-slate-500">I'm not sure about the answer yet</span>
+            </label>
+            {/* Navigation footer */}
             <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-              <Button variant="outline" disabled={currentQ === 0} onClick={() => setCurrentQ(Math.max(0, currentQ - 1))} className="border-slate-200 text-slate-600"><ArrowLeft className="mr-1.5 h-4 w-4" />Previous</Button>
+              <Button variant="outline" disabled={currentQ === 0} onClick={() => setCurrentQ(Math.max(0, currentQ - 1))} className="border-slate-200 px-6 py-2 text-slate-600">Previous</Button>
               <div className="flex items-center gap-3">
                 <span className="hidden text-xs text-slate-400 sm:inline">Press <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium">Cmd + Enter</kbd></span>
-                {currentQ === questions.length - 1 ? <Button onClick={() => setShowSubmit(true)} className="bg-violet-600 text-white hover:bg-violet-700">Submit Quiz</Button> : <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-violet-600 text-white hover:bg-violet-700">Continue<ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
+                {currentQ === questions.length - 1 ? (
+                  <Button onClick={() => setShowSubmit(true)} className="bg-violet-600 px-6 py-2 text-white hover:bg-violet-700">Submit Quiz</Button>
+                ) : (
+                  <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-violet-600 px-6 py-2 text-white hover:bg-violet-700">Continue</Button>
+                )}
               </div>
             </div>
+            {/* Report issue */}
             <div className="mt-4 flex items-center gap-1 text-xs text-slate-400">
-              <AlertCircle className="h-3 w-3" />
               <span>Have an issue with this question?</span>
-              <button className="text-violet-500 hover:underline">Report an Issue</button>
+              <button className="text-violet-500 underline hover:text-violet-600">Report An Issue</button>
             </div>
-          </Card>
+          </div>
         </div>
         {/* Quiz Navigation Sidebar */}
         <div>
