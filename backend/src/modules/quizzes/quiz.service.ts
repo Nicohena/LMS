@@ -516,11 +516,17 @@ export async function startAttempt(
 
   const quiz = await prisma.quiz.findUnique({
     where: { id: quizId },
-    select: { id: true, status: true, maxAttempts: true, timeLimit: true },
+    select: { id: true, status: true, maxAttempts: true, timeLimit: true, quizPassword: true },
   });
   if (!quiz) throw new NotFoundError('Quiz not found');
   if (quiz.status !== 'PUBLISHED') {
     throw new ValidationError('Can only attempt PUBLISHED quizzes');
+  }
+  // Verify quiz password if set
+  if (quiz.quizPassword) {
+    if (!data.password || data.password !== quiz.quizPassword) {
+      throw new ForbiddenError('Incorrect quiz password');
+    }
   }
 
   // Verify enrollment belongs to this user

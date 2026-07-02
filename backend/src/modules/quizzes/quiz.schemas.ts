@@ -93,6 +93,9 @@ export const updateQuestionSchema = z.object({
 
 export const startAttemptSchema = z.object({
   enrollmentId: z.string().min(1, 'enrollmentId is required'),
+  password: z.string().optional(),
+  studentName: z.string().optional(),
+  studentId: z.string().optional(),
 });
 
 export const saveProgressSchema = z.object({
