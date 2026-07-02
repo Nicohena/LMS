@@ -48,7 +48,7 @@
 }
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 
   /* LMS Design System — Light Mode Only */
   --background: #FFFFFF;
@@ -60,50 +60,50 @@
   --popover: #FFFFFF;
   --popover-foreground: #0F172A;
 
-  /* Accent: Purple #7C3AED */
-  --primary: #7C3AED;
+  /* Primary: Soft Indigo #6366F1 (Trenning design) */
+  --primary: #6366F1;
   --primary-foreground: #FFFFFF;
 
   /* Secondary background: #F8FAFC */
-  --secondary: #F8FAFC;
+  --secondary: #F9FAFB;
   --secondary-foreground: #0F172A;
 
   --muted: #F1F5F9;
   --muted-foreground: #64748B;
 
   /* Hover/Active: #EDE9FE (light purple) */
-  --accent: #EDE9FE;
-  --accent-foreground: #7C3AED;
+  --accent: #EEF2FF;
+  --accent-foreground: #6366F1;
 
   --destructive: #EF4444;
 
   /* Borders & Dividers: #E2E8F0 */
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #7C3AED;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #6366F1;
 
   /* Status colors */
   --success: #10B981;
   --warning: #F59E0B;
   --error: #EF4444;
-  --hover: #EDE9FE;
+  --hover: #EEF2FF;
 
   /* Chart colors */
-  --chart-1: #7C3AED;
+  --chart-1: #6366F1;
   --chart-2: #10B981;
   --chart-3: #F59E0B;
   --chart-4: #EF4444;
-  --chart-5: #6366F1;
+  --chart-5: #06B6D4;
 
   /* Sidebar */
-  --sidebar: #F8FAFC;
+  --sidebar: #FFFFFF;
   --sidebar-foreground: #0F172A;
-  --sidebar-primary: #7C3AED;
+  --sidebar-primary: #6366F1;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EDE9FE;
-  --sidebar-accent-foreground: #7C3AED;
-  --sidebar-border: #E2E8F0;
-  --sidebar-ring: #7C3AED;
+  --sidebar-accent: #EEF2FF;
+  --sidebar-accent-foreground: #6366F1;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #6366F1;
 }
 
 @layer base {
