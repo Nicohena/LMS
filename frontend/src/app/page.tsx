@@ -3539,6 +3539,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const updateQuiz = useUpdateQuiz();
   const addQuestion = useAddQuestion(existingQuizId ?? null);
   const deleteQuestion = useDeleteQuestion(existingQuizId ?? null);
+  const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
   const { data: existingQuizData, refetch: refetchQuiz } = useQuiz(createdQuizId ?? existingQuizId ?? null);
   const authUser = useAuthStore((s) => s.user);
   const { data: teacherSectionsData } = useTeacherSections(authUser?.id ?? null);
@@ -3552,7 +3553,6 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [passingScore, setPassingScore] = useState('60');
   const [maxAttempts, setMaxAttempts] = useState('3');
   const [error, setError] = useState('');
-  const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState('');
   const [publishStatus, setPublishStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
