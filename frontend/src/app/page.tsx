@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard, BookOpen, FileText, GraduationCap, Award, Settings,
-  Bell, Search, Calendar, ChevronRight, Menu, X, LogOut, MessageSquare,
+  Bell, Search, Calendar, ChevronRight, ChevronLeft, Menu, X, LogOut, MessageSquare,
   Layers, Star, FileQuestion, Route, Crown, TrendingUp, ArrowUpRight,
   Plus, Filter, PlayCircle, Sparkles, Clock, Users, CheckCircle2,
   AlertCircle, Lock, Mail, Eye, EyeOff, ArrowLeft, BookMarked,
