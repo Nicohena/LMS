@@ -8827,6 +8827,11 @@ export default function App() {
       window.scrollTo(0, 0);
       return;
     }
+    // Clear selected IDs when navigating to list views so we don't show a stale detail view
+    if (v === 'quiz') setSelectedQuizId('');
+    if (v === 'assignment') setSelectedAssignmentId('');
+    if (v === 'discussions') setSelectedDiscussionId('');
+    if (v === 'catalog') setSelectedCourseId('');
     setView(v);
     setSidebarOpen(false);
     window.scrollTo(0, 0);
