@@ -4056,15 +4056,11 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
         return { options: null, correctAnswer: filled.length === 1 ? filled[0] : filled };
       }
       case 'MATCHING': {
-        const pairs = (options?.pairs ?? []) as { left: string; right: string }[];
-        const userMatches = (answers[currentQuestion.id] as Record<string, string>) ?? {};
-        return (
-          <MatchingQuestion
-            pairs={pairs}
-            answer={userMatches}
-            onAnswerChange={(matches) => setAnswers({ ...answers, [currentQuestion.id]: matches })}
-          />
-        );
+        const valid = qMatchingPairs.filter((p) => p.left.trim() && p.right.trim());
+        if (valid.length < 2) { setQError('Provide at least 2 complete pairs.'); return null; }
+        const correctAnswer: Record<string, string> = {};
+        valid.forEach((p) => { correctAnswer[p.left.trim()] = p.right.trim(); });
+        return { options: { pairs: valid.map(p => ({ left: p.left.trim(), right: p.right.trim() })) }, correctAnswer };
       }
       case 'SORTING': {
         const filled = qSortItems.filter((s) => s.trim());
@@ -4744,9 +4740,16 @@ function MatchingQuestion({ pairs, answer, onAnswerChange }: {
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverPrompt, setDragOverPrompt] = useState<string | null>(null);
 
-  const allRights = pairs.map((p) => p.right);
+  // Shuffle the right answers ONCE on mount (lazy initializer) so they stay
+  // in the same shuffled order while the student drags, instead of re-shuffling
+  // every render when the answer changes.
+  const [shuffledRights] = useState(() => {
+    const rights = pairs.map((p) => p.right);
+    return rights.sort(() => Math.random() - 0.5);
+  });
+
   const usedRights = new Set(Object.values(answer));
-  const availableRights = allRights.filter((r) => !usedRights.has(r));
+  const availableRights = shuffledRights.filter((r) => !usedRights.has(r));
 
   const handleDragStart = (item: string) => setDraggedItem(item);
   const handleDragEnd = () => { setDraggedItem(null); setDragOverPrompt(null); };
