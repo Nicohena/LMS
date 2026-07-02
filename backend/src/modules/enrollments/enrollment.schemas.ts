@@ -9,7 +9,7 @@ import { EnrollmentStatus, ProgressStatus } from '@prisma/client';
 export const enrollUserSchema = z.object({
   userId: z.string().min(1, 'userId is required'),
   courseId: z.string().min(1, 'courseId is required'),
-}).strict();
+});
 
 export const bulkEnrollSchema = z.object({
   courseId: z.string().min(1, 'courseId is required'),
@@ -17,18 +17,18 @@ export const bulkEnrollSchema = z.object({
     .array(z.string().min(1))
     .min(1, 'At least one userId is required')
     .max(500, 'Maximum 500 users per bulk enroll'),
-}).strict();
+});
 
 export const cancelEnrollmentSchema = z.object({
   reason: z.string().max(500).optional(),
-}).strict();
+});
 
 export const progressUpdateSchema = z.object({
   contentId: z.string().min(1, 'contentId is required'),
   progressPercent: z.number().min(0).max(100),
   timeSpent: z.number().int().nonnegative().max(86400).default(0), // seconds, max 1 day
   status: z.nativeEnum(ProgressStatus).optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Query schemas
@@ -55,7 +55,7 @@ export const enrollmentQuerySchema = z.object({
     .optional()
     .default('enrolledAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Auto-enrollment rule schemas
@@ -67,7 +67,7 @@ export const createRuleSchema = z.object({
   ruleConfig: z.record(z.string(), z.unknown()),
   courseId: z.string().min(1),
   isActive: z.boolean().optional().default(true),
-}).strict();
+});
 
 export const updateRuleSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -75,11 +75,11 @@ export const updateRuleSchema = z.object({
   ruleConfig: z.record(z.string(), z.unknown()).optional(),
   courseId: z.string().min(1).optional(),
   isActive: z.boolean().optional(),
-}).strict();
+});
 
 export const triggerAutoEnrollmentSchema = z.object({
   userId: z.string().min(1).optional(), // omit to trigger for ALL users
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Derived types

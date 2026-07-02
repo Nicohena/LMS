@@ -12,7 +12,7 @@ export const createCertificateTemplateSchema = z.object({
   signatureTitle: z.string().max(120).optional(),
   backgroundImage: z.string().url().optional(),
   fontFamily: z.string().max(100).optional(),
-}).strict();
+});
 
 export const updateCertificateTemplateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -24,7 +24,7 @@ export const updateCertificateTemplateSchema = z.object({
   signatureTitle: z.string().max(120).nullable().optional(),
   backgroundImage: z.string().url().nullable().optional(),
   fontFamily: z.string().max(100).nullable().optional(),
-}).strict();
+});
 
 export const issueCertificateSchema = z.object({
   userId: z.string().min(1),
@@ -41,11 +41,11 @@ export const bulkIssueSchema = z.object({
   courseId: z.string().min(1),
   templateId: z.string().min(1),
   userIds: z.array(z.string().min(1)).min(1).max(500),
-}).strict();
+});
 
 export const revokeCertificateSchema = z.object({
   reason: z.string().min(1, 'Reason is required').max(1000),
-}).strict();
+});
 
 export type CreateCertificateTemplateInput = z.infer<typeof createCertificateTemplateSchema>;
 export type UpdateCertificateTemplateInput = z.infer<typeof updateCertificateTemplateSchema>;

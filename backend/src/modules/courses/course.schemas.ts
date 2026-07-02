@@ -16,7 +16,7 @@ export const createCourseSchema = z.object({
   difficulty: z.nativeEnum(DifficultyLevel).default('BEGINNER'),
   language: z.string().max(40).default('English'),
   status: z.nativeEnum(CourseStatus).default('DRAFT'),
-}).strict();
+});
 
 export const updateCourseSchema = z.object({
   title: z.string().min(1).max(200).trim().optional(),
@@ -28,7 +28,7 @@ export const updateCourseSchema = z.object({
   difficulty: z.nativeEnum(DifficultyLevel).optional(),
   language: z.string().max(40).optional(),
   status: z.nativeEnum(CourseStatus).optional(),
-}).strict();
+});
 
 export const courseQuerySchema = z.object({
   page: z
@@ -58,7 +58,7 @@ export const courseQuerySchema = z.object({
     .optional()
     .default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Module
@@ -68,18 +68,18 @@ export const createModuleSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200).trim(),
   description: z.string().max(2000).optional(),
   order: z.number().int().nonnegative().optional(),
-}).strict();
+});
 
 export const updateModuleSchema = z.object({
   title: z.string().min(1).max(200).trim().optional(),
   description: z.string().max(2000).optional(),
   order: z.number().int().nonnegative().optional(),
-}).strict();
+});
 
 export const reorderModulesSchema = z.object({
   courseId: z.string().min(1),
   moduleIds: z.array(z.string().min(1)).min(1, 'At least one moduleId is required'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Content
@@ -96,7 +96,7 @@ export const createContentSchema = z.object({
   duration: z.number().int().nonnegative().max(100000).optional(),
   order: z.number().int().nonnegative().optional(),
   isPublished: z.boolean().optional(),
-}).strict();
+});
 
 export const updateContentSchema = z.object({
   type: z.nativeEnum(ContentType).optional(),
@@ -109,12 +109,12 @@ export const updateContentSchema = z.object({
   duration: z.number().int().nonnegative().max(100000).optional(),
   order: z.number().int().nonnegative().optional(),
   isPublished: z.boolean().optional(),
-}).strict();
+});
 
 export const reorderContentsSchema = z.object({
   moduleId: z.string().min(1),
   contentIds: z.array(z.string().min(1)).min(1, 'At least one contentId is required'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Derived types

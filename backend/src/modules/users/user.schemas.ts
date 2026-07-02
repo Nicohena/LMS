@@ -30,14 +30,14 @@ export const updateUserSchema = z.object({
   bio: z.string().max(500).optional(),
   profilePicture: z.string().url('Must be a valid URL').optional(),
   mustChangePassword: z.boolean().optional(),
-}).strict();
+});
 
 export const updateProfileSchema = z.object({
   firstName: z.string().min(1).max(80).trim().optional(),
   lastName: z.string().min(1).max(80).trim().optional(),
   bio: z.string().max(500).optional(),
   profilePicture: z.string().url('Must be a valid URL').optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Query schemas
@@ -72,7 +72,7 @@ export const userQuerySchema = z.object({
     .optional()
     .default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Derived types

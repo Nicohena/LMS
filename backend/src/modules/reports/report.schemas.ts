@@ -15,7 +15,7 @@ export const reportTemplateSchema = z.object({
   filters: z.record(z.string(), z.unknown()).optional(),
   chartType: z.enum(['bar', 'line', 'pie', 'table', 'heatmap']).optional(),
   isPublic: z.boolean().default(false),
-}).strict();
+});
 
 export const updateReportTemplateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -26,7 +26,7 @@ export const updateReportTemplateSchema = z.object({
   filters: z.record(z.string(), z.unknown()).nullable().optional(),
   chartType: z.enum(['bar', 'line', 'pie', 'table', 'heatmap']).nullable().optional(),
   isPublic: z.boolean().optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Scheduled reports
@@ -42,7 +42,7 @@ export const scheduleReportSchema = z.object({
   recipients: z.array(z.string().email()).min(1, 'At least one recipient is required'),
   format: z.nativeEnum(ReportFormat).default('PDF'),
   isActive: z.boolean().default(true),
-}).strict();
+});
 
 export const updateScheduleSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -53,7 +53,7 @@ export const updateScheduleSchema = z.object({
   recipients: z.array(z.string().email()).optional(),
   format: z.nativeEnum(ReportFormat).optional(),
   isActive: z.boolean().optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Generate report
@@ -62,7 +62,7 @@ export const updateScheduleSchema = z.object({
 export const generateReportSchema = z.object({
   filters: z.record(z.string(), z.unknown()).optional(),
   format: z.nativeEnum(ReportFormat).default('JSON'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Audit log query
@@ -80,7 +80,7 @@ export const auditLogQuerySchema = z.object({
   entityId: z.string().min(1).optional(),
   startDate: z.string().datetime().optional().transform((v) => (v ? new Date(v) : undefined)),
   endDate: z.string().datetime().optional().transform((v) => (v ? new Date(v) : undefined)),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Platform settings
@@ -91,7 +91,7 @@ export const platformSettingSchema = z.object({
   value: z.unknown(),
   category: z.string().min(1).max(50),
   description: z.string().max(500).optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Derived types

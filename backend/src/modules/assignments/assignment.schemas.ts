@@ -24,7 +24,7 @@ export const createAssignmentSchema = z.object({
   allowedFileTypes: z.array(z.string().min(1).max(20)).max(20).default(['pdf', 'docx', 'zip']),
   maxFileSizeMB: z.number().int().positive().max(500).default(10),
   status: z.nativeEnum(AssignmentStatus).default('DRAFT'),
-}).strict();
+});
 
 export const updateAssignmentSchema = z.object({
   contentId: z.string().min(1).nullable().optional(),
@@ -44,7 +44,7 @@ export const updateAssignmentSchema = z.object({
   allowedFileTypes: z.array(z.string().min(1).max(20)).max(20).optional(),
   maxFileSizeMB: z.number().int().positive().max(500).optional(),
   status: z.nativeEnum(AssignmentStatus).optional(),
-}).strict();
+});
 
 export const assignmentQuerySchema = z.object({
   page: z.string().optional().transform((v) => (v ? Math.max(1, Number(v)) : 1)),
@@ -61,7 +61,7 @@ export const assignmentQuerySchema = z.object({
     .optional()
     .default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Rubric
@@ -86,14 +86,14 @@ export const createRubricSchema = z.object({
   description: z.string().max(2000).optional(),
   criteria: z.array(rubricCriterionSchema).min(1, 'At least one criterion is required'),
   totalPoints: z.number().positive().max(10000).default(100),
-}).strict();
+});
 
 export const updateRubricSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   description: z.string().max(2000).nullable().optional(),
   criteria: z.array(rubricCriterionSchema).optional(),
   totalPoints: z.number().positive().max(10000).optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Submissions
@@ -114,7 +114,7 @@ export const createSubmissionSchema = z.object({
     files: z.array(submissionFileSchema).max(10).optional(),
     links: z.array(z.string().url()).max(10).optional(),
   }),
-}).strict();
+});
 
 export const updateSubmissionSchema = z.object({
   content: z.object({
@@ -122,18 +122,18 @@ export const updateSubmissionSchema = z.object({
     files: z.array(submissionFileSchema).max(10).optional(),
     links: z.array(z.string().url()).max(10).optional(),
   }),
-}).strict();
+});
 
 export const gradeSubmissionSchema = z.object({
   grade: z.number().min(0),
   feedback: z.string().max(10000).optional(),
   revisionRequested: z.boolean().optional().default(false),
   revisionComments: z.string().max(10000).optional(),
-}).strict();
+});
 
 export const requestRevisionSchema = z.object({
   comments: z.string().min(1, 'Revision comments are required').max(10000),
-}).strict();
+});
 
 export const submitRevisionSchema = z.object({
   content: z.object({
@@ -141,7 +141,7 @@ export const submitRevisionSchema = z.object({
     files: z.array(submissionFileSchema).max(10).optional(),
     links: z.array(z.string().url()).max(10).optional(),
   }),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Peer review
@@ -151,7 +151,7 @@ export const peerReviewSchema = z.object({
   score: z.number().min(0).optional(),
   feedback: z.string().max(10000).optional(),
   comments: z.record(z.string(), z.unknown()).optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Submission query (for list endpoint)
@@ -166,7 +166,7 @@ export const submissionQuerySchema = z.object({
   status: z.string().optional(), // SubmissionStatus enum
   gradingStatus: z.string().optional(),
   userId: z.string().min(1).optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Derived types

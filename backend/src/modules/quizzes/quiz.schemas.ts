@@ -19,7 +19,7 @@ export const createQuizSchema = z.object({
   showFeedback: z.boolean().default(true),
   showCorrectAnswers: z.boolean().default(false),
   status: z.nativeEnum(QuizStatus).default('DRAFT'),
-}).strict();
+});
 
 export const updateQuizSchema = z.object({
   contentId: z.string().min(1).nullable().optional(),
@@ -34,7 +34,7 @@ export const updateQuizSchema = z.object({
   showFeedback: z.boolean().optional(),
   showCorrectAnswers: z.boolean().optional(),
   status: z.nativeEnum(QuizStatus).optional(),
-}).strict();
+});
 
 export const quizQuerySchema = z.object({
   page: z.string().optional().transform((v) => (v ? Math.max(1, Number(v)) : 1)),
@@ -51,7 +51,7 @@ export const quizQuerySchema = z.object({
     .optional()
     .default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Question CRUD
@@ -68,7 +68,7 @@ export const addQuestionSchema = z.object({
   order: z.number().int().nonnegative().optional(),
   isRequired: z.boolean().optional().default(true),
   metadata: z.any().optional(),
-}).strict();
+});
 
 export const updateQuestionSchema = z.object({
   type: z.nativeEnum(QuestionType).optional(),
@@ -81,7 +81,7 @@ export const updateQuestionSchema = z.object({
   order: z.number().int().nonnegative().optional(),
   isRequired: z.boolean().optional(),
   metadata: z.any().optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Attempts
@@ -89,17 +89,17 @@ export const updateQuestionSchema = z.object({
 
 export const startAttemptSchema = z.object({
   enrollmentId: z.string().min(1, 'enrollmentId is required'),
-}).strict();
+});
 
 export const saveProgressSchema = z.object({
   answers: z.record(z.string(), z.unknown()).default({}),
   timeSpent: z.number().int().nonnegative().max(86400).default(0),
-}).strict();
+});
 
 export const submitAttemptSchema = z.object({
   answers: z.record(z.string(), z.unknown()),
   timeSpent: z.number().int().nonnegative().max(86400).default(0),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Manual grading
@@ -115,7 +115,7 @@ export const manualGradeSchema = z.object({
       }),
     )
     .min(1, 'At least one grade is required'),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Question bank query
@@ -129,7 +129,7 @@ export const questionBankQuerySchema = z.object({
   }),
   type: z.nativeEnum(QuestionType).optional(),
   search: z.string().trim().optional(),
-}).strict();
+});
 
 // ---------------------------------------------------------------------------
 // Derived types

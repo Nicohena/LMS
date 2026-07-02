@@ -11,7 +11,7 @@ export const createBadgeTemplateSchema = z.object({
   isActive: z.boolean().default(true),
   expiresAfterDays: z.number().int().positive().max(3650).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-}).strict();
+});
 
 export const updateBadgeTemplateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -22,32 +22,32 @@ export const updateBadgeTemplateSchema = z.object({
   isActive: z.boolean().optional(),
   expiresAfterDays: z.number().int().positive().max(3650).nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-}).strict();
+});
 
 export const awardBadgeSchema = z.object({
   userId: z.string().min(1),
   badgeTemplateId: z.string().min(1),
   evidence: z.string().max(1000).optional(),
-}).strict();
+});
 
 export const updateXPRuleSchema = z.object({
   points: z.number().int(),
   isActive: z.boolean().optional(),
   description: z.string().max(500).optional(),
-}).strict();
+});
 
 export const manualXPSchema = z.object({
   userId: z.string().min(1),
   points: z.number().int(),
   reason: z.string().min(1).max(500),
-}).strict();
+});
 
 export const leaderboardQuerySchema = z.object({
   scope: z.enum(['GLOBAL', 'COURSE', 'COHORT']).default('GLOBAL'),
   scopeId: z.string().min(1).optional(),
   period: z.enum(['daily', 'weekly', 'monthly', 'all-time']).default('all-time'),
   limit: z.string().optional().transform((v) => (v ? Math.min(100, Math.max(1, Number(v))) : 20)),
-}).strict();
+});
 
 export const xpHistoryQuerySchema = z.object({
   page: z.string().optional().transform((v) => (v ? Math.max(1, Number(v)) : 1)),
@@ -55,7 +55,7 @@ export const xpHistoryQuerySchema = z.object({
     if (!v) return 20;
     return Math.min(100, Math.max(1, Number(v)));
   }),
-}).strict();
+});
 
 export type CreateBadgeTemplateInput = z.infer<typeof createBadgeTemplateSchema>;
 export type UpdateBadgeTemplateInput = z.infer<typeof updateBadgeTemplateSchema>;
