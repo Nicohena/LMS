@@ -3454,20 +3454,39 @@ function QuizView({ quizId, onNavigate, onSelectQuiz, onSubmitted }: { quizId: s
 // ─── Quiz List View ──────────────────────────────────────────────────────
 function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => void; onSelectQuiz: (id: string) => void }) {
   const authUser = useAuthStore((s) => s.user);
-  const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
-  // Teachers see all quizzes (including drafts); students only see PUBLISHED
+  const isTeacher = authUser?.role === 'TEACHER';
   const { data, isLoading, isError } = useQuizzes({ limit: 50, status: isTeacher ? undefined : 'PUBLISHED' });
   const deleteQuizMut = useDeleteQuiz();
+  const updateQuizMut = useUpdateQuiz();
   const [showCreate, setShowCreate] = useState(false);
+  const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const quizzes = (data?.data ?? []) as any[];
 
   const handleDelete = (e: React.MouseEvent, quizId: string) => {
     e.stopPropagation();
     if (!confirm('Delete this quiz and all its questions? This cannot be undone.')) return;
     deleteQuizMut.mutate(quizId, {
-      onSuccess: () => toast({ title: 'Quiz deleted', description: 'The quiz has been removed.' }),
+      onSuccess: () => { toast({ title: 'Quiz deleted', description: 'The quiz has been removed.' }); queryClient.invalidateQueries({ queryKey: ['quizzes'] }); },
       onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to delete quiz.', variant: 'destructive' }),
     });
+  };
+
+  const handleTogglePublish = (e: React.MouseEvent, quizId: string, currentStatus: string) => {
+    e.stopPropagation();
+    const newStatus = currentStatus === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+    updateQuizMut.mutate(
+      { quizId, data: { status: newStatus } },
+      {
+        onSuccess: () => { toast({ title: newStatus === 'PUBLISHED' ? 'Quiz published' : 'Quiz unpublished', description: newStatus === 'PUBLISHED' ? 'Students can now see this quiz.' : 'Quiz hidden from students.' }); queryClient.invalidateQueries({ queryKey: ['quizzes'] }); },
+        onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to update status.', variant: 'destructive' }),
+      },
+    );
+  };
+
+  const handleEdit = (e: React.MouseEvent, quizId: string) => {
+    e.stopPropagation();
+    setEditingQuizId(quizId);
   };
 
   return (
@@ -3480,16 +3499,16 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{isTeacher ? 'All Quizzes' : 'Available Quizzes'}</h1>
-          <p className="mt-1 text-sm text-slate-500">{quizzes.length} {isTeacher ? 'total' : 'published'} quizzes · {isTeacher ? 'Create quizzes for your assigned classes' : 'Test your knowledge'}</p>
+          <p className="mt-1 text-sm text-slate-500">{quizzes.length} {isTeacher ? 'total' : 'published'} quizzes</p>
         </div>
-        {authUser?.role === 'TEACHER' && (
+        {isTeacher && (
           <Button onClick={() => setShowCreate(true)} className="bg-violet-600 text-white hover:bg-violet-700">
             <Plus className="mr-1.5 h-4 w-4" />Create Quiz
           </Button>
         )}
       </div>
       {isError && <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load quizzes.</div>}
-      {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quizzes…</div>}
+      {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quizzes...</div>}
       {!isLoading && !isError && quizzes.length === 0 && (
         <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
           {isTeacher ? 'No quizzes yet. Click "Create Quiz" to get started.' : 'No quizzes available yet.'}
@@ -3497,36 +3516,59 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
       )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {quizzes.map((q: any) => (
-          <Card key={q.id} className="group cursor-pointer border border-slate-200 p-5 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectQuiz(q.id)}>
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50"><FileQuestion className="h-5 w-5 text-emerald-600" /></div>
-              <div className="flex items-center gap-2">
+          <Card key={q.id} className="group border border-slate-200 p-5 shadow-sm transition-all hover:shadow-md">
+            {/* Top row: icon + status badges + actions */}
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50" onClick={() => onSelectQuiz(q.id)}><FileQuestion className="h-5 w-5 text-emerald-600" /></div>
+              <div className="flex items-center gap-1.5">
                 {isTeacher && q.status && (
-                  <Badge className={cn('hover:opacity-90', q.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500')}>{q.status}</Badge>
+                  <Badge className={cn('text-[10px]', q.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600')}>{q.status === 'PUBLISHED' ? 'Published' : 'Draft'}</Badge>
                 )}
-                <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-50">{q.questionCount ?? 0} Q</Badge>
-                {isTeacher && (
-                  <button onClick={(e) => handleDelete(e, q.id)} title="Delete quiz" className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <Badge className="bg-slate-100 text-slate-500 text-[10px]">{q.questionCount ?? 0} Q</Badge>
               </div>
             </div>
-            <h3 className="text-sm font-semibold text-slate-900">{q.title}</h3>
-            {q.description && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{q.description}</p>}
+            {/* Title + description - clickable for students */}
+            <div className={cn(!isTeacher && 'cursor-pointer')} onClick={() => !isTeacher && onSelectQuiz(q.id)}>
+              <h3 className="text-sm font-semibold text-slate-900">{q.title}</h3>
+              {q.description && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{q.description}</p>}
+            </div>
+            {/* Quiz info */}
             <div className="mt-3 flex items-center gap-3 text-xs text-slate-400">
               <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{q.timeLimit ?? 15} min</span>
               <span className="flex items-center gap-1"><Target className="h-3 w-3" />Pass: {q.passingScore}%</span>
               <span className="flex items-center gap-1"><Route className="h-3 w-3" />{q.maxAttempts} tries</span>
             </div>
+            {/* Teacher action buttons */}
+            {isTeacher && (
+              <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
+                <Button size="sm" variant="outline" onClick={() => onSelectQuiz(q.id)} className="border-slate-200 text-slate-600 text-xs">
+                  <PlayCircle className="mr-1 h-3 w-3" />Preview
+                </Button>
+                <Button size="sm" variant="outline" onClick={(e) => handleEdit(e, q.id)} className="border-slate-200 text-slate-600 text-xs">
+                  <Edit className="mr-1 h-3 w-3" />Edit
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={(e) => handleTogglePublish(e, q.id, q.status)}
+                  disabled={updateQuizMut.isPending}
+                  className={cn('ml-auto text-xs', q.status === 'PUBLISHED' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-500 text-white hover:bg-emerald-600')}
+                >
+                  {q.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+                </Button>
+                <button onClick={(e) => handleDelete(e, q.id)} title="Delete" className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </Card>
         ))}
       </div>
 
       {/* Create Quiz Modal */}
-      {showCreate && (
-        <QuizEditorModal onClose={() => setShowCreate(false)} />
-      )}
+      {showCreate && <QuizEditorModal onClose={() => { setShowCreate(false); queryClient.invalidateQueries({ queryKey: ['quizzes'] }); }} />}
+
+      {/* Edit existing quiz */}
+      {editingQuizId && <QuizEditorModal quizId={editingQuizId} onClose={() => { setEditingQuizId(null); queryClient.invalidateQueries({ queryKey: ['quizzes'] }); }} />}
     </main>
   );
 }
@@ -3970,18 +4012,44 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
               {qType === 'HOTSPOT' && (
                 <div className="space-y-3">
                   <div>
-                    <Label className="mb-1.5 block text-xs text-slate-500">Image URL</Label>
-                    <Input value={qHotspotImage} onChange={(e) => setQHotspotImage(e.target.value)} placeholder="https://example.com/image.jpg" className="text-sm" />
+                    <Label className="mb-1.5 block text-xs text-slate-500">Image URL *</Label>
+                    <Input
+                      value={qHotspotImage}
+                      onChange={(e) => setQHotspotImage(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="text-sm"
+                    />
+                    <p className="mt-1 text-xs text-slate-400">Paste any image URL. The image will appear below.</p>
                   </div>
-                  {qHotspotImage && (
-                    <div className="relative overflow-hidden rounded-lg border border-slate-200">
-                      <img src={qHotspotImage} alt="Hotspot" className="w-full" />
-                      {qHotspotZones.map((zone, idx) => (
-                        <div key={idx} className="absolute border-2 border-violet-500 bg-violet-500/20" style={{ left: zone.x + '%', top: zone.y + '%', width: zone.w + '%', height: zone.h + '%' }}>
-                          <span className="absolute -top-5 left-0 rounded bg-violet-500 px-1 text-[10px] text-white">{zone.label || ('Zone ' + (idx + 1))}</span>
-                          <button onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))} className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white"><X className="h-2.5 w-2.5" /></button>
-                        </div>
-                      ))}
+
+                  {/* Image preview */}
+                  {qHotspotImage && qHotspotImage.trim() && (
+                    <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                      <div className="relative" style={{ minHeight: '200px' }}>
+                        <img
+                          src={qHotspotImage}
+                          alt="Hotspot"
+                          className="block w-full"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+                        />
+                        {/* Zone overlays */}
+                        {qHotspotZones.map((zone, idx) => (
+                          <div
+                            key={idx}
+                            className="absolute border-2 border-violet-500 bg-violet-500/20"
+                            style={{ left: zone.x + '%', top: zone.y + '%', width: zone.w + '%', height: zone.h + '%' }}
+                          >
+                            <span className="absolute -top-5 left-0 whitespace-nowrap rounded bg-violet-500 px-1.5 py-0.5 text-[10px] text-white">{zone.label || ('Zone ' + (idx + 1))}</span>
+                            <button
+                              onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))}
+                              className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {/* Hotspot tools */}
@@ -3998,14 +4066,50 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                       </button>
                     ))}
                   </div>
-                  {/* Add zone form */}
-                  <div className="flex items-center gap-2 rounded-lg border border-slate-100 p-2">
-                    <Input type="number" placeholder="X%" className="w-16 text-sm" value={qHotspotZones.length > 0 ? '' : ''} onChange={(e) => { const x = Number(e.target.value); if (x >= 0 && x <= 100) { const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, x }; setQHotspotZones(n); } else { setQHotspotZones([...qHotspotZones, { x, y: 10, w: 20, h: 20, label: '' }]); } } }} />
-                    <Input type="number" placeholder="Y%" className="w-16 text-sm" onChange={(e) => { const y = Number(e.target.value); const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, y }; setQHotspotZones(n); } }} />
-                    <Input type="number" placeholder="W%" className="w-16 text-sm" onChange={(e) => { const w = Number(e.target.value); const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, w }; setQHotspotZones(n); } }} />
-                    <Input type="number" placeholder="H%" className="w-16 text-sm" onChange={(e) => { const h = Number(e.target.value); const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, h }; setQHotspotZones(n); } }} />
-                    <Input placeholder="Label" className="flex-1 text-sm" onChange={(e) => { const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, label: e.target.value }; setQHotspotZones(n); } }} />
-                    <button onClick={() => setQHotspotZones([...qHotspotZones, { x: 10, y: 10, w: 20, h: 20, label: '' }])} className="rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-100">+ Add Zone</button>
+                  {/* Add zone form — each zone is added as a complete unit */}
+                  <div className="rounded-lg border border-slate-100 p-3">
+                    <p className="mb-2 text-xs font-medium text-slate-500">Add a hotspot zone:</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      <div>
+                        <Label className="mb-1 block text-[10px] text-slate-400">X (%)</Label>
+                        <Input type="number" min="0" max="100" placeholder="10" className="w-full text-sm" id="hs-x" />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-[10px] text-slate-400">Y (%)</Label>
+                        <Input type="number" min="0" max="100" placeholder="10" className="w-full text-sm" id="hs-y" />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-[10px] text-slate-400">W (%)</Label>
+                        <Input type="number" min="1" max="100" placeholder="20" className="w-full text-sm" id="hs-w" />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-[10px] text-slate-400">H (%)</Label>
+                        <Input type="number" min="1" max="100" placeholder="20" className="w-full text-sm" id="hs-h" />
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-[10px] text-slate-400">Label</Label>
+                        <Input placeholder="Heart" className="w-full text-sm" id="hs-label" />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const x = Number((document.getElementById('hs-x') as HTMLInputElement)?.value || 10);
+                        const y = Number((document.getElementById('hs-y') as HTMLInputElement)?.value || 10);
+                        const w = Number((document.getElementById('hs-w') as HTMLInputElement)?.value || 20);
+                        const h = Number((document.getElementById('hs-h') as HTMLInputElement)?.value || 20);
+                        const label = (document.getElementById('hs-label') as HTMLInputElement)?.value || '';
+                        setQHotspotZones([...qHotspotZones, { x, y, w, h, label }]);
+                        // Clear inputs
+                        (document.getElementById('hs-x') as HTMLInputElement).value = '';
+                        (document.getElementById('hs-y') as HTMLInputElement).value = '';
+                        (document.getElementById('hs-w') as HTMLInputElement).value = '';
+                        (document.getElementById('hs-h') as HTMLInputElement).value = '';
+                        (document.getElementById('hs-label') as HTMLInputElement).value = '';
+                      }}
+                      className="mt-2 rounded-lg bg-violet-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-violet-700"
+                    >
+                      + Add Zone
+                    </button>
                   </div>
                   {qHotspotZones.length > 0 && (
                     <p className="text-xs text-slate-400">{qHotspotZones.length} zone(s) added. Correct answer: {qHotspotZones.map(z => z.label).filter(Boolean).join(', ') || 'unnamed zones'}</p>
