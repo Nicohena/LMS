@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard, BookOpen, FileText, GraduationCap, Award, Settings,
@@ -4059,7 +4059,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   // Update fields when quiz loads (for editing existing quiz)
   useEffect(() => {
     if (quiz?.status) setPublishStatus(quiz.status);
-    if (quiz?.quizPassword !== undefined) setQuizPassword(quiz.quizPassword || '');
+    // quizPassword not loaded from API (security: only hasPassword boolean sent)
     if (quiz?.title) setTitle(quiz.title);
     if (quiz?.description) setDescription(quiz.description || '');
     if (quiz?.timeLimit) setTimeLimit(String(quiz.timeLimit));
@@ -4132,6 +4132,11 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
         <div className="flex items-center gap-3">
           <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
           <span className="text-sm font-medium text-slate-700">{quiz?.title || title}</span>
+          {selectedSectionSubjectId && (
+            <Badge className="bg-violet-50 text-violet-600 text-[10px]">
+              {teacherSectionSubjects.find((ss: any) => ss.id === selectedSectionSubjectId)?.subject?.name ?? 'Class'} · {teacherSectionSubjects.find((ss: any) => ss.id === selectedSectionSubjectId)?.section?.name ?? ''}
+            </Badge>
+          )}
           <Badge className={cn('text-xs', publishStatus === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600')}>{publishStatus === 'PUBLISHED' ? 'Published' : 'Draft'}</Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -4857,7 +4862,14 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
   const handleSubmit = () => {
     if (!attemptId) return;
     const timeSpent = Math.round((Date.now() - startTime) / 1000);
-    submitAttempt.mutate({ attemptId, answers, timeSpent }, { onSuccess: () => { setShowSubmit(false); onSubmitted(attemptId); }, onError: (err: any) => { setError(err.response?.data?.message || 'Failed to submit'); setShowSubmit(false); } });
+    // Strip 'not_sure' answers — they should be treated as unanswered
+    const cleanAnswers: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(answers)) {
+      if (val !== 'not_sure' && val !== undefined && val !== null) {
+        cleanAnswers[key] = val;
+      }
+    }
+    submitAttempt.mutate({ attemptId, answers: cleanAnswers, timeSpent }, { onSuccess: () => { setShowSubmit(false); onSubmitted(attemptId); }, onError: (err: any) => { setError(err.response?.data?.message || 'Failed to submit'); setShowSubmit(false); } });
   };
 
   const answered = Object.keys(answers).length;
@@ -4965,8 +4977,12 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
       case 'MULTIPLE_CHOICE_SINGLE':
       case 'TRUE_FALSE': {
         const rawOpts = qType === 'TRUE_FALSE' ? [{ text: 'True' }, { text: 'False' }] : options;
-        // Shuffle options once per question (lazy state)
-        const [shuffledOpts] = useState(() => qType === 'TRUE_FALSE' ? rawOpts : [...rawOpts].sort(() => Math.random() - 0.5));
+        // Shuffle options - use question ID as seed so it's stable per question
+        const shuffledOpts = useMemo(() => {
+          if (qType === 'TRUE_FALSE') return rawOpts;
+          return [...rawOpts].sort(() => Math.random() - 0.5);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [currentQuestion.id]);
         return (
           <div className="space-y-2">
             {shuffledOpts.map((opt, idx) => {
@@ -5305,7 +5321,8 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
             {isPending ? <><Clock className="mr-1 h-3 w-3" />Pending Review</> : passed ? <><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</> : <><X className="mr-1 h-3 w-3" />Failed</>}
           </Badge>
           <h1 className="text-xl font-bold text-slate-900">Quiz Completed!</h1>
-          <p className="mt-1 text-sm text-slate-500">{results.quizTitle} · {correct}/{total - pending} auto-graded{pending > 0 ? `, ${pending} pending review` : ''}</p>
+          <p className="mt-1 text-sm text-slate-500">{results.quizTitle}</p>
+          <p className="mt-0.5 text-xs text-slate-400">{correct}/{total - pending} auto-graded{pending > 0 ? `, ${pending} pending review` : ''} · {results.pointsAwarded ?? 0}/{results.maxPossibleScore ?? total} points</p>
         </div>
 
         {/* Stats Row */}
