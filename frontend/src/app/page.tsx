@@ -3654,6 +3654,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
   const [startTime] = useState<number>(Date.now());
   const [timeLeft, setTimeLeft] = useState<number>((quiz?.timeLimit ?? 15) * 60);
   const [error, setError] = useState('');
+  const [focusMode, setFocusMode] = useState(false);
   // Drag-and-drop state for sorting/matching
   const [draggedItem, setDraggedItem] = useState<{ type: string; idx: number } | null>(null);
   const [draggedMatch, setDraggedMatch] = useState<string | null>(null);
@@ -3662,6 +3663,20 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
   useEffect(() => { if (!attemptId || timeLeft <= 0) return; const t = setTimeout(() => setTimeLeft((v) => v - 1), 1000); return () => clearTimeout(t); }, [attemptId, timeLeft]);
   useEffect(() => { if (attemptId && timeLeft === 0 && !showSubmit) handleSubmit(); /* eslint-disable-next-line */ }, [timeLeft, attemptId]);
   useEffect(() => { if (attemptId) { setCurrentQ(0); setAnswers({}); } }, [attemptId]);
+
+  // Keyboard shortcut: Cmd/Ctrl + Enter to go to next question or submit
+  useEffect(() => {
+    if (!attemptId) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (currentQ === questions.length - 1) setShowSubmit(true);
+        else setCurrentQ(Math.min(questions.length - 1, currentQ + 1));
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [attemptId, currentQ, questions.length]);
   // Initialize shuffled order for SORTING questions when question loads
   useEffect(() => {
     if (!attemptId || questions.length === 0) return;
@@ -3919,13 +3934,26 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
       <div className="mb-4 flex items-center gap-2 text-sm text-slate-500"><button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button><ChevronRight className="h-3.5 w-3.5" /><span className="font-medium text-slate-700">{quiz.title}</span></div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3">
-          <Card className="mb-4 border border-slate-200 p-5 shadow-sm">
+          <Card className="mb-4 border border-slate-200 p-5 shadow-sm rounded-xl">
             <div className="flex items-center justify-between">
-              <div><h1 className="text-xl font-bold text-slate-900">{quiz.title}</h1><p className="mt-0.5 text-sm text-slate-500">{questions.length} questions · Passing: {quiz.passingScore}%</p></div>
-              <div className={cn('flex items-center gap-2 rounded-lg px-3 py-2', timeLeft < 300 ? 'bg-red-50' : 'bg-slate-50')}><Clock className={cn('h-4 w-4', timeLeft < 300 ? 'text-red-500' : 'text-slate-500')} /><span className={cn('text-sm font-semibold', timeLeft < 300 ? 'text-red-600' : 'text-slate-700')}>{mins}:{secs.toString().padStart(2, '0')}</span></div>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-sm font-bold text-amber-600">{currentQ + 1}</div>
+                <div>
+                  <h1 className="text-xl font-bold text-slate-900">{quiz.title}</h1>
+                  <p className="mt-0.5 text-sm text-slate-500">Question {currentQ + 1} of {questions.length} · Passing: {quiz.passingScore}%</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setFocusMode(!focusMode)} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors', focusMode ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100')}>
+                  <Zap className="h-3.5 w-3.5" />Focus Mode
+                </button>
+                <div className={cn('flex items-center gap-1.5 rounded-lg px-3 py-2', timeLeft < 300 ? 'bg-red-50' : 'bg-slate-900')}>
+                  <Clock className={cn('h-4 w-4', timeLeft < 300 ? 'text-red-400' : 'text-white/60')} />
+                  <span className={cn('font-mono text-sm font-semibold', timeLeft < 300 ? 'text-red-600' : 'text-white')}>{mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}</span>
+                </div>
+              </div>
             </div>
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }} /></div>
-            <p className="mt-1.5 text-xs text-slate-400">Question {currentQ + 1} of {questions.length}</p>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600 transition-all duration-500" style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }} /></div>
           </Card>
           <Card className="border border-slate-200 p-6 shadow-sm">
             <div className="mb-4"><Badge className="mb-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-50">{currentQuestion.type.replace(/_/g, ' ')}</Badge><h2 className="text-lg font-semibold text-slate-900">{currentQuestion.questionText}</h2></div>
@@ -3933,7 +3961,15 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             <label className="mt-4 flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={answers[currentQuestion.id] === 'not_sure'} onChange={(e) => setAnswers({ ...answers, [currentQuestion.id]: e.target.checked ? 'not_sure' : undefined })} className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span className="text-sm text-slate-500">I'm not sure</span></label>
             <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
               <Button variant="outline" disabled={currentQ === 0} onClick={() => setCurrentQ(Math.max(0, currentQ - 1))} className="border-slate-200 text-slate-600"><ArrowLeft className="mr-1.5 h-4 w-4" />Previous</Button>
-              {currentQ === questions.length - 1 ? <Button onClick={() => setShowSubmit(true)} className="bg-amber-500 text-white hover:bg-amber-600">Submit Quiz</Button> : <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-amber-500 text-white hover:bg-amber-600">Continue<ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
+              <div className="flex items-center gap-3">
+                <span className="hidden text-xs text-slate-400 sm:inline">Press <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium">Cmd + Enter</kbd></span>
+                {currentQ === questions.length - 1 ? <Button onClick={() => setShowSubmit(true)} className="bg-indigo-600 text-white hover:bg-indigo-700">Submit Quiz</Button> : <Button onClick={() => setCurrentQ(Math.min(questions.length - 1, currentQ + 1))} className="bg-indigo-600 text-white hover:bg-indigo-700">Continue<ChevronRight className="ml-1.5 h-4 w-4" /></Button>}
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-1 text-xs text-slate-400">
+              <AlertCircle className="h-3 w-3" />
+              <span>Have an issue with this question?</span>
+              <button className="text-indigo-500 hover:underline">Report an Issue</button>
             </div>
           </Card>
         </div>
