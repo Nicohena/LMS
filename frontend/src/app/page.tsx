@@ -3576,6 +3576,9 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [qMatchingPairs, setQMatchingPairs] = useState<{ left: string; right: string }[]>([{ left: '', right: '' }, { left: '', right: '' }]);
   const [qSortItems, setQSortItems] = useState<string[]>(['', '']);
   const [qTextAnswer, setQTextAnswer] = useState('');
+  const [qHotspotImage, setQHotspotImage] = useState('');
+  const [qHotspotZones, setQHotspotZones] = useState<{ x: number; y: number; w: number; h: number; label: string }[]>([]);
+  const [qHotspotTool, setQHotspotTool] = useState<'point' | 'rectangle' | 'freeform'>('rectangle');
 
   const quiz = (existingQuizData as any)?.quiz;
   const existingQuestions = ((existingQuizData as any)?.questions ?? []) as any[];
@@ -3597,7 +3600,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     setQText(''); setQExplanation(''); setQError('');
     setQOptions(['', '', '', '']); setQCorrectIdx(0); setQCorrectIdxs([]);
     setQBlanks(['']); setQMatchingPairs([{ left: '', right: '' }, { left: '', right: '' }]);
-    setQSortItems(['', '']); setQTextAnswer('');
+    setQSortItems(['', '']); setQTextAnswer(''); setQHotspotImage(''); setQHotspotZones([]);
     setEditingQuestionIdx(null);
   };
 
@@ -3704,6 +3707,11 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
         return { options: null, correctAnswer: qTextAnswer.trim() || null };
       case 'FILE_UPLOAD':
         return { options: null, correctAnswer: null };
+      case 'HOTSPOT': {
+        if (!qHotspotImage.trim()) { setQError('Provide an image URL.'); return null; }
+        if (qHotspotZones.length === 0) { setQError('Add at least one hotspot zone.'); return null; }
+        return { options: { imageUrl: qHotspotImage, zones: qHotspotZones }, correctAnswer: qHotspotZones.map((z) => z.label) };
+      }
       default:
         setQError('Unsupported type.'); return null;
     }
@@ -3959,6 +3967,51 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
               {qType === 'FILE_UPLOAD' && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">Students will upload a file. Requires manual grading.</div>
               )}
+              {qType === 'HOTSPOT' && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="mb-1.5 block text-xs text-slate-500">Image URL</Label>
+                    <Input value={qHotspotImage} onChange={(e) => setQHotspotImage(e.target.value)} placeholder="https://example.com/image.jpg" className="text-sm" />
+                  </div>
+                  {qHotspotImage && (
+                    <div className="relative overflow-hidden rounded-lg border border-slate-200">
+                      <img src={qHotspotImage} alt="Hotspot" className="w-full" />
+                      {qHotspotZones.map((zone, idx) => (
+                        <div key={idx} className="absolute border-2 border-violet-500 bg-violet-500/20" style={{ left: zone.x + '%', top: zone.y + '%', width: zone.w + '%', height: zone.h + '%' }}>
+                          <span className="absolute -top-5 left-0 rounded bg-violet-500 px-1 text-[10px] text-white">{zone.label || ('Zone ' + (idx + 1))}</span>
+                          <button onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))} className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white"><X className="h-2.5 w-2.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Hotspot tools */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">Select the type of hotspot:</span>
+                    {[
+                      { id: 'point', label: 'Point', icon: CircleDot },
+                      { id: 'rectangle', label: 'Rectangle', icon: LayoutDashboard },
+                      { id: 'freeform', label: 'Free Form', icon: Edit },
+                    ].map(tool => (
+                      <button key={tool.id} onClick={() => setQHotspotTool(tool.id as any)} className={cn('flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium', qHotspotTool === tool.id ? 'border-violet-300 bg-violet-50 text-violet-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>
+                        <tool.icon className="h-3 w-3" />
+                        {tool.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Add zone form */}
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-100 p-2">
+                    <Input type="number" placeholder="X%" className="w-16 text-sm" value={qHotspotZones.length > 0 ? '' : ''} onChange={(e) => { const x = Number(e.target.value); if (x >= 0 && x <= 100) { const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, x }; setQHotspotZones(n); } else { setQHotspotZones([...qHotspotZones, { x, y: 10, w: 20, h: 20, label: '' }]); } } }} />
+                    <Input type="number" placeholder="Y%" className="w-16 text-sm" onChange={(e) => { const y = Number(e.target.value); const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, y }; setQHotspotZones(n); } }} />
+                    <Input type="number" placeholder="W%" className="w-16 text-sm" onChange={(e) => { const w = Number(e.target.value); const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, w }; setQHotspotZones(n); } }} />
+                    <Input type="number" placeholder="H%" className="w-16 text-sm" onChange={(e) => { const h = Number(e.target.value); const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, h }; setQHotspotZones(n); } }} />
+                    <Input placeholder="Label" className="flex-1 text-sm" onChange={(e) => { const last = qHotspotZones[qHotspotZones.length - 1]; if (last && !last.label) { const n = [...qHotspotZones]; n[n.length - 1] = { ...last, label: e.target.value }; setQHotspotZones(n); } }} />
+                    <button onClick={() => setQHotspotZones([...qHotspotZones, { x: 10, y: 10, w: 20, h: 20, label: '' }])} className="rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-100">+ Add Zone</button>
+                  </div>
+                  {qHotspotZones.length > 0 && (
+                    <p className="text-xs text-slate-400">{qHotspotZones.length} zone(s) added. Correct answer: {qHotspotZones.map(z => z.label).filter(Boolean).join(', ') || 'unnamed zones'}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Scoring */}
@@ -4012,14 +4065,52 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                         <Badge className="bg-slate-100 text-slate-600 text-[10px]">{questionTypeLabels[q.type]?.shortLabel || q.type}</Badge>
                       </div>
                       <p className="mb-2 text-sm font-medium text-slate-900">{q.questionText}</p>
-                      {(q.options || []).map((opt: any, i: number) => (
-                        <div key={i} className={cn('flex items-center gap-2 rounded border p-2 text-sm', opt.isCorrect ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200')}>
-                          <div className={cn('h-4 w-4 rounded-full border-2', opt.isCorrect ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300')} />
-                          {opt.text}
-                          {opt.isCorrect && <Badge className="ml-auto bg-emerald-100 text-emerald-600 text-[10px]">Correct</Badge>}
-                        </div>
-                      ))}
-                      {q.correctAnswer && !q.options && <p className="text-sm text-slate-600">Answer: {String(q.correctAnswer)}</p>}
+                      {(() => {
+                        const opts = q.options;
+                        // MCQ / True-False: options is array of {text, isCorrect}
+                        if (Array.isArray(opts)) {
+                          return opts.map((opt: any, i: number) => (
+                            <div key={i} className={cn('flex items-center gap-2 rounded border p-2 text-sm', opt.isCorrect ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200')}>
+                              <div className={cn('h-4 w-4 rounded-full border-2', opt.isCorrect ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300')} />
+                              {opt.text}
+                              {opt.isCorrect && <Badge className="ml-auto bg-emerald-100 text-emerald-600 text-[10px]">Correct</Badge>}
+                            </div>
+                          ));
+                        }
+                        // Matching: options is {pairs: [{left, right}]}
+                        if (opts && typeof opts === 'object' && opts.pairs) {
+                          return (
+                            <div className="space-y-1">
+                              {opts.pairs.map((p: any, i: number) => (
+                                <div key={i} className="flex items-center gap-2 rounded border border-slate-200 p-2 text-sm">
+                                  <span className="font-medium text-slate-700">{p.left}</span>
+                                  <span className="text-slate-400">{'→'}</span>
+                                  <span className="text-emerald-600">{p.right}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        // Sorting: options is {items: [...]}
+                        if (opts && typeof opts === 'object' && opts.items) {
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {opts.items.map((item: string, i: number) => (
+                                <span key={i} className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm">{i + 1}. {item}</span>
+                              ))}
+                            </div>
+                          );
+                        }
+                        // Fill-in-blank / Short answer / Essay / File upload
+                        if (q.correctAnswer) {
+                          return <p className="text-sm text-slate-600">Answer: {String(q.correctAnswer)}</p>;
+                        }
+                        // Hotspot or no options
+                        if (opts && typeof opts === 'object' && opts.imageUrl) {
+                          return <p className="text-sm text-slate-600">Hotspot on image: {opts.imageUrl}</p>;
+                        }
+                        return <p className="text-xs text-slate-400">No preview available for this type.</p>;
+                      })()}
                     </div>
                   ))}
                 </div>
