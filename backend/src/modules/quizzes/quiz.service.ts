@@ -653,7 +653,7 @@ export async function submitAttempt(
           data: {
             attemptId,
             questionId: question.id,
-            answer: null as unknown as Prisma.InputJsonValue,
+            answer: JSON.parse(JSON.stringify({ skipped: true })),
             isCorrect: false,
             pointsAwarded: 0,
             feedback: 'No answer submitted.',
@@ -668,7 +668,7 @@ export async function submitAttempt(
       data: {
         attemptId,
         questionId: question.id,
-        answer: studentAnswer as Prisma.InputJsonValue,
+        answer: JSON.parse(JSON.stringify(studentAnswer ?? { skipped: true })),
         isCorrect: grade.isCorrect,
         pointsAwarded: grade.pointsAwarded,
         feedback: grade.feedback,

@@ -4331,7 +4331,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSubmitted: (attemptId: string) => void }) {
   const { data: quizData, isLoading } = useQuiz(quizId || null);
   const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
-  const { data: analyticsData } = useQuizAnalytics(quizId || null);
+  const { data: analyticsData } = useQuizAnalytics(isTeacher ? (quizId || null) : null);
   const startAttempt = useStartQuizAttempt();
   const submitAttempt = useSubmitQuizAttempt();
   const authUser = useAuthStore((s) => s.user);
@@ -4605,15 +4605,52 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
         const zones = options?.zones ?? [];
         const userZone = (answers[currentQuestion.id] as string) ?? null;
         return (
-          <div className="space-y-2">
-            <p className="text-xs text-slate-500">Click on the correct area of the image.</p>
-            {options?.imageUrl && <div className="relative overflow-hidden rounded-lg border border-slate-200"><img src={options.imageUrl} alt="Hotspot" className="w-full" onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; // Find which zone was clicked
-              const hit = zones.find((z: any) => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
-              if (hit) setAnswers({ ...answers, [currentQuestion.id]: hit.label });
-            }} />{/* Render zone overlays (hidden in real quiz, visible for demo) */}
-            {zones.map((z: any, idx: number) => (<div key={idx} className={cn('absolute border-2 transition-all', userZone === z.label ? 'border-emerald-500 bg-emerald-500/20' : 'border-transparent')} style={{ left: `${z.x}%`, top: `${z.y}%`, width: `${z.w}%`, height: `${z.h}%` }} />))}
-            </div>}
-            {userZone && <p className="text-sm text-emerald-600">✓ Selected: {userZone}</p>}
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">Click on the correct area of the image to select your answer.</p>
+            {options?.imageUrl ? (
+              <div className="relative inline-block w-full overflow-hidden rounded-lg border-2 border-slate-200 cursor-pointer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={options.imageUrl}
+                  alt="Hotspot question"
+                  className="block h-auto w-full select-none"
+                  draggable={false}
+                  style={{ pointerEvents: 'none' }}
+                />
+                {/* Zone overlays — visible with subtle border so students know where to click */}
+                {zones.map((z: any, idx: number) => {
+                  const isSelected = userZone === z.label;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={(e) => { e.stopPropagation(); setAnswers({ ...answers, [currentQuestion.id]: z.label }); }}
+                      className={cn(
+                        'absolute cursor-pointer border-2 transition-all',
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-500/30'
+                          : 'border-violet-400/50 bg-violet-400/10 hover:bg-violet-400/20'
+                      )}
+                      style={{ left: `${z.x}%`, top: `${z.y}%`, width: `${z.w}%`, height: `${z.h}%` }}
+                    >
+                      {isSelected && (
+                        <div className="flex h-full items-center justify-center">
+                          <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No image available for this question.</p>
+            )}
+            {userZone && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <span className="text-sm text-emerald-600">Selected: {userZone}</span>
+                <button onClick={() => { const n = { ...answers }; delete n[currentQuestion.id]; setAnswers(n); }} className="ml-auto text-xs text-slate-400 hover:text-red-500">Clear</button>
+              </div>
+            )}
           </div>
         );
       }
