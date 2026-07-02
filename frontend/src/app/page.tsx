@@ -7848,6 +7848,123 @@ function ProfileView({ onNavigate }: { onNavigate: (v: View) => void }) {
   );
 }
 
+// ─── AI Assistant Sidebar (Trenning-inspired) ─────────────────────────────
+function AIAssistant() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
+  const [input, setInput] = useState('');
+  const authUser = useAuthStore((s) => s.user);
+  const firstName = authUser?.firstName ?? 'there';
+
+  const quickActions = [
+    { label: 'Summarize my progress', desc: 'Get an overview of your learning' },
+    { label: 'What should I learn next?', desc: 'Get personalized recommendations' },
+    { label: 'Explain a concept', desc: 'Ask about any topic you\'re studying' },
+  ];
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const userMsg = { role: 'user' as const, text: input };
+    setMessages([...messages, userMsg]);
+    setInput('');
+    // Simulate AI response
+    setTimeout(() => {
+      setMessages(prev => [...prev, { role: 'ai', text: 'I\'m your AI learning assistant. This feature will be connected to an AI backend to help you with your studies. For now, you can explore your dashboard, courses, and quizzes!' }]);
+    }, 1000);
+  };
+
+  return (
+    <>
+      {/* Floating button */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl"
+          title="AI Assistant"
+        >
+          <Sparkles className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Sidebar panel */}
+      {isOpen && (
+        <div className="fixed bottom-6 right-6 z-40 flex h-[500px] w-80 flex-col overflow-hidden rounded-2xl bg-gradient-to-b from-indigo-50 to-blue-50 shadow-2xl">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-indigo-100 bg-white/50 p-4 backdrop-blur">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-500 text-white">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">AI Assistant</p>
+                <p className="text-[10px] text-slate-500">Your learning companion</p>
+              </div>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Messages or quick actions */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {messages.length === 0 ? (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-white p-3 shadow-sm">
+                  <p className="text-sm text-slate-700">Hi {firstName}! I\'m your AI learning assistant. How can I help you today?</p>
+                </div>
+                {quickActions.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => { setInput(action.label); }}
+                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition-all hover:border-indigo-200 hover:shadow-sm"
+                  >
+                    <p className="text-sm font-medium text-slate-900">{action.label}</p>
+                    <p className="text-xs text-slate-500">{action.desc}</p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((msg, idx) => (
+                  <div key={idx} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                    <div className={cn(
+                      'max-w-[85%] rounded-xl p-3 text-sm',
+                      msg.role === 'user' ? 'bg-indigo-500 text-white' : 'bg-white text-slate-700 shadow-sm'
+                    )}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="border-t border-indigo-100 bg-white/50 p-3 backdrop-blur">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+                placeholder="Ask me anything..."
+                className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim()}
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500 text-white transition-all hover:bg-indigo-600 disabled:opacity-50"
+              >
+                <ArrowUpRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -7959,6 +8076,7 @@ export default function App() {
         {view === 'messages' && <MessagesView onNavigate={handleNavigate} />}
         {view === 'profile' && <ProfileView onNavigate={handleNavigate} />}
       </div>
+      <AIAssistant />
     </div>
   );
 }
