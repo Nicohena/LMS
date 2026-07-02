@@ -4022,6 +4022,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
               )}
               {qType === 'HOTSPOT' && (
                 <div className="space-y-3">
+                  {/* Image URL input */}
                   <div>
                     <Label className="mb-1.5 block text-xs text-slate-500">Image URL *</Label>
                     <Input
@@ -4030,101 +4031,74 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                       placeholder="https://example.com/image.jpg"
                       className="text-sm"
                     />
-                    <p className="mt-1 text-xs text-slate-400">Paste any image URL. The image will appear below.</p>
                   </div>
 
-                  {/* Image preview */}
-                  {qHotspotImage && qHotspotImage.trim() && (
-                    <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                      <div className="relative" style={{ minHeight: '200px' }}>
+                  {/* Image preview — always visible when URL is entered */}
+                  {qHotspotImage.trim() && (
+                    <div className="overflow-hidden rounded-lg border border-slate-200">
+                      <div className="relative inline-block w-full">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={qHotspotImage}
-                          alt="Hotspot"
-                          className="block w-full"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+                          alt="Hotspot question"
+                          className="block h-auto w-full"
+                          style={{ display: 'block' }}
                         />
                         {/* Zone overlays */}
                         {qHotspotZones.map((zone, idx) => (
                           <div
                             key={idx}
-                            className="absolute border-2 border-violet-500 bg-violet-500/20"
+                            className="absolute border-2 border-violet-500 bg-violet-500/30"
                             style={{ left: zone.x + '%', top: zone.y + '%', width: zone.w + '%', height: zone.h + '%' }}
                           >
-                            <span className="absolute -top-5 left-0 whitespace-nowrap rounded bg-violet-500 px-1.5 py-0.5 text-[10px] text-white">{zone.label || ('Zone ' + (idx + 1))}</span>
+                            <span className="absolute left-0 top-4 whitespace-nowrap rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-medium text-white">{zone.label || ('Zone ' + (idx + 1))}</span>
                             <button
+                              type="button"
                               onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))}
-                              className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white"
+                              className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow"
                             >
-                              <X className="h-2.5 w-2.5" />
+                              <X className="h-3 w-3" />
                             </button>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-                  {/* Hotspot tools */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">Select the type of hotspot:</span>
-                    {[
-                      { id: 'point', label: 'Point', icon: CircleDot },
-                      { id: 'rectangle', label: 'Rectangle', icon: LayoutDashboard },
-                      { id: 'freeform', label: 'Free Form', icon: Edit },
-                    ].map(tool => (
-                      <button key={tool.id} onClick={() => setQHotspotTool(tool.id as any)} className={cn('flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium', qHotspotTool === tool.id ? 'border-violet-300 bg-violet-50 text-violet-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>
-                        <tool.icon className="h-3 w-3" />
-                        {tool.label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Add zone form — each zone is added as a complete unit */}
+                  {/* Simple zone list with add button */}
                   <div className="rounded-lg border border-slate-100 p-3">
-                    <p className="mb-2 text-xs font-medium text-slate-500">Add a hotspot zone:</p>
-                    <div className="grid grid-cols-5 gap-2">
-                      <div>
-                        <Label className="mb-1 block text-[10px] text-slate-400">X (%)</Label>
-                        <Input type="number" min="0" max="100" placeholder="10" className="w-full text-sm" id="hs-x" />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-[10px] text-slate-400">Y (%)</Label>
-                        <Input type="number" min="0" max="100" placeholder="10" className="w-full text-sm" id="hs-y" />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-[10px] text-slate-400">W (%)</Label>
-                        <Input type="number" min="1" max="100" placeholder="20" className="w-full text-sm" id="hs-w" />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-[10px] text-slate-400">H (%)</Label>
-                        <Input type="number" min="1" max="100" placeholder="20" className="w-full text-sm" id="hs-h" />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block text-[10px] text-slate-400">Label</Label>
-                        <Input placeholder="Heart" className="w-full text-sm" id="hs-label" />
-                      </div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-medium text-slate-500">Click zones ({qHotspotZones.length})</p>
+                      <button
+                        type="button"
+                        onClick={() => setQHotspotZones([...qHotspotZones, { x: 20, y: 20, w: 25, h: 25, label: 'Zone ' + (qHotspotZones.length + 1) }])}
+                        className="flex items-center gap-1 rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-100"
+                      >
+                        <Plus className="h-3 w-3" />Add Zone
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        const x = Number((document.getElementById('hs-x') as HTMLInputElement)?.value || 10);
-                        const y = Number((document.getElementById('hs-y') as HTMLInputElement)?.value || 10);
-                        const w = Number((document.getElementById('hs-w') as HTMLInputElement)?.value || 20);
-                        const h = Number((document.getElementById('hs-h') as HTMLInputElement)?.value || 20);
-                        const label = (document.getElementById('hs-label') as HTMLInputElement)?.value || '';
-                        setQHotspotZones([...qHotspotZones, { x, y, w, h, label }]);
-                        // Clear inputs
-                        (document.getElementById('hs-x') as HTMLInputElement).value = '';
-                        (document.getElementById('hs-y') as HTMLInputElement).value = '';
-                        (document.getElementById('hs-w') as HTMLInputElement).value = '';
-                        (document.getElementById('hs-h') as HTMLInputElement).value = '';
-                        (document.getElementById('hs-label') as HTMLInputElement).value = '';
-                      }}
-                      className="mt-2 rounded-lg bg-violet-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-violet-700"
-                    >
-                      + Add Zone
-                    </button>
+                    {qHotspotZones.map((zone, idx) => (
+                      <div key={idx} className="mb-2 flex items-center gap-2 rounded-lg border border-slate-100 p-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-600">{idx + 1}</span>
+                        <input
+                          type="range" min="0" max="90" value={zone.x}
+                          onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], x: Number(e.target.value) }; setQHotspotZones(n); }}
+                          className="flex-1" title="X position"
+                        />
+                        <input
+                          type="range" min="0" max="90" value={zone.y}
+                          onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], y: Number(e.target.value) }; setQHotspotZones(n); }}
+                          className="flex-1" title="Y position"
+                        />
+                        <Input
+                          value={zone.label}
+                          onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], label: e.target.value }; setQHotspotZones(n); }}
+                          placeholder="Label" className="w-24 text-xs"
+                        />
+                        <button type="button" onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>
+                      </div>
+                    ))}
+                    {qHotspotZones.length === 0 && <p className="text-xs text-slate-400">No zones yet. Click "Add Zone" to create a clickable area on the image.</p>}
                   </div>
-                  {qHotspotZones.length > 0 && (
-                    <p className="text-xs text-slate-400">{qHotspotZones.length} zone(s) added. Correct answer: {qHotspotZones.map(z => z.label).filter(Boolean).join(', ') || 'unnamed zones'}</p>
-                  )}
                 </div>
               )}
             </div>
