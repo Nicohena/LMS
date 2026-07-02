@@ -763,11 +763,11 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
   );
 
   const stats = studentData?.stats;
+  const avgProgress = Math.round(stats?.averageProgress ?? 0);
   const liveStats = [
     { label: 'Enrolled', value: String(stats?.enrollments?.total ?? 0), icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     { label: 'Active', value: String(stats?.enrollments?.active ?? 0), icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Completed', value: String(stats?.enrollments?.completed ?? 0), icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Avg Progress', value: `${Math.round(stats?.averageProgress ?? 0)}%`, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
     { label: 'Badges', value: String(stats?.gamification?.badges ?? 0), icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   ];
 
@@ -806,9 +806,9 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {liveStats.map((stat) => (
-          <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm">
+          <Card key={stat.label} className="border border-slate-200 p-4 shadow-sm rounded-xl">
             <div className="flex items-center gap-3">
               <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', stat.bg)}><stat.icon className={cn('h-5 w-5', stat.color)} /></div>
               <div><p className="text-xs font-medium text-slate-500">{stat.label}</p><p className="text-xl font-bold text-slate-900">{stat.value}</p></div>
@@ -816,6 +816,31 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
           </Card>
         ))}
       </div>
+
+      {/* Overall Progress Card with circular indicator */}
+      <Card className="mb-6 border border-slate-200 p-5 shadow-sm rounded-xl">
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+          {/* Circular progress */}
+          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center">
+            <svg className="h-20 w-20 -rotate-90" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="34" fill="none" stroke="#E5E7EB" strokeWidth="6" />
+              <circle cx="40" cy="40" r="34" fill="none" stroke="#6366F1" strokeWidth="6" strokeLinecap="round" strokeDasharray={2 * Math.PI * 34} strokeDashoffset={2 * Math.PI * 34 * (1 - avgProgress / 100)} className="transition-all duration-1000" />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-lg font-bold text-slate-900">{avgProgress}%</span>
+            </div>
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="text-base font-semibold text-slate-900">Overall Learning Progress</h3>
+            <p className="mt-1 text-sm text-slate-500">You have completed {stats?.enrollments?.completed ?? 0} out of {stats?.enrollments?.total ?? 0} courses. Keep up the great work!</p>
+            <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
+              <span className="flex items-center gap-1"><Trophy className="h-3.5 w-3.5 text-amber-500" />Level {stats?.gamification?.level ?? 1}</span>
+              <span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-indigo-500" />{(stats?.gamification?.totalXP ?? 0).toLocaleString()} XP</span>
+              <span className="flex items-center gap-1"><Flame className="h-3.5 w-3.5 text-orange-500" />{stats?.gamification?.currentStreak ?? 0} day streak</span>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -3449,12 +3474,21 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 
             {existingQuestions.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Existing Questions ({existingQuestions.length})</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Questions ({existingQuestions.length})</p>
+                  <Badge className="bg-indigo-50 text-indigo-600 hover:bg-indigo-50">{existingQuestions.reduce((sum: number, q: any) => sum + (q.points || 0), 0)} total points</Badge>
+                </div>
                 {existingQuestions.map((q: any, idx: number) => (
-                  <div key={q.id} className="group flex items-start gap-3 rounded-lg border border-slate-100 p-3">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">{idx + 1}</div>
-                    <div className="flex-1"><p className="text-sm font-medium text-slate-900">{q.questionText}</p><p className="text-xs text-slate-400">{questionTypeLabels[q.type] ?? q.type} · {q.points} pt</p></div>
-                    <button onClick={() => deleteQuestion.mutate(q.id, { onSuccess: () => toast({ title: 'Question deleted' }), onError: () => toast({ title: 'Error', variant: 'destructive' }) })} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <div key={q.id} className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-all hover:border-indigo-200 hover:shadow-sm">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-sm font-bold text-indigo-600">{idx + 1}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900">{q.questionText}</p>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100 text-[10px]">{questionTypeLabels[q.type] ?? q.type}</Badge>
+                        <span className="text-xs text-slate-400">{q.points} pt</span>
+                      </div>
+                    </div>
+                    <button onClick={() => deleteQuestion.mutate(q.id, { onSuccess: () => toast({ title: 'Question deleted' }), onError: () => toast({ title: 'Error', variant: 'destructive' }) })} className="rounded-lg p-1.5 text-slate-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 ))}
               </div>
