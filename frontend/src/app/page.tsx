@@ -4720,7 +4720,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
       }
       case 'SORTING': {
         const correctItems = (currentQuestion.correctAnswer as string[]) ?? [];
-        const userOrder = (answers[currentQuestion.id] as string[]) ?? correctItems.slice().sort(() => Math.random() - 0.5); // shuffled initial
+        const rawAnswer = answers[currentQuestion.id]; const userOrder = Array.isArray(rawAnswer) && rawAnswer.length > 0 ? rawAnswer as string[] : correctItems.slice().sort(() => Math.random() - 0.5);
         // Shuffled order initialized via useEffect when question loads
         return (
           <div className="space-y-2">
