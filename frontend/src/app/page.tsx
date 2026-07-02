@@ -89,65 +89,9 @@ const stats = [
   { label: 'Learning Path', value: '4', icon: Route, color: 'text-violet-600', bg: 'bg-violet-50', trend: '+1' },
 ];
 
-const mostIssuedContent = [
-  { id: 1, title: 'Introduction to UX Design', type: 'Page', views: 1248, trend: 12 },
-  { id: 2, title: 'Wireframing Assignment', type: 'Assignment', views: 892, trend: 8 },
-  { id: 3, title: 'Design Principles Quiz', type: 'Quiz', views: 756, trend: -3 },
-  { id: 4, title: 'Color Theory Basics', type: 'Page', views: 634, trend: 15 },
-  { id: 5, title: 'Final Project Brief', type: 'Assignment', views: 521, trend: 5 },
-];
 
-const assignmentStats = [
-  { name: 'Submitted', count: 142, color: '#4F46E5' },
-  { name: 'Pending', count: 28, color: '#F59E0B' },
-  { name: 'Graded', count: 98, color: '#10B981' },
-  { name: 'Overdue', count: 12, color: '#EF4444' },
-];
 
-const learningContentStatus = [
-  { name: 'Passed', value: 45, color: '#10B981' },
-  { name: 'Failed', value: 8, color: '#EF4444' },
-  { name: 'Overdue', value: 5, color: '#F59E0B' },
-  { name: 'In Progress', value: 32, color: '#4F46E5' },
-  { name: 'Not Started', value: 15, color: '#CBD5E1' },
-];
 
-const topLearners = [
-  { id: 1, name: 'Sarah Chen', points: 4850, rank: 1, avatar: 'SC', courses: 8 },
-  { id: 2, name: 'Mike Rodriguez', points: 4120, rank: 2, avatar: 'MR', courses: 6 },
-  { id: 3, name: 'Emily Davis', points: 3890, rank: 3, avatar: 'ED', courses: 7 },
-  { id: 4, name: 'James Park', points: 3240, rank: 4, avatar: 'JP', courses: 5 },
-  { id: 5, name: 'Lisa Wang', points: 2980, rank: 5, avatar: 'LW', courses: 4 },
-];
-
-const quizGrading = [
-  { id: 1, title: 'UI Design Principles', questions: 20, submissions: 45, pending: 12 },
-  { id: 2, title: 'Color Theory Fundamentals', questions: 15, submissions: 38, pending: 8 },
-  { id: 3, title: 'Typography Basics', questions: 10, submissions: 52, pending: 15 },
-];
-
-const catalogCourses: Course[] = [
-  { id: 'mock-1', title: 'UI Design Fundamentals', description: 'Master the principles of user interface design from wireframing to prototyping.', instructor: 'Sarah Chen', category: 'Design', difficulty: 'Beginner', duration: '12h 30m', lessons: 48, students: 1248, rating: 4.8, thumbnail: 'bg-gradient-to-br from-violet-500 to-violet-500', progress: 75, modules: [
-    { id: 1, title: 'Introduction', lessons: [
-      { id: 1, title: 'Welcome to UI Design', type: 'video', duration: '5:30', completed: true },
-      { id: 2, title: 'Course Overview', type: 'page', duration: '3:00', completed: true },
-    ]},
-    { id: 2, title: 'Sec 1: Step by Step Usability Principles', lessons: [
-      { id: 3, title: 'Usability Heuristics', type: 'video', duration: '12:45', completed: true },
-      { id: 4, title: 'Design Systems', type: 'page', duration: '8:00', completed: false },
-      { id: 5, title: 'Quiz: Principles', type: 'quiz', duration: '15:00', completed: false },
-    ]},
-    { id: 3, title: 'Sec 2: Wireframing Techniques', lessons: [
-      { id: 6, title: 'Low-Fidelity Wireframes', type: 'video', duration: '18:20', completed: false },
-      { id: 7, title: 'Assignment: Wireframe', type: 'assignment', duration: '2:00:00', completed: false },
-    ]},
-  ]},
-  { id: 'mock-2', title: 'Advanced TypeScript', description: 'Deep dive into TypeScript generics, conditional types, and utility types.', instructor: 'Mike Rodriguez', category: 'Programming', difficulty: 'Advanced', duration: '18h 45m', lessons: 62, students: 892, rating: 4.9, thumbnail: 'bg-gradient-to-br from-blue-500 to-cyan-500', progress: 40 },
-  { id: 'mock-3', title: 'Project Management Essentials', description: 'Learn Agile, Scrum, and Kanban methodologies for effective project delivery.', instructor: 'Emily Davis', category: 'Business', difficulty: 'Intermediate', duration: '8h 15m', lessons: 32, students: 634, rating: 4.7, thumbnail: 'bg-gradient-to-br from-violet-500 to-orange-500', progress: 90 },
-  { id: 'mock-4', title: 'Data Science with Python', description: 'From Pandas to Machine Learning — master data science fundamentals.', instructor: 'James Park', category: 'Data Science', difficulty: 'Intermediate', duration: '24h 00m', lessons: 85, students: 521, rating: 4.6, thumbnail: 'bg-gradient-to-br from-emerald-500 to-teal-500', progress: 15 },
-  { id: 'mock-5', title: 'Digital Marketing Mastery', description: 'SEO, content marketing, social media strategy, and paid advertising.', instructor: 'Lisa Wang', category: 'Marketing', difficulty: 'Beginner', duration: '10h 30m', lessons: 40, students: 387, rating: 4.5, thumbnail: 'bg-gradient-to-br from-pink-500 to-rose-500' },
-  { id: 'mock-6', title: 'Cloud Architecture', description: 'AWS, Azure, GCP — design scalable cloud-native applications.', instructor: 'David Kim', category: 'Programming', difficulty: 'Advanced', duration: '20h 00m', lessons: 55, students: 445, rating: 4.8, thumbnail: 'bg-gradient-to-br from-slate-600 to-slate-800' },
-];
 
 const categories = ['All', 'Design', 'Programming', 'Business', 'Data Science', 'Marketing'];
 const difficulties = ['All Levels', 'Beginner', 'Intermediate', 'Advanced'];
@@ -1039,7 +983,7 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
           <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
             <SectionHeader title="Top learners" action="See all" onAction={() => onNavigate('gamification')} />
             <div className="space-y-1">
-              {(liveTopLearners.length > 0 ? liveTopLearners : topLearners.slice(0, 5)).map((learner) => (
+              {liveTopLearners.map((learner) => (
                 <div key={learner.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
                   <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-amber-100 text-amber-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>{learner.rank}</div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-600">{learner.avatar}</div>
@@ -3050,7 +2994,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
         completed: false,
       })),
     })),
-  } : catalogCourses[0];
+  } : null as any;
   const [activeLesson, setActiveLesson] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeModule, setActiveModule] = useState(0);
@@ -3925,7 +3869,6 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [qPoints, setQPoints] = useState('1');
   const [qExplanation, setQExplanation] = useState('');
   const [qRequired, setQRequired] = useState(true);
-  const [qEstimate, setQEstimate] = useState('2');
   const [qError, setQError] = useState('');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [editingQuestionIdx, setEditingQuestionIdx] = useState<number | null>(null);
@@ -4122,7 +4065,9 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     if (quiz?.timeLimit) setTimeLimit(String(quiz.timeLimit));
     if (quiz?.passingScore) setPassingScore(String(quiz.passingScore));
     if (quiz?.maxAttempts) setMaxAttempts(String(quiz.maxAttempts));
-  }, [quiz?.status, quiz?.quizPassword, quiz?.title, quiz?.description, quiz?.timeLimit, quiz?.passingScore, quiz?.maxAttempts]);
+    // Note: quizPassword is NOT loaded from API for security (hasPassword is boolean only)
+    // Teacher can set a new password via Edit Details if needed
+  }, [quiz?.status, quiz?.hasPassword, quiz?.title, quiz?.description, quiz?.timeLimit, quiz?.passingScore, quiz?.maxAttempts]);
 
   // ─── STEP 1: QUIZ DETAILS ───────────────────────────────────────
   if (step === 'details') {
@@ -4837,7 +4782,7 @@ function MatchingQuestion({ pairs, answer, onAnswerChange }: {
 
 function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSubmitted: (attemptId: string) => void }) {
   const authUser = useAuthStore((s) => s.user);
-  const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
+  const isTeacher = authUser?.role === 'TEACHER' || authUser?.role === 'ADMIN'; // Admin can preview
   const { data: quizData, isLoading } = useQuiz(quizId || null);
   const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
   const { data: analyticsData } = useQuizAnalytics(isTeacher ? (quizId || null) : null);
@@ -5360,7 +5305,7 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
             {isPending ? <><Clock className="mr-1 h-3 w-3" />Pending Review</> : passed ? <><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</> : <><X className="mr-1 h-3 w-3" />Failed</>}
           </Badge>
           <h1 className="text-xl font-bold text-slate-900">Quiz Completed!</h1>
-          <p className="mt-1 text-sm text-slate-500">{results.quizTitle} · {correct}/{total} correct</p>
+          <p className="mt-1 text-sm text-slate-500">{results.quizTitle} · {correct}/{total - pending} auto-graded{pending > 0 ? `, ${pending} pending review` : ''}</p>
         </div>
 
         {/* Stats Row */}
