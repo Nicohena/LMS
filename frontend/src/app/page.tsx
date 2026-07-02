@@ -3832,6 +3832,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [quizPassword, setQuizPassword] = useState('');
   const [error, setError] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [showEditDetails, setShowEditDetails] = useState(false);
   const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState('');
   const [publishStatus, setPublishStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
 
@@ -4100,6 +4101,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
           <Badge className={cn('text-xs', publishStatus === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600')}>{publishStatus === 'PUBLISHED' ? 'Published' : 'Draft'}</Badge>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowEditDetails(true)} className="border-slate-200 text-slate-600"><Edit className="mr-1.5 h-4 w-4" />Edit Details</Button>
           <Button variant="outline" onClick={() => setShowPreview(true)} className="border-slate-200 text-slate-600"><PlayCircle className="mr-1.5 h-4 w-4" />Preview</Button>
           <Button onClick={handlePublish} disabled={updateQuiz.isPending} className={cn('text-white', publishStatus === 'PUBLISHED' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-violet-600 hover:bg-violet-700')}>
             {updateQuiz.isPending ? 'Updating...' : publishStatus === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
@@ -4289,6 +4291,63 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
           </div>
         </div>
       </div>
+
+      {/* Edit Details Modal */}
+      {showEditDetails && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 p-5">
+              <h2 className="text-lg font-bold text-slate-900">Edit Quiz Details</h2>
+              <button onClick={() => setShowEditDetails(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4 p-6">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Title *</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Quiz title" />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Quiz description" className="w-full rounded-lg border border-slate-200 p-2.5 text-sm" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Time Limit (min)</Label>
+                  <Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Pass (%)</Label>
+                  <Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Attempts</Label>
+                  <Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Password</Label>
+                <Input value={quizPassword} onChange={(e) => setQuizPassword(e.target.value)} placeholder="Leave empty for no password" className="text-sm" />
+                <p className="mt-1 text-xs text-slate-400">Students must enter this password before starting</p>
+              </div>
+              <Button
+                onClick={() => {
+                  if (!createdQuizId) return;
+                  updateQuiz.mutate(
+                    { quizId: createdQuizId, data: { title, description: description || undefined, timeLimit: Number(timeLimit) || undefined, passingScore: Number(passingScore) || undefined, maxAttempts: Number(maxAttempts) || undefined, quizPassword: quizPassword || null } },
+                    {
+                      onSuccess: () => { toast({ title: 'Quiz details updated' }); setShowEditDetails(false); if (createdQuizId) refetchQuiz(); },
+                      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to update.', variant: 'destructive' }),
+                    },
+                  );
+                }}
+                disabled={updateQuiz.isPending}
+                className="w-full bg-violet-600 text-white hover:bg-violet-700"
+              >
+                {updateQuiz.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal */}
       {showPreview && (
