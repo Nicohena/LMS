@@ -1768,3 +1768,66 @@ export function useXPHistory(limit: number = 20) {
     enabled: !!useAuthStore.getState().isAuthenticated,
   });
 }
+
+// ─── Timetable (Weekly Class Schedule) ────────────────────────────────────
+
+export function useStudentTimetable() {
+  return useQuery({
+    queryKey: ['student-timetable'],
+    queryFn: async () => {
+      const res = await api.get('/school/student/timetable');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useTeacherTimetable() {
+  return useQuery({
+    queryKey: ['teacher-timetable'],
+    queryFn: async () => {
+      const res = await api.get('/school/teacher/timetable');
+      return res.data;
+    },
+    enabled: !!useAuthStore.getState().isAuthenticated,
+  });
+}
+
+export function useSectionTimetable(sectionId: string | null) {
+  return useQuery({
+    queryKey: ['section-timetable', sectionId],
+    queryFn: async () => {
+      const res = await api.get(`/school/sections/${sectionId}/timetable`);
+      return res.data;
+    },
+    enabled: !!sectionId,
+  });
+}
+
+export function useCreateTimetableBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { sectionId: string; entries: any[] }) => {
+      const res = await api.post('/school/timetables/batch', data);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['section-timetable', variables.sectionId] });
+      qc.invalidateQueries({ queryKey: ['student-timetable'] });
+      qc.invalidateQueries({ queryKey: ['teacher-timetable'] });
+    },
+  });
+}
+
+export function useDeleteTimetableEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/school/timetables/${id}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['section-timetable'] });
+      qc.invalidateQueries({ queryKey: ['student-timetable'] });
+    },
+  });
+}

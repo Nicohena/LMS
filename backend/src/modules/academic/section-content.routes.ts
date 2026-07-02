@@ -36,3 +36,24 @@ router.get('/student/dashboard', authorize('STUDENT'), getStudentDashboardContro
 router.get('/admin/school-dashboard', authorize('ADMIN'), getAdminSchoolDashboardController);
 
 export default router;
+
+// --- Timetable (Weekly Class Schedule) ---
+import {
+  createTimetableEntryController, createTimetableBatchController,
+  getTimetableBySectionController, getStudentTimetableController,
+  getTeacherTimetableController,
+  deleteTimetableEntryController, deleteTimetableBySectionController,
+} from './timetable.controller';
+
+// Admin creates timetable entries
+router.post('/timetables', authorize('ADMIN'), createTimetableEntryController);
+router.post('/timetables/batch', authorize('ADMIN'), createTimetableBatchController);
+// Get timetable for a specific section (admin/teacher)
+router.get('/sections/:sectionId/timetable', getTimetableBySectionController);
+// Get current student's timetable
+router.get('/student/timetable', authorize('STUDENT'), getStudentTimetableController);
+// Get current teacher's timetable
+router.get('/teacher/timetable', authorize('TEACHER', 'ADMIN'), getTeacherTimetableController);
+// Delete
+router.delete('/timetables/:id', authorize('ADMIN'), deleteTimetableEntryController);
+router.delete('/sections/:sectionId/timetable', authorize('ADMIN'), deleteTimetableBySectionController);

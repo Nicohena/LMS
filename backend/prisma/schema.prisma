@@ -1227,6 +1227,7 @@ model Section {
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
   sectionSubjects SectionSubject[]
   studentSections StudentSection[]
+  timetables    Timetable[]
 
   @@unique([name, academicYearId])
 }
@@ -1256,6 +1257,7 @@ model SectionSubject {
   sectionContents   SectionContent[]
   sectionQuizzes    SectionQuiz[]
   sectionAssignments SectionAssignment[]
+  timetables        Timetable[]
 
   @@unique([sectionId, subjectId])
 }
@@ -1380,4 +1382,24 @@ model SectionProgress {
   sectionContent SectionContent @relation(fields: [sectionContentId], references: [id], onDelete: Cascade)
 
   @@unique([studentSectionId, sectionContentId])
+}
+
+// ─── Weekly Class Schedule (Ethiopian Education System) ──────────────────
+model Timetable {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  sectionId       String   @db.ObjectId
+  sectionSubjectId String? @db.ObjectId
+  day             String   // MONDAY | TUESDAY | WEDNESDAY | THURSDAY | FRIDAY | SATURDAY | SUNDAY
+  period          Int      // 1st period, 2nd period, etc.
+  startTime       String   // e.g. "08:00"
+  endTime         String   // e.g. "08:45"
+  subjectName     String?  // denormalized for quick display
+  teacherName     String?  // denormalized for quick display
+  room            String?  // classroom/room number
+  breakType       String?  // if this is a break: "SHORT_BREAK" | "LUNCH_BREAK" | null
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  section       Section       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sectionSubject SectionSubject? @relation(fields: [sectionSubjectId], references: [id])
 }

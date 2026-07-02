@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { toast } from "@/hooks/use-toast";
 import { getSocket } from '@/lib/socket';
@@ -770,6 +770,7 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
   const { data: studentData, isLoading } = useStudentDashboard();
   const { data: leaderboardData } = useLeaderboard({ limit: 5 });
   const { data: schoolData } = useStudentSchoolDashboard();
+  const { data: timetableData } = useStudentTimetable();
   const firstName = user?.firstName ?? 'Learner';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -801,6 +802,14 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
 
   const upcoming = (studentData?.upcomingDeadlines ?? []) as any[];
   const recent = (studentData?.recentActivity ?? []) as any[];
+  const studentSections = (schoolData?.sections ?? []) as any[];
+  const timetable = (timetableData?.schedule ?? {}) as Record<string, any[]>;
+
+  const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+
+  // Extract grade + section info from schoolData
+  const primarySection = studentSections[0]?.section;
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
@@ -808,13 +817,17 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{greeting}, {firstName} 👋</h1>
           <p className="mt-1 text-sm text-slate-500">
-            You have <span className="font-semibold text-violet-600">{stats?.enrollments?.active ?? 0} active courses</span> with an average progress of <span className="font-semibold text-violet-600">{Math.round(stats?.averageProgress ?? 0)}%</span>.
+            {primarySection ? (
+              <>You are in <span className="font-semibold text-violet-600">{primarySection.grade?.name}</span> · Section <span className="font-semibold text-violet-600">{primarySection.name}</span> · {primarySection.academicYear?.name}</>
+            ) : (
+              <>Welcome to your learning dashboard</>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {[
-            { label: 'Browse Courses', icon: BookOpen, color: 'text-violet-600', bg: 'bg-violet-50', view: 'catalog' as View },
-            { label: 'My Assignments', icon: FileText, color: 'text-violet-600', bg: 'bg-violet-50', view: 'assignment' as View },
+            { label: 'My Courses', icon: BookOpen, color: 'text-violet-600', bg: 'bg-violet-50', view: 'catalog' as View },
+            { label: 'My Assignments', icon: FileText, color: 'text-amber-600', bg: 'bg-amber-50', view: 'assignment' as View },
             { label: 'Take a Quiz', icon: FileQuestion, color: 'text-emerald-600', bg: 'bg-emerald-50', view: 'quiz' as View },
             { label: 'Certificates', icon: Award, color: 'text-violet-600', bg: 'bg-violet-50', view: 'gamification' as View },
           ].map((a) => (
@@ -839,11 +852,10 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
       {/* Overall Progress Card with circular indicator */}
       <Card className="mb-6 border border-slate-200 p-5 shadow-sm rounded-xl">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
-          {/* Circular progress */}
           <div className="relative flex h-20 w-20 shrink-0 items-center justify-center">
             <svg className="h-20 w-20 -rotate-90" viewBox="0 0 80 80">
               <circle cx="40" cy="40" r="34" fill="none" stroke="#E5E7EB" strokeWidth="6" />
-              <circle cx="40" cy="40" r="34" fill="none" stroke="#6366F1" strokeWidth="6" strokeLinecap="round" strokeDasharray={2 * Math.PI * 34} strokeDashoffset={2 * Math.PI * 34 * (1 - avgProgress / 100)} className="transition-all duration-1000" />
+              <circle cx="40" cy="40" r="34" fill="none" stroke="#C2A7FA" strokeWidth="6" strokeLinecap="round" strokeDasharray={2 * Math.PI * 34} strokeDashoffset={2 * Math.PI * 34 * (1 - avgProgress / 100)} className="transition-all duration-1000" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-lg font-bold text-slate-900">{avgProgress}%</span>
@@ -853,7 +865,7 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
             <h3 className="text-base font-semibold text-slate-900">Overall Learning Progress</h3>
             <p className="mt-1 text-sm text-slate-500">You have completed {stats?.enrollments?.completed ?? 0} out of {stats?.enrollments?.total ?? 0} courses. Keep up the great work!</p>
             <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
-              <span className="flex items-center gap-1"><Trophy className="h-3.5 w-3.5 text-violet-500" />Level {stats?.gamification?.level ?? 1}</span>
+              <span className="flex items-center gap-1"><Trophy className="h-3.5 w-3.5 text-amber-500" />Level {stats?.gamification?.level ?? 1}</span>
               <span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-violet-500" />{(stats?.gamification?.totalXP ?? 0).toLocaleString()} XP</span>
               <span className="flex items-center gap-1"><Flame className="h-3.5 w-3.5 text-orange-500" />{stats?.gamification?.currentStreak ?? 0} day streak</span>
             </div>
@@ -863,23 +875,93 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          {/* My Sections (school-based) */}
+          {/* My Subjects (school-based) - shows grade, section, subjects, teacher names */}
           <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
-            <SectionHeader title="My Sections" action="View all" onAction={() => onNavigate('my-sections')} />
-            {(schoolData?.sections ?? []).length === 0 ? (
+            <SectionHeader title="My Subjects & Teachers" action="View sections" onAction={() => onNavigate('my-sections')} />
+            {studentSections.length === 0 ? (
               <p className="py-4 text-center text-sm text-slate-400">No sections assigned yet. Contact your administrator.</p>
             ) : (
-              <div className="space-y-2">
-                {(schoolData?.sections ?? []).slice(0, 3).map((ss: any) => (
-                  <div key={ss.id} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50"><Layers className="h-4 w-4 text-violet-600" /></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-900">{ss.section.name} · {ss.section.grade.name}</p>
-                      <p className="text-xs text-slate-500">{ss.section.sectionSubjects?.length ?? 0} subjects</p>
+              <div className="space-y-3">
+                {studentSections.map((ss: any) => (
+                  <div key={ss.id}>
+                    <div className="mb-2 flex items-center gap-2">
+                      <Badge className="bg-violet-50 text-violet-600 hover:bg-violet-50">{ss.section?.name}</Badge>
+                      <span className="text-xs text-slate-400">{ss.section?.grade?.name} · {ss.section?.academicYear?.name}</span>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-slate-300" />
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {(ss.section?.sectionSubjects ?? []).map((subj: any) => (
+                        <div key={subj.id} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50"><BookOpen className="h-4 w-4 text-violet-600" /></div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-slate-900">{subj.subject?.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {subj.teacher ? `${subj.teacher.firstName} ${subj.teacher.lastName}` : <span className="text-amber-600">No teacher assigned</span>}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-400">
+                            <span className="flex items-center gap-0.5"><FileText className="h-3 w-3" />{subj._count?.sectionContents ?? 0}</span>
+                            <span className="flex items-center gap-0.5"><FileQuestion className="h-3 w-3" />{subj._count?.sectionQuizzes ?? 0}</span>
+                            <span className="flex items-center gap-0.5"><CheckCircle2 className="h-3 w-3" />{subj._count?.sectionAssignments ?? 0}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {(ss.section?.sectionSubjects ?? []).length === 0 && (
+                        <p className="text-xs text-slate-400">No subjects assigned to this section yet.</p>
+                      )}
+                    </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Weekly Class Schedule (Timetable) */}
+          <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
+            <SectionHeader title="Weekly Class Schedule" />
+            {Object.values(timetable).every((v: any[]) => v.length === 0) ? (
+              <p className="py-4 text-center text-sm text-slate-400">No schedule has been set up yet. Your administrator will create the weekly timetable.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500">
+                      <th className="px-2 py-2 text-left font-medium">Period</th>
+                      {days.map(day => (
+                        <th key={day} className={cn('px-2 py-2 text-center font-medium', today === day && 'text-violet-600')}>{day.charAt(0) + day.slice(1).toLowerCase()}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      // Get all unique periods across all days
+                      const allPeriods = new Set<number>();
+                      for (const day of days) {
+                        (timetable[day] ?? []).forEach((e: any) => allPeriods.add(e.period));
+                      }
+                      const sortedPeriods = Array.from(allPeriods).sort((a, b) => a - b);
+                      return sortedPeriods.map(period => (
+                        <tr key={period} className="border-b border-slate-50">
+                          <td className="px-2 py-2 text-slate-400">P{period}</td>
+                          {days.map(day => {
+                            const entry = (timetable[day] ?? []).find((e: any) => e.period === period);
+                            if (!entry) return <td key={day} className="px-2 py-2 text-center text-slate-300">—</td>;
+                            if (entry.breakType) return <td key={day} className="px-2 py-2 text-center"><span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{entry.breakType === 'SHORT_BREAK' ? 'Break' : 'Lunch'}</span></td>;
+                            return (
+                              <td key={day} className="px-1 py-1">
+                                <div className={cn('rounded-lg p-1.5', today === day ? 'bg-violet-50' : 'bg-slate-50')}>
+                                  <p className="font-medium text-slate-900">{entry.subjectName ?? entry.sectionSubject?.subject?.name ?? 'N/A'}</p>
+                                  <p className="text-[10px] text-slate-400">{entry.startTime}-{entry.endTime}</p>
+                                  {entry.teacherName && <p className="text-[10px] text-violet-500">{entry.teacherName}</p>}
+                                  {entry.room && <p className="text-[10px] text-slate-400">Room {entry.room}</p>}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
               </div>
             )}
           </Card>
@@ -888,12 +970,12 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
           <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
             <SectionHeader title="Upcoming deadlines" action="View assignments" onAction={() => onNavigate('assignment')} />
             {upcoming.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400">No upcoming deadlines. You&apos;re all caught up! 🎉</p>
+              <p className="py-6 text-center text-sm text-slate-400">No upcoming deadlines. You're all caught up! 🎉</p>
             ) : (
               <div className="space-y-2">
                 {upcoming.map((d: any) => (
                   <div key={d.assignmentId} className="flex items-center gap-3 rounded-lg border border-slate-100 p-3 hover:bg-slate-50">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50"><Clock className="h-4 w-4 text-violet-600" /></div>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50"><Clock className="h-4 w-4 text-amber-600" /></div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-slate-900">{d.title}</p>
                       <p className="text-xs text-slate-500">{d.courseTitle}</p>
@@ -941,11 +1023,11 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
                 <p className="text-xs text-slate-500">{stats?.gamification?.badges ?? 0} badges earned</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-violet-50 p-3">
-              <Flame className="h-5 w-5 text-violet-500" />
+            <div className="flex items-center gap-2 rounded-lg bg-amber-50 p-3">
+              <Flame className="h-5 w-5 text-amber-500" />
               <div>
-                <p className="text-xs font-medium text-violet-700">Current streak</p>
-                <p className="text-sm font-bold text-violet-900">{stats?.gamification?.currentStreak ?? 0} day{(stats?.gamification?.currentStreak ?? 0) === 1 ? '' : 's'}</p>
+                <p className="text-xs font-medium text-amber-700">Current streak</p>
+                <p className="text-sm font-bold text-amber-900">{stats?.gamification?.currentStreak ?? 0} day{(stats?.gamification?.currentStreak ?? 0) === 1 ? '' : 's'}</p>
               </div>
             </div>
           </Card>
@@ -956,7 +1038,7 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
             <div className="space-y-1">
               {(liveTopLearners.length > 0 ? liveTopLearners : topLearners.slice(0, 5)).map((learner) => (
                 <div key={learner.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
-                  <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-violet-100 text-violet-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>{learner.rank}</div>
+                  <div className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold', learner.rank === 1 ? 'bg-amber-100 text-amber-700' : learner.rank === 2 ? 'bg-slate-200 text-slate-600' : learner.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400')}>{learner.rank}</div>
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-600">{learner.avatar}</div>
                   <div className="flex-1"><p className="text-sm font-medium text-slate-900">{learner.name}</p><p className="text-xs text-slate-400">Level {learner.level ?? learner.courses}</p></div>
                   <div className="text-right"><p className="text-sm font-bold text-violet-600">{learner.points.toLocaleString()}</p><p className="text-[10px] text-slate-400">XP</p></div>
@@ -970,7 +1052,6 @@ function StudentDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => voi
   );
 }
 
-// ─── Teacher Dashboard Home ──────────────────────────────────────────────
 function TeacherDashboardHomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const user = useAuthStore((s) => s.user);
   const { data: teacherData, isLoading, isError } = useTeacherDashboard();
@@ -1865,8 +1946,115 @@ function MyCoursesView({ onSelectCourse, onNavigate }: { onSelectCourse: (id: st
 
 // ─── My Sections View (School-based: students see their sections, teachers see assigned sections) ──
 // ─── Academic Structure Management (Admin) ───────────────────────────────
+// ── Schedule Tab (Admin creates weekly timetable) ──
+function ScheduleTab() {
+  const { data: sectionsData } = useSections();
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const { data: timetableData } = useSectionTimetable(selectedSection);
+  const { data: ssData } = useSectionSubjects(selectedSection ? { sectionId: selectedSection } : {});
+  const createBatch = useCreateTimetableBatch();
+  const [entries, setEntries] = useState<any[]>([]);
+
+  const sections = (sectionsData?.data ?? []) as any[];
+  const sectionSubjects = (ssData?.data ?? []) as any[];
+  const timetable = (timetableData?.schedule ?? {}) as Record<string, any[]>;
+  const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+  const handleSave = () => {
+    if (!selectedSection || entries.length === 0) return;
+    createBatch.mutate({ sectionId: selectedSection, entries }, {
+      onSuccess: () => { toast({ title: 'Schedule saved', description: 'Weekly timetable has been updated.' }); setEntries([]); },
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to save schedule.', variant: 'destructive' }),
+    });
+  };
+
+  const addEntry = () => {
+    setEntries([...entries, { day: 'MONDAY', period: entries.length + 1, startTime: '08:00', endTime: '08:45', sectionSubjectId: '', room: '' }]);
+  };
+
+  return (
+    <div className=space-y-4>
+      <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
+        <h2 className="mb-4 text-base font-semibold text-slate-900">Weekly Class Schedule</h2>
+        <div className="mb-4">
+          <Label className="mb-1.5 block text-xs text-slate-600">Select Section</Label>
+          <select value={selectedSection ?? ''} onChange={(e) => setSelectedSection(e.target.value || null)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <option value="">Select section...</option>
+            {sections.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.grade?.name})</option>)}
+          </select>
+        </div>
+
+        {selectedSection && (
+          <>
+            {/* Existing timetable */}
+            {!Object.values(timetable).every((v: any[]) => v.length === 0) && (
+              <div className="mb-4 overflow-x-auto">
+                <p className="mb-2 text-xs font-semibold text-slate-500">Current Schedule</p>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500">
+                      <th className="px-2 py-1 text-left">Period</th>
+                      {days.map(d => <th key={d} className="px-2 py-1 text-center">{d.charAt(0) + d.slice(1).toLowerCase()}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const allPeriods = new Set<number>();
+                      for (const day of days) (timetable[day] ?? []).forEach((e: any) => allPeriods.add(e.period));
+                      return Array.from(allPeriods).sort((a, b) => a - b).map(period => (
+                        <tr key={period} className="border-b border-slate-50">
+                          <td className="px-2 py-1 text-slate-400">P{period}</td>
+                          {days.map(day => {
+                            const e = (timetable[day] ?? []).find((x: any) => x.period === period);
+                            if (!e) return <td key={day} className="px-2 py-1 text-center text-slate-300">—</td>;
+                            if (e.breakType) return <td key={day} className="px-2 py-1 text-center"><span className="rounded bg-slate-100 px-1 py-0.5 text-[10px]">{e.breakType === 'SHORT_BREAK' ? 'Break' : 'Lunch'}</span></td>;
+                            return <td key={day} className="px-1 py-1"><div className="rounded bg-slate-50 p-1"><p className="font-medium text-slate-900">{e.subjectName}</p><p className="text-[10px] text-slate-400">{e.startTime}-{e.endTime}</p>{e.teacherName && <p className="text-[10px] text-violet-500">{e.teacherName}</p>}</div></td>;
+                          })}
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Add entries */}
+            <div className="border-t border-slate-100 pt-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-500">Add Schedule Entries</p>
+                <Button size="sm" onClick={addEntry} variant="outline" className="border-slate-200 text-slate-600"><Plus className="mr-1 h-3 w-3" />Add Entry</Button>
+              </div>
+              {entries.length > 0 && (
+                <div className="space-y-2">
+                  {entries.map((entry, idx) => (
+                    <div key={idx} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 p-2">
+                      <select value={entry.day} onChange={(e) => { const n = [...entries]; n[idx].day = e.target.value; setEntries(n); }} className="rounded border border-slate-200 px-2 py-1 text-xs">
+                        {days.map(d => <option key={d} value={d}>{d.charAt(0) + d.slice(1).toLowerCase()}</option>)}
+                      </select>
+                      <input type="number" value={entry.period} onChange={(e) => { const n = [...entries]; n[idx].period = Number(e.target.value); setEntries(n); }} placeholder="P#" className="w-12 rounded border border-slate-200 px-1 py-1 text-xs" />
+                      <input type="time" value={entry.startTime} onChange={(e) => { const n = [...entries]; n[idx].startTime = e.target.value; setEntries(n); }} className="rounded border border-slate-200 px-1 py-1 text-xs" />
+                      <input type="time" value={entry.endTime} onChange={(e) => { const n = [...entries]; n[idx].endTime = e.target.value; setEntries(n); }} className="rounded border border-slate-200 px-1 py-1 text-xs" />
+                      <select value={entry.sectionSubjectId} onChange={(e) => { const n = [...entries]; n[idx].sectionSubjectId = e.target.value; setEntries(n); }} className="flex-1 rounded border border-slate-200 px-2 py-1 text-xs">
+                        <option value="">Select subject...</option>
+                        {sectionSubjects.map((ss: any) => <option key={ss.id} value={ss.id}>{ss.subject?.name} ({ss.teacher ? ss.teacher.firstName + ' ' + ss.teacher.lastName : 'No teacher'})</option>)}
+                      </select>
+                      <input value={entry.room} onChange={(e) => { const n = [...entries]; n[idx].room = e.target.value; setEntries(n); }} placeholder="Room" className="w-16 rounded border border-slate-200 px-1 py-1 text-xs" />
+                      <button onClick={() => setEntries(entries.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-3 w-3" /></button>
+                    </div>
+                  ))}
+                  <Button size="sm" onClick={handleSave} disabled={createBatch.isPending} className="bg-violet-600 text-white hover:bg-violet-700">{createBatch.isPending ? 'Saving...' : 'Save Schedule'}</Button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 function AcademicManagementView({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const [activeTab, setActiveTab] = useState<'years' | 'grades' | 'subjects' | 'sections'>('sections');
+  const [activeTab, setActiveTab] = useState<'years' | 'grades' | 'subjects' | 'sections' | 'schedule'>('sections');
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
 
   const tabs = [
@@ -1874,6 +2062,7 @@ function AcademicManagementView({ onNavigate }: { onNavigate: (v: View) => void 
     { id: 'grades' as const, label: 'Grades', icon: BookOpen },
     { id: 'subjects' as const, label: 'Subjects', icon: BookMarked },
     { id: 'years' as const, label: 'Academic Years', icon: Calendar },
+    { id: 'schedule' as const, label: 'Schedule', icon: Calendar },
   ];
 
   return (
@@ -1910,6 +2099,7 @@ function AcademicManagementView({ onNavigate }: { onNavigate: (v: View) => void 
       {activeTab === 'years' && <AcademicYearsTab />}
       {activeTab === 'grades' && <GradesTab />}
       {activeTab === 'subjects' && <SubjectsTab />}
+      {activeTab === 'schedule' && <ScheduleTab />}
       {activeTab === 'sections' && (
         <SectionsTab
           selectedSectionId={selectedSectionId}
