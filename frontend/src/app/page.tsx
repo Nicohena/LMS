@@ -154,7 +154,7 @@ const difficulties = ['All Levels', 'Beginner', 'Intermediate', 'Advanced'];
 
 // ─── Helper: download data as CSV ────────────────────────────────────────
 function downloadCSV(filename: string, rows: Record<string, any>[], headers?: string[]) {
-  if (rows.length === 0) { alert('No data to export.'); return; }
+  if (rows.length === 0) { toast({ title: 'No data', description: 'No data to export.', variant: 'destructive' }); return; }
   const cols = headers ?? Object.keys(rows[0]);
   const csv = [
     cols.join(','),
@@ -700,7 +700,7 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-sm font-medium text-slate-700">Password</Label>
-                <button type="button" onClick={() => alert('Password reset: Please contact your administrator to reset your password, or use the "Change Password" feature from your Profile page after logging in.')} className="text-xs font-medium text-violet-600 hover:text-violet-700">Forgot password?</button>
+                <button type="button" onClick={() => toast({ title: 'Password Reset', description: 'Please contact your administrator or use Change Password from Profile.' })} className="text-xs font-medium text-violet-600 hover:text-violet-700">Forgot password?</button>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -741,7 +741,7 @@ function LoginPage({ onLogin, onNavigate }: { onLogin: () => void; onNavigate?: 
           </div>
         </Card>
         <p className="mt-6 text-center text-sm text-slate-500">
-          Don&apos;t have an account? <button onClick={() => alert('Self-registration: Please contact your administrator to create an account. If self-registration is enabled in Settings, an admin can enable it for new sign-ups.')} className="font-semibold text-violet-600 hover:text-violet-700">Sign up free</button>
+          Don&apos;t have an account? <button onClick={() => toast({ title: 'Sign Up', description: 'Please contact your administrator to create an account.' })} className="font-semibold text-violet-600 hover:text-violet-700">Sign up free</button>
         </p>
         {onNavigate && (
           <p className="mt-3 text-center text-xs text-slate-400">
@@ -2554,7 +2554,7 @@ function SectionDetailView({ sectionId, onBack }: { sectionId: string; onBack: (
   };
 
   const handleRemoveStudent = (studentId: string) => {
-    if (!confirm('Remove this student from the section?')) return;
+    
     removeStudentMut.mutate({ studentId, sectionId }, {
       onSuccess: () => toast({ title: 'Student removed', description: 'Student has been removed from this section.' }),
       onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to remove student.', variant: 'destructive' }),
@@ -3103,7 +3103,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
   };
 
   const handleDeleteModule = (moduleId: string) => {
-    if (!confirm('Delete this module and all its content? This cannot be undone.')) return;
+    
     deleteModuleMut.mutate(moduleId, {
       onSuccess: () => toast({ title: 'Module deleted', description: 'The module and its content have been removed.' }),
       onError: () => toast({ title: 'Error', description: 'Failed to delete module.', variant: 'destructive' }),
@@ -3111,7 +3111,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
   };
 
   const handleDeleteContent = (contentId: string) => {
-    if (!confirm('Delete this content? This cannot be undone.')) return;
+    
     deleteContentMut.mutate(contentId, {
       onSuccess: () => toast({ title: 'Content deleted', description: 'The content has been removed.' }),
       onError: () => toast({ title: 'Error', description: 'Failed to delete content.', variant: 'destructive' }),
@@ -3172,7 +3172,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
               </Button>
             )}
             {canAuthor && (apiCourse?.course?.status ?? apiCourse?.status) === 'PUBLISHED' && (
-              <Button onClick={() => { if (confirm('Archive this course? Students will no longer see it.')) archiveMut.mutate(courseId, { onSuccess: () => toast({ title: 'Course archived', description: 'Students will no longer see this course.' }), onError: () => toast({ title: 'Error', variant: 'destructive' }) }); }} disabled={archiveMut.isPending} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+              <Button onClick={() => { archiveMut.mutate(courseId, { onSuccess: () => toast({ title: 'Course archived', description: 'Students will no longer see this course.' }), onError: () => toast({ title: 'Error', variant: 'destructive' }) }); }} disabled={archiveMut.isPending} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
                 {archiveMut.isPending ? 'Archiving…' : 'Archive'}
               </Button>
             )}
@@ -3465,7 +3465,7 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
 
   const handleDelete = (e: React.MouseEvent, quizId: string) => {
     e.stopPropagation();
-    if (!confirm('Delete this quiz and all its questions? This cannot be undone.')) return;
+    
     deleteQuizMut.mutate(quizId, {
       onSuccess: () => { toast({ title: 'Quiz deleted', description: 'The quiz has been removed.' }); queryClient.invalidateQueries({ queryKey: ['quizzes'] }); },
       onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to delete quiz.', variant: 'destructive' }),
@@ -4301,13 +4301,13 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
   const secs = timeLeft % 60;
 
   if (isLoading) return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading quiz…</div></main>;
-  if (!quiz) return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-violet-200 bg-violet-50 p-8 text-center"><AlertCircle className="mx-auto mb-3 h-10 w-10 text-violet-500" /><p className="text-sm font-medium text-violet-700">Quiz not found.</p><Button variant="outline" onClick={() => onNavigate('dashboard')} className="mt-4 border-violet-200 text-violet-700">Back to Dashboard</Button></div></main>;
+  if (!quiz) return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-violet-200 bg-violet-50 p-8 text-center"><AlertCircle className="mx-auto mb-3 h-10 w-10 text-violet-500" /><p className="text-sm font-medium text-violet-700">Quiz not found.</p><Button variant="outline" onClick={() => onNavigate('quiz')} className="mt-4 border-violet-200 text-violet-700"><ArrowLeft className="mr-1.5 h-4 w-4 inline"/>Back to Quizzes</Button></div></main>;
 
   // Pre-attempt screen (unchanged)
   if (!attemptId) {
     return (
       <main className="mx-auto max-w-3xl p-4 lg:p-6">
-        <div className="mb-4 flex items-center gap-2 text-sm text-slate-500"><button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button><ChevronRight className="h-3.5 w-3.5" /><span className="font-medium text-slate-700">{quiz.title}</span></div>
+        <div className="mb-4 flex items-center gap-2"><button onClick={() => onNavigate('quiz')} className="flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:text-violet-700"><ArrowLeft className="h-4 w-4" />Back to Quizzes</button></div>
         <Card className="border border-slate-200 p-8 shadow-sm">
           <div className="flex flex-col items-center text-center">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-violet-50"><FileQuestion className="h-7 w-7 text-violet-600" /></div>
@@ -4524,7 +4524,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
 
   return (
     <main className="mx-auto max-w-7xl p-4 lg:p-6">
-      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500"><button onClick={() => onNavigate('dashboard')} className="hover:text-slate-700">Home</button><ChevronRight className="h-3.5 w-3.5" /><span className="font-medium text-slate-700">{quiz.title}</span></div>
+      <div className="mb-4 flex items-center gap-2"><button onClick={() => onNavigate('quiz')} className="flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:text-violet-700"><ArrowLeft className="h-4 w-4" />Back to Quizzes</button></div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3">
           {/* Quiz Header Bar — matches Trenning reference */}
@@ -4633,7 +4633,7 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
         <div className="rounded-lg border border-violet-200 bg-violet-50 p-8 text-center">
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-violet-500" />
           <p className="text-sm font-medium text-violet-700">Results not available.</p>
-          <Button variant="outline" onClick={() => onNavigate('dashboard')} className="mt-4 border-violet-200 text-violet-700">Back to Dashboard</Button>
+          <Button variant="outline" onClick={() => onNavigate('quiz')} className="mt-4 border-violet-200 text-violet-700"><ArrowLeft className="mr-1.5 h-4 w-4 inline"/>Back to Quizzes</Button>
         </div>
       </main>
     );
@@ -5012,7 +5012,7 @@ function TeacherGradingPanel({ assignmentId, assignment }: { assignmentId: strin
           </div>
           {assignment.allowPeerReview && (
             <Button onClick={() => {
-              if (!confirm('Automatically assign peer reviews to all students who submitted?')) return;
+              
               assignPeerReviewsMut.mutate({ assignmentId });
             }} disabled={assignPeerReviewsMut.isPending} variant="outline" size="sm" className="border-violet-200 text-violet-700 hover:bg-violet-50">
               <Users className="mr-1.5 h-3.5 w-3.5" />{assignPeerReviewsMut.isPending ? 'Assigning…' : 'Assign Peer Reviews'}
@@ -5247,7 +5247,7 @@ function AssignmentRunner({ assignmentId, onNavigate }: { assignmentId: string; 
         <div className="rounded-lg border border-violet-200 bg-violet-50 p-8 text-center">
           <AlertCircle className="mx-auto mb-3 h-10 w-10 text-violet-500" />
           <p className="text-sm font-medium text-violet-700">Assignment not found.</p>
-          <Button variant="outline" onClick={() => onNavigate('dashboard')} className="mt-4 border-violet-200 text-violet-700">Back to Dashboard</Button>
+          <Button variant="outline" onClick={() => onNavigate('quiz')} className="mt-4 border-violet-200 text-violet-700"><ArrowLeft className="mr-1.5 h-4 w-4 inline"/>Back to Quizzes</Button>
         </div>
       </main>
     );
@@ -5599,7 +5599,7 @@ function DiscussionDetailView({ discussionId, onNavigate }: { discussionId: stri
   };
 
   const handleDelete = () => {
-    if (!confirm('Delete this discussion and all replies?')) return;
+    
     deleteDiscussion.mutate(discussionId, {
       onSuccess: () => onNavigate('discussions'),
     });
@@ -5831,7 +5831,7 @@ function AnnouncementsView({ onNavigate }: { onNavigate: (v: View) => void }) {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Delete this announcement? This cannot be undone.')) return;
+    
     deleteMut.mutate(id);
   };
 
@@ -6187,7 +6187,7 @@ function AdminSubRolesSection() {
                 <Badge className="bg-violet-50 text-violet-600 text-[10px]">{r._count?.admins ?? 0} admin(s)</Badge>
               </div>
               {!r.isSystem && (
-                <button onClick={() => { if (confirm(`Delete role "${r.name}"?`)) deleteRoleMut.mutate(r.id); }} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
+                <button onClick={() => deleteRoleMut.mutate(r.id)} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -6466,7 +6466,7 @@ function AutoEnrollmentRulesSection() {
               <Badge className={cn('hover:opacity-90', r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400')}>
                 {r.isActive ? 'Active' : 'Inactive'}
               </Badge>
-              <button onClick={() => { if (confirm('Delete this rule?')) deleteRuleMut.mutate(r.id); }} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
+              <button onClick={() => deleteRuleMut.mutate(r.id)} className="rounded p-1 text-slate-300 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -7689,10 +7689,10 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                           const newSubject = prompt(`Edit subject for ${tpl.type.replace(/_/g, ' ')}:`, template?.subject ?? tpl.subject);
                           if (newSubject && newSubject !== (template?.subject ?? tpl.subject)) {
                             await api.patch(`/email-templates/${tpl.type}`, { subject: newSubject });
-                            alert('Template updated! Refresh the page to see changes.');
+                            toast({ title: 'Template updated', description: 'Refresh the page to see changes.' });
                           }
                         } catch (err: any) {
-                          alert('Failed to load template: ' + (err.response?.data?.message || err.message));
+                          toast({ title: 'Error', description: err.response?.data?.message || err.message, variant: 'destructive' });
                         }
                       });
                     }} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-violet-600"><Edit className="h-4 w-4" /></button>
@@ -7712,8 +7712,8 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   import('@/lib/api').then(async ({ default: api }) => {
                     try {
                       await api.post('/grading-scales', { name, type: 'PERCENTAGE', grades: [{ letter: 'A', minPercentage: 90 }, { letter: 'B', minPercentage: 80 }, { letter: 'C', minPercentage: 70 }, { letter: 'D', minPercentage: 60 }, { letter: 'F', minPercentage: 0 }] });
-                      alert('Grading scale created!');
-                    } catch (err: any) { alert('Failed: ' + (err.response?.data?.message || err.message)); }
+                      toast({ title: 'Grading scale created' });
+                    } catch (err: any) { toast({ title: 'Error', description: err.response?.data?.message || err.message, variant: 'destructive' }); }
                   });
                 }} className="bg-violet-600 text-white hover:bg-violet-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Scale</Button>
               </div>
@@ -7748,8 +7748,8 @@ function SettingsView({ onNavigate }: { onNavigate: (v: View) => void }) {
                   import('@/lib/api').then(async ({ default: api }) => {
                     try {
                       await api.post('/academic-years', { name, startDate: start, endDate: end });
-                      alert('Academic year created!');
-                    } catch (err: any) { alert('Failed: ' + (err.response?.data?.message || err.message)); }
+                      toast({ title: 'Academic year created' });
+                    } catch (err: any) { toast({ title: 'Error', description: err.response?.data?.message || err.message, variant: 'destructive' }); }
                   });
                 }} className="bg-violet-600 text-white hover:bg-violet-700"><Plus className="mr-1 h-3.5 w-3.5" />Add Year</Button>
               </div>
