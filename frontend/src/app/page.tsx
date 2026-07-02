@@ -4056,11 +4056,15 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
         return { options: null, correctAnswer: filled.length === 1 ? filled[0] : filled };
       }
       case 'MATCHING': {
-        const valid = qMatchingPairs.filter((p) => p.left.trim() && p.right.trim());
-        if (valid.length < 2) { setQError('Provide at least 2 pairs.'); return null; }
-        const correctAnswer: Record<string, string> = {};
-        valid.forEach((p) => { correctAnswer[p.left.trim()] = p.right.trim(); });
-        return { options: { pairs: valid.map(p => ({ left: p.left.trim(), right: p.right.trim() })) }, correctAnswer };
+        const pairs = (options?.pairs ?? []) as { left: string; right: string }[];
+        const userMatches = (answers[currentQuestion.id] as Record<string, string>) ?? {};
+        return (
+          <MatchingQuestion
+            pairs={pairs}
+            answer={userMatches}
+            onAnswerChange={(matches) => setAnswers({ ...answers, [currentQuestion.id]: matches })}
+          />
+        );
       }
       case 'SORTING': {
         const filled = qSortItems.filter((s) => s.trim());
@@ -4523,6 +4527,259 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   );
 }
 
+// ─── Ordering Question (drag from options to answer area) ──────────────────
+function OrderingQuestion({ items, answer, onAnswerChange }: {
+  items: string[];
+  answer: string[];
+  onAnswerChange: (order: string[]) => void;
+}) {
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragFrom, setDragFrom] = useState<'pool' | 'answer' | null>(null);
+  const [dragOverZone, setDragOverZone] = useState<'pool' | 'answer' | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const placed = new Set(answer);
+  const pool = items.filter((item) => !placed.has(item));
+
+  const handleDragStart = (from: 'pool' | 'answer', idx: number) => {
+    setDragFrom(from);
+    setDraggedIdx(idx);
+  };
+
+  const handleDragEnd = () => {
+    setDragFrom(null);
+    setDraggedIdx(null);
+    setDragOverZone(null);
+    setDragOverIdx(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, zone: 'pool' | 'answer', idx?: number) => {
+    e.preventDefault();
+    setDragOverZone(zone);
+    setDragOverIdx(idx ?? null);
+  };
+
+  const handleDrop = (e: React.DragEvent, zone: 'pool' | 'answer', idx?: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || !dragFrom) return;
+
+    if (dragFrom === 'pool' && zone === 'answer') {
+      // Add from pool to answer
+      const item = pool[draggedIdx];
+      if (item) {
+        const newAnswer = [...answer];
+        if (idx !== undefined && idx >= 0 && idx <= newAnswer.length) {
+          newAnswer.splice(idx, 0, item);
+        } else {
+          newAnswer.push(item);
+        }
+        onAnswerChange(newAnswer);
+      }
+    } else if (dragFrom === 'answer' && zone === 'answer') {
+      // Reorder within answer
+      if (idx !== undefined && draggedIdx !== idx) {
+        const newAnswer = [...answer];
+        const [moved] = newAnswer.splice(draggedIdx, 1);
+        newAnswer.splice(idx, 0, moved);
+        onAnswerChange(newAnswer);
+      }
+    } else if (dragFrom === 'answer' && zone === 'pool') {
+      // Remove from answer back to pool
+      const newAnswer = answer.filter((_, i) => i !== draggedIdx);
+      onAnswerChange(newAnswer);
+    }
+    handleDragEnd();
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">Drag items from the options below into the answer area to build the correct sequence. Reorder by dragging within the answer area.</p>
+
+      {/* Answer area (drop zone) */}
+      <div
+        onDragOver={(e) => handleDragOver(e, 'answer')}
+        onDrop={(e) => handleDrop(e, 'answer')}
+        onDragLeave={() => setDragOverZone(null)}
+        className={cn(
+          'min-h-[80px] rounded-xl border-2 border-dashed p-3 transition-colors',
+          dragOverZone === 'answer' ? 'border-violet-400 bg-violet-50' : 'border-slate-200 bg-slate-50',
+          answer.length === 0 && 'flex items-center justify-center'
+        )}
+      >
+        {answer.length === 0 ? (
+          <p className="text-sm text-slate-300">Drop items here to build your answer...</p>
+        ) : (
+          <div className="space-y-2">
+            {answer.map((item, idx) => (
+              <div
+                key={idx}
+                draggable
+                onDragStart={() => handleDragStart('answer', idx)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, 'answer', idx)}
+                onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'answer', idx); }}
+                className={cn(
+                  'flex cursor-grab items-center gap-3 rounded-lg border-2 bg-white p-3 text-sm font-medium shadow-sm transition-all active:cursor-grabbing',
+                  draggedIdx === idx && dragFrom === 'answer' ? 'opacity-40 border-violet-400' : 'border-slate-200',
+                  dragOverIdx === idx && dragOverZone === 'answer' && 'border-violet-400 border-t-4'
+                )}
+              >
+                <GripVertical className="h-4 w-4 text-slate-400" />
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-600">{idx + 1}</span>
+                <span className="flex-1">{item}</span>
+                <button
+                  type="button"
+                  onClick={() => onAnswerChange(answer.filter((_, i) => i !== idx))}
+                  className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Options pool */}
+      <div>
+        <p className="mb-2 text-xs font-medium text-slate-500">Options ({pool.length} remaining)</p>
+        <div
+          onDragOver={(e) => handleDragOver(e, 'pool')}
+          onDrop={(e) => handleDrop(e, 'pool')}
+          onDragLeave={() => setDragOverZone(null)}
+          className={cn(
+            'flex flex-wrap gap-2 rounded-xl border-2 border-dashed p-3 transition-colors',
+            dragOverZone === 'pool' ? 'border-violet-400 bg-violet-50' : 'border-slate-200 bg-white',
+            pool.length === 0 && 'justify-center'
+          )}
+        >
+          {pool.length === 0 ? (
+            <p className="text-sm text-slate-300">All items placed ✓</p>
+          ) : (
+            pool.map((item, idx) => (
+              <div
+                key={idx}
+                draggable
+                onDragStart={() => handleDragStart('pool', idx)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  'flex cursor-grab items-center gap-2 rounded-lg border-2 border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 shadow-sm transition-all hover:border-violet-400 active:cursor-grabbing',
+                  draggedIdx === idx && dragFrom === 'pool' && 'opacity-40'
+                )}
+              >
+                <GripVertical className="h-3.5 w-3.5 text-violet-400" />
+                {item}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Matching Question (drag answers to prompts) ──────────────────────────
+function MatchingQuestion({ pairs, answer, onAnswerChange }: {
+  pairs: { left: string; right: string }[];
+  answer: Record<string, string>;
+  onAnswerChange: (matches: Record<string, string>) => void;
+}) {
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [dragOverPrompt, setDragOverPrompt] = useState<string | null>(null);
+
+  const allRights = pairs.map((p) => p.right);
+  const usedRights = new Set(Object.values(answer));
+  const availableRights = allRights.filter((r) => !usedRights.has(r));
+
+  const handleDragStart = (item: string) => setDraggedItem(item);
+  const handleDragEnd = () => { setDraggedItem(null); setDragOverPrompt(null); };
+
+  const handleDrop = (prompt: string) => {
+    if (!draggedItem) return;
+    // Remove draggedItem from any existing match
+    const newAnswer = { ...answer };
+    for (const key of Object.keys(newAnswer)) {
+      if (newAnswer[key] === draggedItem) delete newAnswer[key];
+    }
+    // Assign to this prompt
+    newAnswer[prompt] = draggedItem;
+    onAnswerChange(newAnswer);
+    handleDragEnd();
+  };
+
+  const handleRemove = (prompt: string) => {
+    const newAnswer = { ...answer };
+    delete newAnswer[prompt];
+    onAnswerChange(newAnswer);
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">Drag each answer from the right column and drop it onto the matching prompt on the left.</p>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Left column — prompts with drop zones */}
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-slate-500">Prompts</p>
+          {pairs.map((p, idx) => (
+            <div
+              key={idx}
+              onDragOver={(e) => { e.preventDefault(); setDragOverPrompt(p.left); }}
+              onDragLeave={() => setDragOverPrompt(null)}
+              onDrop={(e) => { e.preventDefault(); handleDrop(p.left); }}
+              className={cn(
+                'flex items-center gap-2 rounded-lg border-2 p-3 transition-all',
+                answer[p.left]
+                  ? 'border-emerald-300 bg-emerald-50'
+                  : dragOverPrompt === p.left
+                    ? 'border-violet-400 bg-violet-50 scale-[1.02]'
+                    : 'border-slate-200 bg-white'
+              )}
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">{idx + 1}</span>
+              <span className="flex-1 text-sm font-medium text-slate-700">{p.left}</span>
+              {answer[p.left] ? (
+                <>
+                  <span className="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">{answer[p.left]}</span>
+                  <button type="button" onClick={() => handleRemove(p.left)} className="rounded p-0.5 text-slate-300 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
+                </>
+              ) : (
+                <span className="text-xs text-slate-300">Drop here</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Right column — draggable answers */}
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-slate-500">Answers ({availableRights.length} remaining)</p>
+          <div className="flex flex-wrap gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3 min-h-[60px]">
+            {availableRights.length === 0 ? (
+              <p className="text-sm text-slate-300">All answers matched ✓</p>
+            ) : (
+              availableRights.map((item, idx) => (
+                <div
+                  key={idx}
+                  draggable
+                  onDragStart={() => handleDragStart(item)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    'flex cursor-grab items-center gap-2 rounded-lg border-2 border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 shadow-sm transition-all hover:border-violet-400 hover:shadow-md active:cursor-grabbing',
+                    draggedItem === item && 'opacity-40'
+                  )}
+                >
+                  <GripVertical className="h-3.5 w-3.5 text-violet-400" />
+                  {item}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSubmitted: (attemptId: string) => void }) {
   const authUser = useAuthStore((s) => s.user);
   const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
@@ -4807,27 +5064,15 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
         );
       }
       case 'SORTING': {
-        const correctItems = (currentQuestion.correctAnswer as string[]) ?? [];
-        const rawAnswer = answers[currentQuestion.id]; const userOrder = Array.isArray(rawAnswer) && rawAnswer.length > 0 ? rawAnswer as string[] : correctItems.slice().sort(() => Math.random() - 0.5);
-        // Shuffled order initialized via useEffect when question loads
+        const allItems = (currentQuestion.options?.items ?? currentQuestion.correctAnswer ?? []) as string[];
+        const rawAnswer = answers[currentQuestion.id];
+        const userOrder = Array.isArray(rawAnswer) ? rawAnswer as string[] : [];
         return (
-          <div className="space-y-2">
-            <p className="text-xs text-slate-500">Drag the items to arrange them in the correct order.</p>
-            {userOrder.map((item: string, idx: number) => (
-              <div
-                key={idx}
-                draggable
-                onDragStart={() => handleDragStart('sort', idx)}
-                onDragOver={handleDragOver}
-                onDrop={() => handleDrop('sort', idx)}
-                className={cn('flex cursor-grab items-center gap-3 rounded-lg border-2 border-slate-200 bg-white p-3 text-sm font-medium transition-all hover:border-violet-300 active:cursor-grabbing', draggedItem?.type === 'sort' && draggedItem.idx === idx && 'opacity-50')}
-              >
-                <GripVertical className="h-4 w-4 text-slate-400" />
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-600">{idx + 1}</span>
-                {item}
-              </div>
-            ))}
-          </div>
+          <OrderingQuestion
+            items={allItems}
+            answer={userOrder}
+            onAnswerChange={(order) => setAnswers({ ...answers, [currentQuestion.id]: order })}
+          />
         );
       }
       case 'SHORT_ANSWER':
