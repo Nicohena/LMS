@@ -4347,13 +4347,13 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 }
 
 function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSubmitted: (attemptId: string) => void }) {
+  const authUser = useAuthStore((s) => s.user);
+  const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
   const { data: quizData, isLoading } = useQuiz(quizId || null);
   const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
   const { data: analyticsData } = useQuizAnalytics(isTeacher ? (quizId || null) : null);
   const startAttempt = useStartQuizAttempt();
   const submitAttempt = useSubmitQuizAttempt();
-  const authUser = useAuthStore((s) => s.user);
-  const isTeacher = authUser?.role === 'ADMIN' || authUser?.role === 'TEACHER';
 
   const quiz = (quizData as any)?.quiz;
   const questions = ((quizData as any)?.questions ?? []) as any[];
