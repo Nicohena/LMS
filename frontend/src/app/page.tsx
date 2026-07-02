@@ -4030,10 +4030,16 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 
   const CurrentTypeIcon = questionTypeLabels[qType]?.icon || CheckCircle2;
 
-  // Update publishStatus when quiz loads
+  // Update fields when quiz loads (for editing existing quiz)
   useEffect(() => {
     if (quiz?.status) setPublishStatus(quiz.status);
-  }, [quiz?.status]);
+    if (quiz?.quizPassword !== undefined) setQuizPassword(quiz.quizPassword || '');
+    if (quiz?.title) setTitle(quiz.title);
+    if (quiz?.description) setDescription(quiz.description || '');
+    if (quiz?.timeLimit) setTimeLimit(String(quiz.timeLimit));
+    if (quiz?.passingScore) setPassingScore(String(quiz.passingScore));
+    if (quiz?.maxAttempts) setMaxAttempts(String(quiz.maxAttempts));
+  }, [quiz?.status, quiz?.quizPassword, quiz?.title, quiz?.description, quiz?.timeLimit, quiz?.passingScore, quiz?.maxAttempts]);
 
   // ─── STEP 1: QUIZ DETAILS ───────────────────────────────────────
   if (step === 'details') {
@@ -4491,7 +4497,10 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
   const handleStart = () => {
     if (!matchingEnrollment) { setError('No active enrollment found.'); return; }
     setError('');
-    startAttempt.mutate({ quizId, enrollmentId: matchingEnrollment.id }, { onSuccess: (data) => setAttemptId(data.attempt.id), onError: (err: any) => setError(err.response?.data?.message || 'Failed to start attempt') });
+    startAttempt.mutate(
+      { quizId, enrollmentId: matchingEnrollment.id, password: quizPassword || undefined },
+      { onSuccess: (data) => setAttemptId(data.attempt.id), onError: (err: any) => setError(err.response?.data?.message || 'Failed to start attempt') }
+    );
   };
 
   const handleSubmit = () => {
