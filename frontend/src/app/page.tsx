@@ -3539,7 +3539,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const updateQuiz = useUpdateQuiz();
   const addQuestion = useAddQuestion(existingQuizId ?? null);
   const deleteQuestion = useDeleteQuestion(existingQuizId ?? null);
-  const { data: existingQuizData, refetch: refetchQuiz } = useQuiz(existingQuizId ?? null);
+  const { data: existingQuizData, refetch: refetchQuiz } = useQuiz(createdQuizId ?? existingQuizId ?? null);
   const authUser = useAuthStore((s) => s.user);
   const { data: teacherSectionsData } = useTeacherSections(authUser?.id ?? null);
   const teacherSectionSubjects = (teacherSectionsData?.data ?? []) as any[];
@@ -3660,7 +3660,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
         onSuccess: () => {
           setPublishStatus(newStatus);
           toast({ title: newStatus === 'PUBLISHED' ? 'Quiz published' : 'Quiz unpublished', description: newStatus === 'PUBLISHED' ? 'Students can now see this quiz.' : 'Quiz is now hidden from students.' });
-          refetchQuiz();
+          if (createdQuizId) refetchQuiz();
         },
         onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to update status.', variant: 'destructive' }),
       },
@@ -3721,7 +3721,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
         onSuccess: () => {
           resetQuestionForm();
           toast({ title: 'Question added', description: 'The question appears in the sidebar.' });
-          refetchQuiz();
+          if (createdQuizId) refetchQuiz();
         },
         onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add.'),
       },
@@ -3730,7 +3730,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 
   const handleDeleteQuestion = (qId: string) => {
     deleteQuestion.mutate(qId, {
-      onSuccess: () => { toast({ title: 'Question deleted' }); refetchQuiz(); if (editingQuestionIdx !== null) resetQuestionForm(); },
+      onSuccess: () => { toast({ title: 'Question deleted' }); if (createdQuizId) refetchQuiz(); if (editingQuestionIdx !== null) resetQuestionForm(); },
       onError: () => toast({ title: 'Error', variant: 'destructive' }),
     });
   };
