@@ -145,7 +145,7 @@ export async function createQuiz(
 
   const quiz = await prisma.quiz.create({
     data: {
-      ...(data.contentId ? { contentId: data.contentId } : {}),
+      contentId: data.contentId,
       title: data.title,
       description: data.description,
       instructions: data.instructions,
@@ -157,8 +157,6 @@ export async function createQuiz(
       showFeedback: data.showFeedback,
       showCorrectAnswers: data.showCorrectAnswers,
       status: data.status,
-      quizPassword: data.quizPassword || null,
-      studentInfoRequired: data.studentInfoRequired || false,
       createdBy: userId,
     },
     include: { _count: { select: { questions: true, attempts: true } } },
@@ -258,19 +256,9 @@ export async function updateQuiz(
     }
   }
 
-  const updateData = { ...data };
-  // Don't set contentId to null/undefined — MongoDB unique constraint treats null as a value
-  if (updateData.contentId === null || updateData.contentId === undefined) {
-    delete updateData.contentId;
-  }
-  // Handle null quizPassword (to clear it)
-  const updateData: any = { ...data };
-  if (updateData.quizPassword === null) {
-    updateData.quizPassword = null;
-  }
   const updated = await prisma.quiz.update({
     where: { id: quizId },
-    data: updateData,
+    data,
     include: { _count: { select: { questions: true, attempts: true } } },
   });
 
@@ -283,10 +271,14 @@ export async function deleteQuiz(
 ): Promise<{ id: string; status: string }> {
   await assertCanManageQuiz(quizId, viewer);
 
-  // Actually delete the quiz and all related data (questions, attempts cascade)
-  await prisma.quiz.delete({ where: { id: quizId } });
+  // Soft archive
+  const updated = await prisma.quiz.update({
+    where: { id: quizId },
+    data: { status: 'ARCHIVED' },
+    select: { id: true, status: true },
+  });
 
-  return { id: quizId, status: 'DELETED' };
+  return updated;
 }
 
 // ---------------------------------------------------------------------------
@@ -660,7 +652,7 @@ export async function submitAttempt(
           data: {
             attemptId,
             questionId: question.id,
-            answer: JSON.parse(JSON.stringify({ skipped: true })),
+            answer: null as unknown as Prisma.InputJsonValue,
             isCorrect: false,
             pointsAwarded: 0,
             feedback: 'No answer submitted.',
@@ -675,7 +667,7 @@ export async function submitAttempt(
       data: {
         attemptId,
         questionId: question.id,
-        answer: JSON.parse(JSON.stringify(studentAnswer ?? { skipped: true })),
+        answer: studentAnswer as Prisma.InputJsonValue,
         isCorrect: grade.isCorrect,
         pointsAwarded: grade.pointsAwarded,
         feedback: grade.feedback,
@@ -697,8 +689,7 @@ export async function submitAttempt(
     where: { id: attempt.quizId },
     select: { passingScore: true },
   });
-  // If manual grading is needed, result is 'pending' not pass/fail
-  const passed = hasManualGrading ? null : (scorePercentage >= (quiz?.passingScore ?? 70));
+  const passed = scorePercentage >= (quiz?.passingScore ?? 70);
 
   // If manual grading needed, score is provisional
   const finalScore = hasManualGrading ? totalScore : totalScore;

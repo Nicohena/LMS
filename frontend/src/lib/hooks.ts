@@ -622,8 +622,8 @@ export function useQuiz(quizId: string | null) {
 export function useStartQuizAttempt() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ quizId, enrollmentId }: { quizId: string; enrollmentId: string }) => {
-      const res = await api.post(`/quizzes/${quizId}/attempts/start`, { enrollmentId });
+    mutationFn: async ({ quizId, enrollmentId, password }: { quizId: string; enrollmentId: string; password?: string }) => {
+      const res = await api.post(`/quizzes/${quizId}/attempts/start`, { enrollmentId, password });
       return res.data;
     },
     onSuccess: () => {
@@ -1828,6 +1828,21 @@ export function useDeleteTimetableEntry() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['section-timetable'] });
       qc.invalidateQueries({ queryKey: ['student-timetable'] });
+    },
+  });
+}
+
+// ─── Update Question ──────────────────────────────────────────────────────
+
+export function useUpdateQuestion(quizId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ questionId, data }: { questionId: string; data: any }) => {
+      const res = await api.patch(`/quizzes/questions/${questionId}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      if (quizId) qc.invalidateQueries({ queryKey: ['quiz', quizId] });
     },
   });
 }

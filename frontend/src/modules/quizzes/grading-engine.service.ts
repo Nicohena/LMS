@@ -41,45 +41,11 @@ export function gradeQuestion(
     case 'SHORT_ANSWER':
     case 'ESSAY':
     case 'FILE_UPLOAD':
-      return { isCorrect: null, pointsAwarded: null, feedback: 'Awaiting manual grading.' };
     case 'HOTSPOT':
-      return gradeHotspot(question, studentAnswer);
+      return { isCorrect: null, pointsAwarded: null, feedback: 'Awaiting manual grading.' };
     default:
       return { isCorrect: null, pointsAwarded: null, feedback: `Unknown question type: ${question.type}` };
   }
-}
-
-/**
- * HOTSPOT: student answer is a string (the label of the zone they clicked).
- * Correct answer is an array of correct zone labels.
- */
-function gradeHotspot(
-  question: { correctAnswer: Prisma.JsonValue | null; points: number },
-  studentAnswer: unknown,
-): GradeResult {
-  const correct = question.correctAnswer;
-  if (!correct) {
-    return zero('Question is misconfigured (no correct answer set).');
-  }
-
-  const correctLabels = Array.isArray(correct)
-    ? correct.map((c) => String(c).trim())
-    : [String(correct).trim()];
-
-  // Student can select one or multiple zones
-  const studentLabels: string[] = Array.isArray(studentAnswer)
-    ? studentAnswer.map((s) => String(s).trim())
-    : [String(studentAnswer).trim()];
-
-  // All selected zones must be correct, and all correct zones must be selected
-  const allCorrect = correctLabels.every((cl) => studentLabels.includes(cl)) &&
-                     studentLabels.every((sl) => correctLabels.includes(sl));
-
-  return {
-    isCorrect: allCorrect,
-    pointsAwarded: allCorrect ? question.points : 0,
-    feedback: allCorrect ? 'Correct!' : 'Incorrect zone(s) selected.',
-  };
 }
 
 // ---------------------------------------------------------------------------

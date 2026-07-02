@@ -479,6 +479,9 @@ function CertificateVerificationView({ onNavigate }: { onNavigate: (v: View) => 
   const [result, setResult] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [quizPassword, setQuizPassword] = useState('');
+  const [studentName, setStudentName] = useState('');
+  const [studentId, setStudentId] = useState('');
   const api = require('@/lib/api').default;
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -3812,6 +3815,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const updateQuiz = useUpdateQuiz();
   const addQuestion = useAddQuestion(existingQuizId ?? null);
   const deleteQuestion = useDeleteQuestion(existingQuizId ?? null);
+  const updateQuestion = useUpdateQuestion(createdQuizId ?? existingQuizId ?? null);
   const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
   const { data: existingQuizData, refetch: refetchQuiz } = useQuiz(createdQuizId ?? existingQuizId ?? null);
   const authUser = useAuthStore((s) => s.user);
@@ -3825,6 +3829,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [timeLimit, setTimeLimit] = useState('15');
   const [passingScore, setPassingScore] = useState('60');
   const [maxAttempts, setMaxAttempts] = useState('3');
+  const [quizPassword, setQuizPassword] = useState('');
   const [error, setError] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState('');
@@ -3907,6 +3912,10 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
       setQSortItems(items.length >= 2 ? items : ['', '']);
     } else if (q.type === 'SHORT_ANSWER' || q.type === 'ESSAY') {
       setQTextAnswer(q.correctAnswer || '');
+    } else if (q.type === 'HOTSPOT') {
+      setQHotspotImage(q.options?.imageUrl || '');
+      const zones = (q.options?.zones || []).map((z: any) => ({ ...z, isCorrect: (q.correctAnswer || []).includes(z.label) }));
+      setQHotspotZones(zones);
     }
   };
 
@@ -3914,7 +3923,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     setError('');
     if (!title.trim()) { setError('Title is required.'); return; }
     createQuiz.mutate(
-      { title, description: description.trim() || undefined, timeLimit: Number(timeLimit) || 15, passingScore: Number(passingScore) || 60, maxAttempts: Number(maxAttempts) || 3, status: 'DRAFT' },
+      { title, description: description.trim() || undefined, timeLimit: Number(timeLimit) || 15, passingScore: Number(passingScore) || 60, maxAttempts: Number(maxAttempts) || 3, status: 'DRAFT', quizPassword: quizPassword || undefined },
       {
         onSuccess: (data: any) => {
           const id = data?.quiz?.id ?? data?.id;
@@ -4061,6 +4070,11 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (min)</Label><Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} /></div>
                 <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Pass (%)</Label><Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} /></div>
                 <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Attempts</Label><Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} /></div>
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Password (optional)</Label>
+                <Input value={quizPassword} onChange={(e) => setQuizPassword(e.target.value)} placeholder="Leave empty for no password" className="text-sm" />
+                <p className="mt-1 text-xs text-slate-400">Students must enter this password before starting the quiz</p>
               </div>
               <div>
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
@@ -4252,18 +4266,12 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
               )}
             </div>
 
-            {/* Scoring */}
-            <div className="mb-4 flex items-center gap-6 border-t border-slate-100 pt-4">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-slate-400" />
-                <Input type="number" value={qEstimate} onChange={(e) => setQEstimate(e.target.value)} className="w-16 text-sm" />
-                <span className="text-xs text-slate-500">Mins</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-amber-400" />
-                <Input type="number" value={qPoints} onChange={(e) => setQPoints(e.target.value)} className="w-16 text-sm" />
-                <span className="text-xs text-slate-500">Points</span>
-              </div>
+            {/* Scoring — points only (timing is for the whole quiz) */}
+            <div className="mb-4 flex items-center gap-2 border-t border-slate-100 pt-4">
+              <div className="h-2 w-2 rounded-full bg-amber-400" />
+              <Input type="number" value={qPoints} onChange={(e) => setQPoints(e.target.value)} className="w-16 text-sm" />
+              <span className="text-xs text-slate-500">Points</span>
+              <span className="ml-3 text-xs text-slate-400">Time limit is set for the entire quiz, not per question</span>
             </div>
 
             {/* Explanation */}
@@ -4637,10 +4645,10 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
         return <div><Label className="mb-1.5 block text-xs text-slate-500">Upload your file</Label><div className="rounded-lg border-2 border-dashed border-slate-200 p-6 text-center"><Upload className="mx-auto mb-2 h-8 w-8 text-slate-300" /><p className="text-sm text-slate-500">Click to upload or drag and drop</p><input type="file" className="mt-2 text-xs text-slate-400" onChange={(e) => { const f = e.target.files?.[0]; if (f) setAnswers({ ...answers, [currentQuestion.id]: { fileName: f.name, fileSize: f.size } }); }} /></div></div>;
       case 'HOTSPOT': {
         const zones = options?.zones ?? [];
-        const userZone = (answers[currentQuestion.id] as string) ?? null;
+        const userZones = Array.isArray(answers[currentQuestion.id]) ? (answers[currentQuestion.id] as string[]) : (answers[currentQuestion.id] ? [answers[currentQuestion.id] as string] : []);
         return (
           <div className="space-y-3">
-            <p className="text-xs text-slate-500">Click on the correct area of the image to select your answer.</p>
+            <p className="text-xs text-slate-500">Click on the correct area(s) of the image. You can select multiple zones.</p>
             {options?.imageUrl ? (
               <div className="relative inline-block w-full overflow-hidden rounded-lg border-2 border-slate-200 cursor-pointer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -4653,11 +4661,17 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
                 />
                 {/* Zone overlays — visible with subtle border so students know where to click */}
                 {zones.map((z: any, idx: number) => {
-                  const isSelected = userZone === z.label;
+                  const isSelected = userZones.includes(z.label);
                   return (
                     <div
                       key={idx}
-                      onClick={(e) => { e.stopPropagation(); setAnswers({ ...answers, [currentQuestion.id]: z.label }); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const current = Array.isArray(answers[currentQuestion.id]) ? answers[currentQuestion.id] as string[] : [];
+                        const isSelected = current.includes(z.label);
+                        const newSelection = isSelected ? current.filter((s) => s !== z.label) : [...current, z.label];
+                        setAnswers({ ...answers, [currentQuestion.id]: newSelection });
+                      }}
                       className={cn(
                         'absolute cursor-pointer border-2 transition-all',
                         isSelected
@@ -4678,10 +4692,10 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             ) : (
               <p className="text-sm text-slate-400">No image available for this question.</p>
             )}
-            {userZone && (
+            {userZones.length > 0 && (
               <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm text-emerald-600">Selected: {userZone}</span>
+                <span className="text-sm text-emerald-600">Selected: {userZones.join(', ')}</span>
                 <button onClick={() => { const n = { ...answers }; delete n[currentQuestion.id]; setAnswers(n); }} className="ml-auto text-xs text-slate-400 hover:text-red-500">Clear</button>
               </div>
             )}

@@ -319,6 +319,8 @@ model Quiz {
   title              String
   description        String?
   instructions       String?
+  quizPassword       String?
+  studentInfoRequired Boolean    @default(false)
   timeLimit          Int?
   passingScore       Float       @default(70)
   maxAttempts        Int         @default(1)
