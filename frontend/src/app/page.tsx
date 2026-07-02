@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion, useQuizAttempts } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { toast } from "@/hooks/use-toast";
 import { getSocket } from '@/lib/socket';
@@ -3810,6 +3810,87 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
   );
 }
 
+// ─── Quiz Submissions Modal (teacher views student attempts) ──────────────
+function QuizSubmissionsModal({ quizId, onClose }: { quizId: string | null; onClose: () => void }) {
+  const { data, isLoading, isError } = useQuizAttempts(quizId);
+  const attempts = (data?.data ?? data?.attempts ?? []) as any[];
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white p-5">
+          <h2 className="text-lg font-bold text-slate-900">Student Submissions ({attempts.length})</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="p-6">
+          {isLoading && <p className="py-8 text-center text-sm text-slate-400">Loading submissions...</p>}
+          {isError && <p className="py-8 text-center text-sm text-red-500">Failed to load submissions.</p>}
+          {!isLoading && !isError && attempts.length === 0 && (
+            <div className="py-8 text-center">
+              <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              <p className="text-sm text-slate-400">No student submissions yet.</p>
+            </div>
+          )}
+          {attempts.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs text-slate-500">
+                    <th className="px-3 py-2 text-left font-medium">Student</th>
+                    <th className="px-3 py-2 text-left font-medium">Status</th>
+                    <th className="px-3 py-2 text-right font-medium">Score</th>
+                    <th className="px-3 py-2 text-right font-medium">%</th>
+                    <th className="px-3 py-2 text-center font-medium">Result</th>
+                    <th className="px-3 py-2 text-left font-medium">Submitted</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attempts.map((a: any, idx: number) => {
+                    const studentName = a.user ? `${a.user.firstName} ${a.user.lastName}` : 'Unknown';
+                    const initials = a.user ? getInitials(studentName) : '?';
+                    const pct = a.scorePercentage ?? 0;
+                    const maxScore = a.maxPossibleScore ?? 0;
+                    const score = a.score ?? 0;
+                    return (
+                      <tr key={a.id || idx} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-600">{initials}</div>
+                            <span className="font-medium text-slate-900">{studentName}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Badge className={cn(
+                            'text-[10px]',
+                            a.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' :
+                            a.status === 'IN_PROGRESS' ? 'bg-amber-50 text-amber-600' :
+                            a.status === 'TIMED_OUT' ? 'bg-red-50 text-red-600' :
+                            'bg-slate-100 text-slate-500'
+                          )}>{a.status?.replace(/_/g, ' ')}</Badge>
+                        </td>
+                        <td className="px-3 py-3 text-right text-slate-700">{score}/{maxScore}</td>
+                        <td className="px-3 py-3 text-right font-semibold text-slate-900">{pct}%</td>
+                        <td className="px-3 py-3 text-center">
+                          {a.passed === true && <Badge className="bg-emerald-100 text-emerald-700">Passed</Badge>}
+                          {a.passed === false && <Badge className="bg-red-100 text-red-700">Failed</Badge>}
+                          {a.passed === null && <Badge className="bg-amber-100 text-amber-700">Pending</Badge>}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-500">
+                          {a.endTime ? formatDate(a.endTime) : a.startTime ? formatDate(a.startTime) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => void; quizId?: string }) {
   const createQuiz = useCreateQuiz();
   const updateQuiz = useUpdateQuiz();
@@ -3833,6 +3914,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const [error, setError] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [showEditDetails, setShowEditDetails] = useState(false);
+  const [showSubmissions, setShowSubmissions] = useState(false);
   const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState('');
   const [publishStatus, setPublishStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
 
@@ -4108,6 +4190,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setShowEditDetails(true)} className="border-slate-200 text-slate-600"><Edit className="mr-1.5 h-4 w-4" />Edit Details</Button>
+          <Button variant="outline" onClick={() => setShowSubmissions(true)} className="border-slate-200 text-slate-600"><Users className="mr-1.5 h-4 w-4" />Submissions</Button>
           <Button variant="outline" onClick={() => setShowPreview(true)} className="border-slate-200 text-slate-600"><PlayCircle className="mr-1.5 h-4 w-4" />Preview</Button>
           <Button onClick={handlePublish} disabled={updateQuiz.isPending} className={cn('text-white', publishStatus === 'PUBLISHED' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-violet-600 hover:bg-violet-700')}>
             {updateQuiz.isPending ? 'Updating...' : publishStatus === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
@@ -4297,6 +4380,11 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
           </div>
         </div>
       </div>
+
+      {/* Submissions Modal */}
+      {showSubmissions && (
+        <QuizSubmissionsModal quizId={createdQuizId} onClose={() => setShowSubmissions(false)} />
+      )}
 
       {/* Edit Details Modal */}
       {showEditDetails && (

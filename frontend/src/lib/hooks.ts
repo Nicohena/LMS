@@ -1846,3 +1846,16 @@ export function useUpdateQuestion(quizId: string | null) {
     },
   });
 }
+
+// ─── Quiz Attempts (teacher views student submissions) ────────────────────
+
+export function useQuizAttempts(quizId: string | null) {
+  return useQuery({
+    queryKey: ['quiz-attempts', quizId],
+    queryFn: async () => {
+      const res = await api.get(`/quizzes/${quizId}/attempts`);
+      return res.data;
+    },
+    enabled: !!quizId,
+  });
+}
