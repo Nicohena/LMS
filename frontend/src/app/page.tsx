@@ -4463,7 +4463,41 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             </div>
             {quiz.instructions && <div className="mt-6 w-full rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-600"><p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Instructions</p>{quiz.instructions}</div>}
             {error && <div className="mt-4 w-full rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-            {!isTeacher && <Button onClick={handleStart} disabled={startAttempt.isPending || !matchingEnrollment} className="mt-6 bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">{startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}</Button>}
+
+            {/* Password entry if quiz has password */}
+            {!isTeacher && quiz?.quizPassword && (
+              <div className="mt-4 w-full rounded-lg border border-violet-200 bg-violet-50 p-4 text-left">
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Password *</Label>
+                <Input type="password" value={quizPassword} onChange={(e) => setQuizPassword(e.target.value)} placeholder="Enter the password provided by your teacher" className="text-sm" />
+              </div>
+            )}
+
+            {/* Student name/ID entry */}
+            {!isTeacher && (
+              <div className="mt-4 w-full space-y-3 text-left">
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Your Name *</Label>
+                  <Input value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Enter your full name" className="text-sm" />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Student ID *</Label>
+                  <Input value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="Enter your student ID" className="text-sm" />
+                </div>
+              </div>
+            )}
+
+            {!isTeacher && (
+              <Button
+                onClick={handleStart}
+                disabled={startAttempt.isPending || !matchingEnrollment || !studentName.trim() || !studentId.trim() || (!!quiz?.quizPassword && !quizPassword)}
+                className="mt-6 bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
+              >
+                {startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}
+              </Button>
+            )}
+            {!isTeacher && (!studentName.trim() || !studentId.trim()) && matchingEnrollment && (
+              <p className="mt-2 text-xs text-amber-600">Please enter your name and student ID to start</p>
+            )}
             {!matchingEnrollment && !isTeacher && <p className="mt-2 text-xs text-violet-600">You need an active enrollment to take this quiz.</p>}
             {isTeacher && analyticsData && (
               <div className="mt-6 w-full border-t border-slate-200 pt-4 text-left">
