@@ -24,10 +24,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
+      <body suppressHydrationWarning
         className={`${inter.variable} font-sans antialiased bg-white text-slate-900`}
       >
         <QueryProvider>
+          <script dangerouslySetInnerHTML={{__html: `
+            window.addEventListener('error', function(e) {
+              if (e.message && e.message.includes('releasePointerCapture')) {
+                e.preventDefault();
+                e.stopPropagation();
+                return true;
+              }
+            }, true);
+          `}} />
           {children}
         </QueryProvider>
         <Toaster />

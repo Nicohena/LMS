@@ -3480,7 +3480,7 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{isTeacher ? 'All Quizzes' : 'Available Quizzes'}</h1>
-          <p className="mt-1 text-sm text-slate-500">{quizzes.length} {isTeacher ? 'total' : 'published'} quizzes · {isTeacher ? 'Manage your quiz library' : 'Test your knowledge'}</p>
+          <p className="mt-1 text-sm text-slate-500">{quizzes.length} {isTeacher ? 'total' : 'published'} quizzes · {isTeacher ? 'Create quizzes for your assigned classes' : 'Test your knowledge'}</p>
         </div>
         {authUser?.role === 'TEACHER' && (
           <Button onClick={() => setShowCreate(true)} className="bg-violet-600 text-white hover:bg-violet-700">
@@ -3539,6 +3539,10 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const addQuestion = useAddQuestion(existingQuizId ?? null);
   const deleteQuestion = useDeleteQuestion(existingQuizId ?? null);
   const { data: existingQuizData } = useQuiz(existingQuizId ?? null);
+  const authUser = useAuthStore((s) => s.user);
+  const { data: teacherSectionsData } = useTeacherSections(authUser?.id ?? null);
+  const teacherSectionSubjects = (teacherSectionsData?.data ?? []) as any[];
+  const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState<string>('');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -3593,6 +3597,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 
   const handleCreate = () => {
     setError('');
+    if (!selectedSectionSubjectId) { setError('Please select a class (section + subject).'); return; }
     if (!title.trim()) { setError('Title is required.'); return; }
     createQuiz.mutate(
       { title, description: description.trim() || undefined, timeLimit: Number(timeLimit) || 15, passingScore: Number(passingScore) || 60, maxAttempts: Number(maxAttempts) || 3, status },
@@ -3692,6 +3697,16 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
 
         {!isEditing ? (
           <div className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Select Class (Section + Subject) *</Label>
+              <select value={selectedSectionSubjectId} onChange={(e) => setSelectedSectionSubjectId(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
+                <option value="">Select your assigned class...</option>
+                {teacherSectionSubjects.map((ss: any) => (
+                  <option key={ss.id} value={ss.id}>{ss.subject?.name} — {ss.section?.name} ({ss.section?.grade?.name})</option>
+                ))}
+              </select>
+              {teacherSectionSubjects.length === 0 && <p className="mt-1 text-xs text-amber-600">No teaching assignments found. Contact your administrator.</p>}
+            </div>
             <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Title *</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Chapter 1 Quiz" /></div>
             <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label><Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description" /></div>
             <div className="grid grid-cols-2 gap-3">
