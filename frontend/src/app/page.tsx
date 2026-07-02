@@ -3461,13 +3461,24 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
   const [showCreate, setShowCreate] = useState(false);
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const quizzes = (data?.data ?? []) as any[];
+  const allQuizzes = (data?.data ?? []) as any[];
+  // Teachers only see quizzes they created
+  const quizzes = isTeacher
+    ? allQuizzes.filter((q: any) => q.createdBy === authUser?.id || q.createdBy?.id === authUser?.id)
+    : allQuizzes;
 
   const handleDelete = (e: React.MouseEvent, quizId: string) => {
     e.stopPropagation();
-    
     deleteQuizMut.mutate(quizId, {
-      onSuccess: () => { toast({ title: 'Quiz deleted', description: 'The quiz has been removed.' }); queryClient.invalidateQueries({ queryKey: ['quizzes'] }); },
+      onSuccess: () => {
+        toast({ title: 'Quiz deleted', description: 'The quiz has been removed.' });
+        // Immediately remove from cache so UI updates without waiting for refetch
+        queryClient.setQueryData(['quizzes', { limit: 50, status: isTeacher ? undefined : 'PUBLISHED' }], (oldData: any) => {
+          if (!oldData?.data) return oldData;
+          return { ...oldData, data: oldData.data.filter((q: any) => q.id !== quizId) };
+        });
+        queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+      },
       onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to delete quiz.', variant: 'destructive' }),
     });
   };
