@@ -3548,9 +3548,10 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
             </div>
             {/* Quiz info */}
             <div className="mt-3 flex items-center gap-3 text-xs text-slate-400">
+              <span className="flex items-center gap-1"><FileQuestion className="h-3 w-3" />{q.questionCount ?? 0} Q</span>
               <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{q.timeLimit ?? 15} min</span>
               <span className="flex items-center gap-1"><Target className="h-3 w-3" />Pass: {q.passingScore}%</span>
-              <span className="flex items-center gap-1"><Route className="h-3 w-3" />{q.maxAttempts} tries</span>
+              {q.hasPassword && <span className="flex items-center gap-1 text-violet-400"><Lock className="h-3 w-3" />Password</span>}
             </div>
             {/* Teacher action buttons */}
             {isTeacher && (
@@ -4256,7 +4257,7 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                   <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                 </button>
                 {showTypeDropdown && (
-                  <div className="absolute z-50 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="absolute z-50 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg" onMouseLeave={() => setShowTypeDropdown(false)}>
                     {Object.entries(questionTypeLabels).map(([val, info]) => (
                       <button key={val} onClick={() => { setQType(val); resetQuestionForm(); setQType(val); setShowTypeDropdown(false); }} className={cn('flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50', qType === val ? 'bg-violet-50 text-violet-600' : 'text-slate-700')}>
                         <info.icon className="h-4 w-4" />
@@ -4864,6 +4865,12 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
   useEffect(() => { if (quiz?.timeLimit) setTimeLeft(quiz.timeLimit * 60); }, [quiz?.timeLimit]);
   useEffect(() => { if (!attemptId || timeLeft <= 0) return; const t = setTimeout(() => setTimeLeft((v) => v - 1), 1000); return () => clearTimeout(t); }, [attemptId, timeLeft]);
   useEffect(() => { if (attemptId && timeLeft === 0 && !showSubmit) handleSubmit(); /* eslint-disable-next-line */ }, [timeLeft, attemptId]);
+  // Warning notification when time is running low
+  useEffect(() => {
+    if (!attemptId || !timeLeft) return;
+    if (timeLeft === 60) toast({ title: '1 minute remaining!', description: 'Your quiz will auto-submit soon.', variant: 'destructive' });
+    if (timeLeft === 300) toast({ title: '5 minutes remaining', description: 'Plan your time accordingly.' });
+  }, [timeLeft, attemptId]);
   useEffect(() => { if (attemptId) { setCurrentQ(0); setAnswers({}); } }, [attemptId]);
 
   // Keyboard shortcut: Cmd/Ctrl + Enter to go to next question or submit
@@ -4935,7 +4942,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             {error && <div className="mt-4 w-full rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
 
             {/* Password entry if quiz has password */}
-            {!isTeacher && quiz?.quizPassword && (
+            {!isTeacher && quiz?.hasPassword && (
               <div className="mt-4 w-full rounded-lg border border-violet-200 bg-violet-50 p-4 text-left">
                 <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Password *</Label>
                 <Input type="password" value={quizPassword} onChange={(e) => setQuizPassword(e.target.value)} placeholder="Enter the password provided by your teacher" className="text-sm" />
@@ -4959,7 +4966,7 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
             {!isTeacher && (
               <Button
                 onClick={handleStart}
-                disabled={startAttempt.isPending || !matchingEnrollment || !studentName.trim() || !studentId.trim() || (!!quiz?.quizPassword && !quizPassword)}
+                disabled={startAttempt.isPending || !matchingEnrollment || !studentName.trim() || !studentId.trim() || (quiz?.hasPassword && !quizPassword)}
                 className="mt-6 bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
               >
                 {startAttempt.isPending ? 'Starting…' : matchingEnrollment ? 'Start Quiz' : 'No active enrollment'}
@@ -5012,10 +5019,12 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
     switch (qType) {
       case 'MULTIPLE_CHOICE_SINGLE':
       case 'TRUE_FALSE': {
-        const opts = qType === 'TRUE_FALSE' ? [{ text: 'True' }, { text: 'False' }] : options;
+        const rawOpts = qType === 'TRUE_FALSE' ? [{ text: 'True' }, { text: 'False' }] : options;
+        // Shuffle options once per question (lazy state)
+        const [shuffledOpts] = useState(() => qType === 'TRUE_FALSE' ? rawOpts : [...rawOpts].sort(() => Math.random() - 0.5));
         return (
           <div className="space-y-2">
-            {opts.map((opt, idx) => {
+            {shuffledOpts.map((opt, idx) => {
               const optValue = qType === 'TRUE_FALSE' ? opt.text === 'True' : opt.text;
               const selected = answers[currentQuestion.id] === optValue;
               return (
@@ -5317,10 +5326,14 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
   }
 
   const score = Math.round(results.scorePercentage ?? 0);
-  const correct = (results.questions ?? []).filter((q: any) => q.isCorrect).length;
-  const total = results.maxPossibleScore ?? (results.questions ?? []).length;
+  const allQuestions = results.questions ?? [];
+  const correct = allQuestions.filter((q: any) => q.isCorrect === true).length;
+  const incorrect = allQuestions.filter((q: any) => q.isCorrect === false).length;
+  const pending = allQuestions.filter((q: any) => q.isCorrect === null || q.isCorrect === undefined).length;
+  const total = allQuestions.length;
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
   const passed = results.passed;
+  const isPending = passed === null || passed === undefined;
 
   return (
     <main className="mx-auto max-w-4xl p-4 lg:p-6">
@@ -5336,65 +5349,84 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
           <div className="relative mb-4 flex h-32 w-32 items-center justify-center">
             <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="42" fill="none" stroke="#E2E8F0" strokeWidth="8" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke={passed ? '#10B981' : '#EF4444'} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
+              <circle cx="50" cy="50" r="42" fill="none" stroke={isPending ? '#F59E0B' : passed ? '#10B981' : '#EF4444'} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
             </svg>
             <div>
               <p className="text-3xl font-bold text-slate-900">{score}%</p>
               <p className="text-xs text-slate-400">Score</p>
             </div>
           </div>
-          <Badge className={cn('mb-2 hover:opacity-90', passed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
-            {passed ? <><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</> : <><X className="mr-1 h-3 w-3" />Failed</>}
+          <Badge className={cn('mb-2 hover:opacity-90', isPending ? 'bg-amber-50 text-amber-600' : passed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
+            {isPending ? <><Clock className="mr-1 h-3 w-3" />Pending Review</> : passed ? <><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</> : <><X className="mr-1 h-3 w-3" />Failed</>}
           </Badge>
           <h1 className="text-xl font-bold text-slate-900">Quiz Completed!</h1>
           <p className="mt-1 text-sm text-slate-500">{results.quizTitle} · {correct}/{total} correct</p>
         </div>
 
         {/* Stats Row */}
-        <div className="mt-6 grid grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-4 gap-4">
           <div className="rounded-lg border border-slate-100 p-3 text-center">
             <p className="text-2xl font-bold text-emerald-600">{correct}</p>
             <p className="text-xs text-slate-400">Correct</p>
           </div>
           <div className="rounded-lg border border-slate-100 p-3 text-center">
-            <p className="text-2xl font-bold text-red-500">{total - correct}</p>
+            <p className="text-2xl font-bold text-red-500">{incorrect}</p>
             <p className="text-xs text-slate-400">Incorrect</p>
           </div>
+          {pending > 0 && (
+            <div className="rounded-lg border border-slate-100 p-3 text-center">
+              <p className="text-2xl font-bold text-amber-500">{pending}</p>
+              <p className="text-xs text-slate-400">Pending</p>
+            </div>
+          )}
           <div className="rounded-lg border border-slate-100 p-3 text-center">
             <p className="text-2xl font-bold text-violet-600">{accuracy}%</p>
             <p className="text-xs text-slate-400">Accuracy</p>
           </div>
         </div>
+        {isPending && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-700">
+            <Clock className="mr-1.5 inline h-4 w-4" />
+            Your quiz contains questions that require manual grading. The final result will be available after your teacher reviews them.
+          </div>
+        )}
       </Card>
 
       {/* Answer Review */}
       <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
         <h2 className="mb-4 text-base font-semibold text-slate-900">Answer Review</h2>
         <div className="space-y-3">
-          {(results.questions ?? []).map((q: any, idx: number) => (
-            <div key={q.questionId ?? idx} className={cn('rounded-lg border p-4', q.isCorrect ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/50')}>
+          {allQuestions.map((q: any, idx: number) => {
+            const isPendingQ = q.isCorrect === null || q.isCorrect === undefined;
+            return (
+            <div key={q.questionId ?? idx} className={cn('rounded-lg border p-4', isPendingQ ? 'border-amber-200 bg-amber-50/50' : q.isCorrect ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/50')}>
               <div className="flex items-start gap-3">
-                <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', q.isCorrect ? 'bg-emerald-100' : 'bg-red-100')}>
-                  {q.isCorrect ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-red-500" />}
+                <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', isPendingQ ? 'bg-amber-100' : q.isCorrect ? 'bg-emerald-100' : 'bg-red-100')}>
+                  {isPendingQ ? <Clock className="h-4 w-4 text-amber-500" /> : q.isCorrect ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-red-500" />}
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-900">Q{idx + 1}: {q.questionText}</p>
-                  <p className="mt-1 text-xs text-slate-500">Your answer: <span className={q.isCorrect ? 'font-medium text-emerald-600' : 'font-medium text-red-500'}>{String(q.studentAnswer)}</span></p>
-                  {!q.isCorrect && q.correctAnswer !== undefined && (
+                  <p className="mt-1 text-xs text-slate-500">Your answer: <span className={isPendingQ ? 'font-medium text-amber-600' : q.isCorrect ? 'font-medium text-emerald-600' : 'font-medium text-red-500'}>{q.studentAnswer ? String(q.studentAnswer) : 'No answer submitted'}</span></p>
+                  {!isPendingQ && !q.isCorrect && q.correctAnswer !== undefined && q.correctAnswer !== null && (
                     <p className="mt-0.5 text-xs text-slate-500">Correct answer: <span className="font-medium text-emerald-600">{String(q.correctAnswer)}</span></p>
                   )}
+                  {isPendingQ && <p className="mt-0.5 text-xs text-amber-600">Awaiting teacher review</p>}
                   {q.feedback && <p className="mt-1 text-xs italic text-slate-500">{q.feedback}</p>}
+                  {q.pointsAwarded !== null && q.pointsAwarded !== undefined && (
+                    <p className="mt-1 text-xs text-slate-400">{q.pointsAwarded}/{q.pointsPossible ?? 1} points</p>
+                  )}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
 
       {/* Actions */}
       <div className="mt-6 flex gap-3">
         <Button variant="outline" onClick={() => onNavigate('dashboard')} className="border-slate-200 text-slate-600">Back to Dashboard</Button>
-        <Button onClick={() => onNavigate('catalog')} className="bg-violet-600 text-white hover:bg-violet-700">Browse More Courses</Button>
+        <Button onClick={() => onNavigate('quiz')} className="bg-violet-600 text-white hover:bg-violet-700">Back to Quizzes</Button>
         <DisputeGradeButton attemptId={attemptId} />
       </div>
     </main>

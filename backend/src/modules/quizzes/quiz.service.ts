@@ -74,13 +74,20 @@ async function assertCanManageQuestion(
 
 function toQuizResponse(
   quiz: any,
+  viewer?: { id: string; role: Role },
 ): QuizResponse {
-  const { _count, ...rest } = quiz;
-  return {
+  const { _count, quizPassword, ...rest } = quiz;
+  const response: any = {
     ...rest,
     questionCount: _count?.questions ?? 0,
     attemptCount: _count?.attempts ?? 0,
   };
+  // Only include quizPassword for teachers/admins (the quiz owner)
+  if (viewer && (viewer.role === 'ADMIN' || viewer.role === 'TEACHER')) {
+    response.hasPassword = !!quizPassword;
+  }
+  // Never expose the actual password value to anyone via API response
+  return response;
 }
 
 function buildQuizWhere(
@@ -164,7 +171,7 @@ export async function createQuiz(
     include: { _count: { select: { questions: true, attempts: true } } },
   });
 
-  return toQuizResponse(quiz);
+  return toQuizResponse(quiz, { id: userId, role: quiz.creator?.role || 'TEACHER' as Role });
 }
 
 export async function getQuiz(
@@ -269,7 +276,7 @@ export async function updateQuiz(
     include: { _count: { select: { questions: true, attempts: true } } },
   });
 
-  return toQuizResponse(updated);
+  return toQuizResponse(updated, viewer);
 }
 
 export async function deleteQuiz(
