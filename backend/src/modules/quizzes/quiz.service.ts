@@ -171,7 +171,7 @@ export async function createQuiz(
     include: { _count: { select: { questions: true, attempts: true } } },
   });
 
-  return toQuizResponse(quiz, { id: userId, role: quiz.creator?.role || 'TEACHER' as Role });
+  return toQuizResponse(quiz, { id: userId, role: 'TEACHER' as Role });
 }
 
 export async function getQuiz(
@@ -235,7 +235,7 @@ export async function getQuizzes(
   ]);
 
   return {
-    data: rows.map(toQuizResponse),
+    data: rows.map((quiz: any) => toQuizResponse(quiz, viewer)),
     pagination: {
       page: filters.page,
       limit: filters.limit,
