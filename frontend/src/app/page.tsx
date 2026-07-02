@@ -1973,7 +1973,7 @@ function ScheduleTab() {
   };
 
   return (
-    <div className=space-y-4>
+    <div className="space-y-4">
       <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
         <h2 className="mb-4 text-base font-semibold text-slate-900">Weekly Class Schedule</h2>
         <div className="mb-4">
