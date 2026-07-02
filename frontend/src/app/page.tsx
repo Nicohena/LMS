@@ -4389,6 +4389,9 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
   const [startTime] = useState<number>(Date.now());
   const [timeLeft, setTimeLeft] = useState<number>((quiz?.timeLimit ?? 15) * 60);
   const [error, setError] = useState('');
+  const [quizPassword, setQuizPassword] = useState('');
+  const [studentName, setStudentName] = useState('');
+  const [studentId, setStudentId] = useState('');
   const [focusMode, setFocusMode] = useState(false);
   // Drag-and-drop state for sorting/matching
   const [draggedItem, setDraggedItem] = useState<{ type: string; idx: number } | null>(null);
