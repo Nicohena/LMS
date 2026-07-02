@@ -4617,7 +4617,6 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
     if (draggedIdx === null || !dragFrom) return;
 
     if (dragFrom === 'pool' && zone === 'answer') {
-      // Add from pool to answer
       const item = pool[draggedIdx];
       if (item) {
         const newAnswer = [...answer];
@@ -4629,7 +4628,6 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
         onAnswerChange(newAnswer);
       }
     } else if (dragFrom === 'answer' && zone === 'answer') {
-      // Reorder within answer
       if (idx !== undefined && draggedIdx !== idx) {
         const newAnswer = [...answer];
         const [moved] = newAnswer.splice(draggedIdx, 1);
@@ -4637,7 +4635,6 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
         onAnswerChange(newAnswer);
       }
     } else if (dragFrom === 'answer' && zone === 'pool') {
-      // Remove from answer back to pool
       const newAnswer = answer.filter((_, i) => i !== draggedIdx);
       onAnswerChange(newAnswer);
     }
@@ -4646,15 +4643,15 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">Drag items from the options below into the answer area to build the correct sequence. Reorder by dragging within the answer area.</p>
+      <p className="text-xs text-slate-500">Drag items from the options below into the answer area to build the correct sequence. Reorder by dragging left or right.</p>
 
-      {/* Answer area (drop zone) */}
+      {/* Answer area — HORIZONTAL layout */}
       <div
         onDragOver={(e) => handleDragOver(e, 'answer')}
         onDrop={(e) => handleDrop(e, 'answer')}
         onDragLeave={() => setDragOverZone(null)}
         className={cn(
-          'min-h-[80px] rounded-xl border-2 border-dashed p-3 transition-colors',
+          'min-h-[70px] rounded-xl border-2 border-dashed p-3 transition-colors',
           dragOverZone === 'answer' ? 'border-violet-400 bg-violet-50' : 'border-slate-200 bg-slate-50',
           answer.length === 0 && 'flex items-center justify-center'
         )}
@@ -4662,7 +4659,7 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
         {answer.length === 0 ? (
           <p className="text-sm text-slate-300">Drop items here to build your answer...</p>
         ) : (
-          <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
             {answer.map((item, idx) => (
               <div
                 key={idx}
@@ -4672,20 +4669,19 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
                 onDragOver={(e) => handleDragOver(e, 'answer', idx)}
                 onDrop={(e) => { e.stopPropagation(); handleDrop(e, 'answer', idx); }}
                 className={cn(
-                  'flex cursor-grab items-center gap-3 rounded-lg border-2 bg-white p-3 text-sm font-medium shadow-sm transition-all active:cursor-grabbing',
+                  'flex cursor-grab items-center gap-2 rounded-lg border-2 bg-white px-3 py-2 text-sm font-medium shadow-sm transition-all active:cursor-grabbing',
                   draggedIdx === idx && dragFrom === 'answer' ? 'opacity-40 border-violet-400' : 'border-slate-200',
-                  dragOverIdx === idx && dragOverZone === 'answer' && 'border-violet-400 border-t-4'
+                  dragOverIdx === idx && dragOverZone === 'answer' && 'border-violet-400 border-l-4'
                 )}
               >
-                <GripVertical className="h-4 w-4 text-slate-400" />
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-600">{idx + 1}</span>
-                <span className="flex-1">{item}</span>
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-600">{idx + 1}</span>
+                <span>{item}</span>
                 <button
                   type="button"
                   onClick={() => onAnswerChange(answer.filter((_, i) => i !== idx))}
-                  className="rounded p-1 text-slate-300 hover:bg-red-50 hover:text-red-500"
+                  className="ml-1 rounded p-0.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </button>
               </div>
             ))}
@@ -4693,7 +4689,7 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
         )}
       </div>
 
-      {/* Options pool */}
+      {/* Options pool — HORIZONTAL */}
       <div>
         <p className="mb-2 text-xs font-medium text-slate-500">Options ({pool.length} remaining)</p>
         <div
@@ -4701,7 +4697,7 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
           onDrop={(e) => handleDrop(e, 'pool')}
           onDragLeave={() => setDragOverZone(null)}
           className={cn(
-            'flex flex-wrap gap-2 rounded-xl border-2 border-dashed p-3 transition-colors',
+            'flex flex-wrap items-center gap-2 rounded-xl border-2 border-dashed p-3 transition-colors min-h-[60px]',
             dragOverZone === 'pool' ? 'border-violet-400 bg-violet-50' : 'border-slate-200 bg-white',
             pool.length === 0 && 'justify-center'
           )}
@@ -4740,28 +4736,23 @@ function MatchingQuestion({ pairs, answer, onAnswerChange }: {
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverPrompt, setDragOverPrompt] = useState<string | null>(null);
 
-  // Shuffle the right answers ONCE on mount (lazy initializer) so they stay
-  // in the same shuffled order while the student drags, instead of re-shuffling
-  // every render when the answer changes.
+  // Shuffle answers ONCE on mount
   const [shuffledRights] = useState(() => {
     const rights = pairs.map((p) => p.right);
     return rights.sort(() => Math.random() - 0.5);
   });
 
   const usedRights = new Set(Object.values(answer));
-  const availableRights = shuffledRights.filter((r) => !usedRights.has(r));
 
   const handleDragStart = (item: string) => setDraggedItem(item);
   const handleDragEnd = () => { setDraggedItem(null); setDragOverPrompt(null); };
 
   const handleDrop = (prompt: string) => {
     if (!draggedItem) return;
-    // Remove draggedItem from any existing match
     const newAnswer = { ...answer };
     for (const key of Object.keys(newAnswer)) {
       if (newAnswer[key] === draggedItem) delete newAnswer[key];
     }
-    // Assign to this prompt
     newAnswer[prompt] = draggedItem;
     onAnswerChange(newAnswer);
     handleDragEnd();
@@ -4775,7 +4766,7 @@ function MatchingQuestion({ pairs, answer, onAnswerChange }: {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">Drag each answer from the right column and drop it onto the matching prompt on the left.</p>
+      <p className="text-xs text-slate-500">Drag each answer from the right and drop it onto the matching prompt on the left.</p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Left column — prompts with drop zones */}
@@ -4788,7 +4779,7 @@ function MatchingQuestion({ pairs, answer, onAnswerChange }: {
               onDragLeave={() => setDragOverPrompt(null)}
               onDrop={(e) => { e.preventDefault(); handleDrop(p.left); }}
               className={cn(
-                'flex items-center gap-2 rounded-lg border-2 p-3 transition-all',
+                'flex items-center gap-2 rounded-lg border-2 p-3 transition-all min-h-[52px]',
                 answer[p.left]
                   ? 'border-emerald-300 bg-emerald-50'
                   : dragOverPrompt === p.left
@@ -4810,29 +4801,32 @@ function MatchingQuestion({ pairs, answer, onAnswerChange }: {
           ))}
         </div>
 
-        {/* Right column — draggable answers */}
+        {/* Right column — answers in FIXED positions (don't move when used) */}
         <div className="space-y-2">
-          <p className="text-xs font-medium text-slate-500">Answers ({availableRights.length} remaining)</p>
-          <div className="flex flex-wrap gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3 min-h-[60px]">
-            {availableRights.length === 0 ? (
-              <p className="text-sm text-slate-300">All answers matched ✓</p>
-            ) : (
-              availableRights.map((item, idx) => (
+          <p className="text-xs font-medium text-slate-500">Answers</p>
+          <div className="space-y-2">
+            {shuffledRights.map((item, idx) => {
+              const isUsed = usedRights.has(item);
+              return (
                 <div
                   key={idx}
-                  draggable
-                  onDragStart={() => handleDragStart(item)}
+                  draggable={!isUsed}
+                  onDragStart={() => !isUsed && handleDragStart(item)}
                   onDragEnd={handleDragEnd}
                   className={cn(
-                    'flex cursor-grab items-center gap-2 rounded-lg border-2 border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 shadow-sm transition-all hover:border-violet-400 hover:shadow-md active:cursor-grabbing',
+                    'flex items-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-all min-h-[44px]',
+                    isUsed
+                      ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-default'
+                      : 'border-violet-200 bg-violet-50 text-violet-700 cursor-grab hover:border-violet-400 hover:shadow-sm active:cursor-grabbing',
                     draggedItem === item && 'opacity-40'
                   )}
                 >
-                  <GripVertical className="h-3.5 w-3.5 text-violet-400" />
-                  {item}
+                  <GripVertical className={cn('h-3.5 w-3.5', isUsed ? 'text-slate-200' : 'text-violet-400')} />
+                  <span className={cn(isUsed && 'line-through')}>{item}</span>
+                  {isUsed && <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-emerald-400" />}
                 </div>
-              ))
-            )}
+              );
+            })}
           </div>
         </div>
       </div>
