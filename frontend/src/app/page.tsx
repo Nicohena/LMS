@@ -3813,10 +3813,10 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
 function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => void; quizId?: string }) {
   const createQuiz = useCreateQuiz();
   const updateQuiz = useUpdateQuiz();
+  const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
   const addQuestion = useAddQuestion(existingQuizId ?? null);
   const deleteQuestion = useDeleteQuestion(existingQuizId ?? null);
   const updateQuestion = useUpdateQuestion(createdQuizId ?? existingQuizId ?? null);
-  const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
   const { data: existingQuizData, refetch: refetchQuiz } = useQuiz(createdQuizId ?? existingQuizId ?? null);
   const authUser = useAuthStore((s) => s.user);
   const { data: teacherSectionsData } = useTeacherSections(authUser?.id ?? null);
