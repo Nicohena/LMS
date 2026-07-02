@@ -276,14 +276,10 @@ export async function deleteQuiz(
 ): Promise<{ id: string; status: string }> {
   await assertCanManageQuiz(quizId, viewer);
 
-  // Soft archive
-  const updated = await prisma.quiz.update({
-    where: { id: quizId },
-    data: { status: 'ARCHIVED' },
-    select: { id: true, status: true },
-  });
+  // Actually delete the quiz and all related data (questions, attempts cascade)
+  await prisma.quiz.delete({ where: { id: quizId } });
 
-  return updated;
+  return { id: quizId, status: 'DELETED' };
 }
 
 // ---------------------------------------------------------------------------

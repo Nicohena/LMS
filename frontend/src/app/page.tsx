@@ -3462,10 +3462,10 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const allQuizzes = (data?.data ?? []) as any[];
-  // Teachers only see quizzes they created
+  // Teachers only see quizzes they created (exclude ARCHIVED)
   const quizzes = isTeacher
-    ? allQuizzes.filter((q: any) => q.createdBy === authUser?.id || q.createdBy?.id === authUser?.id)
-    : allQuizzes;
+    ? allQuizzes.filter((q: any) => (q.createdBy === authUser?.id || q.createdBy?.id === authUser?.id) && q.status !== 'ARCHIVED')
+    : allQuizzes.filter((q: any) => q.status !== 'ARCHIVED');
 
   const handleDelete = (e: React.MouseEvent, quizId: string) => {
     e.stopPropagation();
