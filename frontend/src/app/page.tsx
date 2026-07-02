@@ -4320,29 +4320,86 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
                 </div>
               )}
               {qType === 'MATCHING' && (
-                <div className="space-y-2">
-                  {qMatchingPairs.map((pair, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <Input value={pair.left} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], left: e.target.value }; setQMatchingPairs(n); }} placeholder="Left" className="text-sm" />
-                      <span className="text-slate-400">{'\u2194'}</span>
-                      <Input value={pair.right} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], right: e.target.value }; setQMatchingPairs(n); }} placeholder="Right" className="text-sm" />
-                      {qMatchingPairs.length > 2 && <button onClick={() => setQMatchingPairs(qMatchingPairs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-400">Enter matching pairs. The left item is the prompt students see, the right item is the correct answer they must drag to it. Answers will be shuffled automatically for students.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="mb-1.5 block text-xs font-medium text-slate-500">Prompts (Left)</Label>
+                      <div className="space-y-2">
+                        {qMatchingPairs.map((pair, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-400">{idx + 1}</span>
+                            <Input value={pair.left} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], left: e.target.value }; setQMatchingPairs(n); }} placeholder={'Prompt ' + (idx + 1)} className="text-sm" />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                  <button onClick={() => setQMatchingPairs([...qMatchingPairs, { left: '', right: '' }])} className="text-xs text-violet-600 hover:underline">+ Add pair</button>
+                    <div>
+                      <Label className="mb-1.5 block text-xs font-medium text-slate-500">Correct Answers (Right)</Label>
+                      <div className="space-y-2">
+                        {qMatchingPairs.map((pair, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-600">✓</span>
+                            <Input value={pair.right} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], right: e.target.value }; setQMatchingPairs(n); }} placeholder={'Answer ' + (idx + 1)} className="text-sm" />
+                            {qMatchingPairs.length > 2 && <button onClick={() => setQMatchingPairs(qMatchingPairs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 shrink-0"><X className="h-4 w-4" /></button>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => setQMatchingPairs([...qMatchingPairs, { left: '', right: '' }])} className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:underline"><Plus className="h-3 w-3" />Add Pair</button>
+                  {qMatchingPairs.length >= 2 && (
+                    <div className="rounded-lg bg-slate-50 p-3">
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Preview (what students see)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          {qMatchingPairs.filter(p => p.left.trim()).map((p, i) => (
+                            <div key={i} className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600">{p.left}</div>
+                          ))}
+                        </div>
+                        <div className="space-y-1">
+                          {qMatchingPairs.filter(p => p.right.trim()).map((p, i) => (
+                            <div key={i} className="rounded border border-violet-200 bg-violet-50 px-2 py-1 text-xs text-violet-600">{p.right}</div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {qType === 'SORTING' && (
-                <div className="space-y-2">
-                  {qSortItems.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 text-slate-300" />
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-400">{idx + 1}</span>
-                      <Input value={item} onChange={(e) => { const n = [...qSortItems]; n[idx] = e.target.value; setQSortItems(n); }} placeholder={'Item ' + (idx + 1)} className="text-sm" />
-                      {qSortItems.length > 2 && <button onClick={() => setQSortItems(qSortItems.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-400">Enter items in the CORRECT order (top to bottom). Students will see them shuffled and must drag them back into this order.</p>
+                  <div className="space-y-2">
+                    {qSortItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2">
+                        <GripVertical className="h-4 w-4 text-slate-300" />
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-xs font-bold text-violet-600">{idx + 1}</div>
+                        <Input value={item} onChange={(e) => { const n = [...qSortItems]; n[idx] = e.target.value; setQSortItems(n); }} placeholder={'Item ' + (idx + 1) + ' (correct position)'} className="text-sm" />
+                        {idx > 0 && (
+                          <button onClick={() => { const n = [...qSortItems]; [n[idx-1], n[idx]] = [n[idx], n[idx-1]]; setQSortItems(n); }} title="Move up" className="rounded p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-600"><ChevronLeft className="h-4 w-4 rotate-90" /></button>
+                        )}
+                        {idx < qSortItems.length - 1 && (
+                          <button onClick={() => { const n = [...qSortItems]; [n[idx+1], n[idx]] = [n[idx], n[idx+1]]; setQSortItems(n); }} title="Move down" className="rounded p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-600"><ChevronLeft className="h-4 w-4 -rotate-90" /></button>
+                        )}
+                        {qSortItems.length > 2 && <button onClick={() => setQSortItems(qSortItems.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 shrink-0"><X className="h-4 w-4" /></button>}
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => setQSortItems([...qSortItems, ''])} className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:underline"><Plus className="h-3 w-3" />Add Item</button>
+                  {qSortItems.filter(i => i.trim()).length >= 2 && (
+                    <div className="rounded-lg bg-slate-50 p-3">
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Correct Order (what students must recreate)</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {qSortItems.filter(i => i.trim()).map((item, i) => (
+                          <div key={i} className="flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2 py-1 text-xs">
+                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-violet-100 text-[9px] font-bold text-violet-600">{i + 1}</span>
+                            {item}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                  <button onClick={() => setQSortItems([...qSortItems, ''])} className="text-xs text-violet-600 hover:underline">+ Add item</button>
+                  )}
                 </div>
               )}
               {(qType === 'SHORT_ANSWER' || qType === 'ESSAY') && (
