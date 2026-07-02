@@ -3677,13 +3677,22 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
         {imageUrl.trim() && (
           <p className="mt-1 text-xs text-violet-500">↓ Click and drag on the image below to draw zones</p>
         )}
+        {!imageUrl.trim() && (
+          <button
+            type="button"
+            onClick={() => onImageUrlChange('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800')}
+            className="mt-1 text-xs text-violet-500 underline hover:text-violet-700"
+          >
+            Or try a sample image
+          </button>
+        )}
       </div>
 
       {/* Image with drawing area */}
       {imageUrl.trim() && (
         <div
           ref={containerRef}
-          className="relative w-full cursor-crosshair overflow-hidden rounded-lg border-2 border-slate-200 select-none"
+          className="relative w-full cursor-crosshair overflow-hidden rounded-lg border-2 border-dashed border-violet-300 bg-slate-50 select-none"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -3697,6 +3706,15 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
             className="pointer-events-none block h-auto w-full"
             style={{ display: 'block' }}
             draggable={false}
+            onError={(e) => {
+              const img = e.target as HTMLImageElement;
+              img.style.display = 'none';
+              // Show fallback text
+              const fallback = document.createElement('div');
+              fallback.className = 'flex h-[200px] w-full items-center justify-center text-sm text-slate-400';
+              fallback.textContent = 'Could not load image. Check the URL and try again.';
+              img.parentElement?.appendChild(fallback);
+            }}
           />
 
           {/* Existing zones */}
