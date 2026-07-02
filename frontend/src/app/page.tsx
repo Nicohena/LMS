@@ -3542,48 +3542,53 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
   const authUser = useAuthStore((s) => s.user);
   const { data: teacherSectionsData } = useTeacherSections(authUser?.id ?? null);
   const teacherSectionSubjects = (teacherSectionsData?.data ?? []) as any[];
-  const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState<string>('');
+  const [selectedSectionSubjectId, setSelectedSectionSubjectId] = useState('');
 
+  // Step 1: Quiz details form
+  const [step, setStep] = useState<'details' | 'editor'>(existingQuizId ? 'editor' : 'details');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
   const [timeLimit, setTimeLimit] = useState('15');
   const [passingScore, setPassingScore] = useState('60');
   const [maxAttempts, setMaxAttempts] = useState('3');
-  const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
   const [error, setError] = useState('');
   const [createdQuizId, setCreatedQuizId] = useState<string | null>(existingQuizId ?? null);
 
-  // Question form state — supports all types
+  // Question form state
   const [qType, setQType] = useState<string>('MULTIPLE_CHOICE_SINGLE');
   const [qText, setQText] = useState('');
   const [qPoints, setQPoints] = useState('1');
   const [qExplanation, setQExplanation] = useState('');
+  const [qRequired, setQRequired] = useState(true);
+  const [qEstimate, setQEstimate] = useState('2');
   const [qError, setQError] = useState('');
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
 
-  // MCQ state
+  // Answer state
   const [qOptions, setQOptions] = useState<string[]>(['', '', '', '']);
   const [qCorrectIdx, setQCorrectIdx] = useState(0);
-  const [qCorrectIdxs, setQCorrectIdxs] = useState<number[]>([]); // for multiple answer
-
-  // Fill-in-blank state
+  const [qCorrectIdxs, setQCorrectIdxs] = useState<number[]>([]);
   const [qBlanks, setQBlanks] = useState<string[]>(['']);
-
-  // Matching state: pairs of [left, right]
   const [qMatchingPairs, setQMatchingPairs] = useState<{ left: string; right: string }[]>([{ left: '', right: '' }, { left: '', right: '' }]);
-
-  // Sorting state: items in correct order
   const [qSortItems, setQSortItems] = useState<string[]>(['', '']);
-
-  // Short answer / Essay state
   const [qTextAnswer, setQTextAnswer] = useState('');
 
-  // Hotspot state
-  const [qHotspotZones, setQHotspotZones] = useState<{ x: number; y: number; w: number; h: number; label: string }[]>([]);
-  const [qHotspotImage, setQHotspotImage] = useState('');
-
-  const isEditing = !!createdQuizId;
   const quiz = (existingQuizData as any)?.quiz;
   const existingQuestions = ((existingQuizData as any)?.questions ?? []) as any[];
+
+  const questionTypeLabels: Record<string, { label: string; icon: any }> = {
+    MULTIPLE_CHOICE_SINGLE: { label: 'Multiple Choice', icon: CheckCircle2 },
+    MULTIPLE_CHOICE_MULTIPLE: { label: 'Multiple Response', icon: CheckCircle2 },
+    TRUE_FALSE: { label: 'True / False', icon: CircleDot },
+    FILL_IN_BLANK: { label: 'Fill in the Blank', icon: Edit },
+    MATCHING: { label: 'Matching', icon: ArrowLeft },
+    SORTING: { label: 'Reorder', icon: GripVertical },
+    SHORT_ANSWER: { label: 'Short Answer', icon: FileText },
+    ESSAY: { label: 'Essay', icon: FileText },
+    FILE_UPLOAD: { label: 'File Upload', icon: Upload },
+    HOTSPOT: { label: 'Hotspot', icon: Target },
+  };
 
   const resetQuestionForm = () => {
     setQText(''); setQExplanation(''); setQError('');
@@ -3592,16 +3597,18 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     setQMatchingPairs([{ left: '', right: '' }, { left: '', right: '' }]);
     setQSortItems(['', '']);
     setQTextAnswer('');
-    setQHotspotZones([]); setQHotspotImage('');
   };
 
   const handleCreate = () => {
     setError('');
-    if (!selectedSectionSubjectId) { setError('Please select a class (section + subject).'); return; }
+    if (!selectedSectionSubjectId && !existingQuizId) { setError('Please select a class.'); return; }
     if (!title.trim()) { setError('Title is required.'); return; }
     createQuiz.mutate(
-      { title, description: description.trim() || undefined, timeLimit: Number(timeLimit) || 15, passingScore: Number(passingScore) || 60, maxAttempts: Number(maxAttempts) || 3, status },
-      { onSuccess: (data: any) => setCreatedQuizId(data?.quiz?.id ?? data?.id ?? null), onError: (err: any) => setError(err.response?.data?.message || 'Failed to create quiz.') },
+      { title, description: description.trim() || undefined, timeLimit: Number(timeLimit) || 15, passingScore: Number(passingScore) || 60, maxAttempts: Number(maxAttempts) || 3, status: 'DRAFT' },
+      {
+        onSuccess: (data: any) => { const id = data?.quiz?.id ?? data?.id; setCreatedQuizId(id); setStep('editor'); toast({ title: 'Quiz created', description: 'Now add questions.' }); },
+        onError: (err: any) => setError(err.response?.data?.message || 'Failed to create quiz.'),
+      },
     );
   };
 
@@ -3610,54 +3617,40 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
       case 'MULTIPLE_CHOICE_SINGLE': {
         const filled = qOptions.filter((o) => o.trim());
         if (filled.length < 2) { setQError('Provide at least 2 options.'); return null; }
-        return {
-          options: qOptions.map((text, idx) => ({ text: text.trim(), isCorrect: idx === qCorrectIdx })),
-          correctAnswer: qOptions[qCorrectIdx]?.trim() || null,
-        };
+        return { options: qOptions.map((text, idx) => ({ text: text.trim(), isCorrect: idx === qCorrectIdx })), correctAnswer: qOptions[qCorrectIdx]?.trim() || null };
       }
       case 'MULTIPLE_CHOICE_MULTIPLE': {
         const filled = qOptions.filter((o) => o.trim());
         if (filled.length < 2) { setQError('Provide at least 2 options.'); return null; }
         if (qCorrectIdxs.length === 0) { setQError('Select at least one correct answer.'); return null; }
-        return {
-          options: qOptions.map((text, idx) => ({ text: text.trim(), isCorrect: qCorrectIdxs.includes(idx) })),
-          correctAnswer: qCorrectIdxs.map((idx) => qOptions[idx]?.trim()).filter(Boolean),
-        };
+        return { options: qOptions.map((text, idx) => ({ text: text.trim(), isCorrect: qCorrectIdxs.includes(idx) })), correctAnswer: qCorrectIdxs.map((idx) => qOptions[idx]?.trim()).filter(Boolean) };
       }
       case 'TRUE_FALSE':
         return { options: [{ text: 'True', isCorrect: qCorrectIdx === 0 }, { text: 'False', isCorrect: qCorrectIdx === 1 }], correctAnswer: qCorrectIdx === 0 };
       case 'FILL_IN_BLANK': {
         const filled = qBlanks.filter((b) => b.trim());
-        if (filled.length === 0) { setQError('Provide at least one blank answer.'); return null; }
+        if (filled.length === 0) { setQError('Provide at least one answer.'); return null; }
         return { options: null, correctAnswer: filled.length === 1 ? filled[0] : filled };
       }
       case 'MATCHING': {
-        const validPairs = qMatchingPairs.filter((p) => p.left.trim() && p.right.trim());
-        if (validPairs.length < 2) { setQError('Provide at least 2 matching pairs.'); return null; }
-        const options = { pairs: validPairs.map(p => ({ left: p.left.trim(), right: p.right.trim() })) };
+        const valid = qMatchingPairs.filter((p) => p.left.trim() && p.right.trim());
+        if (valid.length < 2) { setQError('Provide at least 2 pairs.'); return null; }
         const correctAnswer: Record<string, string> = {};
-        validPairs.forEach((p) => { correctAnswer[p.left.trim()] = p.right.trim(); });
-        return { options, correctAnswer };
+        valid.forEach((p) => { correctAnswer[p.left.trim()] = p.right.trim(); });
+        return { options: { pairs: valid.map(p => ({ left: p.left.trim(), right: p.right.trim() })) }, correctAnswer };
       }
       case 'SORTING': {
         const filled = qSortItems.filter((s) => s.trim());
-        if (filled.length < 2) { setQError('Provide at least 2 items to sort.'); return null; }
+        if (filled.length < 2) { setQError('Provide at least 2 items.'); return null; }
         return { options: { items: filled }, correctAnswer: filled };
       }
       case 'SHORT_ANSWER':
-      case 'ESSAY': {
-        if (!qTextAnswer.trim() && qType === 'SHORT_ANSWER') { setQError('Provide a reference answer (for manual grading).'); return null; }
+      case 'ESSAY':
         return { options: null, correctAnswer: qTextAnswer.trim() || null };
-      }
       case 'FILE_UPLOAD':
         return { options: null, correctAnswer: null };
-      case 'HOTSPOT': {
-        if (!qHotspotImage.trim()) { setQError('Provide an image URL for the hotspot question.'); return null; }
-        if (qHotspotZones.length === 0) { setQError('Add at least one clickable zone.'); return null; }
-        return { options: { imageUrl: qHotspotImage, zones: qHotspotZones }, correctAnswer: qHotspotZones.map((z) => z.label) };
-      }
       default:
-        setQError('Unsupported question type.'); return null;
+        setQError('Unsupported type.'); return null;
     }
   };
 
@@ -3667,226 +3660,280 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     if (!createdQuizId) { setQError('Create the quiz first.'); return; }
     const qData = buildQuestionData();
     if (!qData) return;
-
     addQuestion.mutate(
       { quizId: createdQuizId!, data: { type: qType as any, questionText: qText, points: Number(qPoints) || 1, options: qData.options, correctAnswer: qData.correctAnswer, explanation: qExplanation.trim() || undefined } },
-      { onSuccess: () => { resetQuestionForm(); toast({ title: 'Question added', description: 'The question has been added to the quiz.' }); }, onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add question.') },
+      { onSuccess: () => { resetQuestionForm(); toast({ title: 'Question added' }); }, onError: (err: any) => setQError(err.response?.data?.message || 'Failed to add.') },
     );
   };
 
-  const questionTypeLabels: Record<string, string> = {
-    MULTIPLE_CHOICE_SINGLE: 'Multiple Choice (single answer)',
-    MULTIPLE_CHOICE_MULTIPLE: 'Multiple Choice (multiple answers)',
-    TRUE_FALSE: 'True / False',
-    FILL_IN_BLANK: 'Fill in the Blank',
-    MATCHING: 'Matching (drag & drop)',
-    SORTING: 'Sorting / Ordering (drag & drop)',
-    SHORT_ANSWER: 'Short Answer',
-    ESSAY: 'Essay',
-    FILE_UPLOAD: 'File Upload',
-    HOTSPOT: 'Hotspot (clickable image)',
-  };
+  const CurrentTypeIcon = questionTypeLabels[qType]?.icon || CheckCircle2;
 
+  // ─── STEP 1: QUIZ DETAILS (Modal) ───────────────────────────────
+  if (step === 'details') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-100 p-5">
+            <h2 className="text-lg font-bold text-slate-900">Create new Quiz</h2>
+            <div className="flex items-center gap-3">
+              <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+              <Button onClick={handleCreate} disabled={createQuiz.isPending} className="bg-violet-600 px-6 text-white hover:bg-violet-700">{createQuiz.isPending ? 'Creating...' : 'Continue'}</Button>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-3">
+            {/* Left: Thumbnail */}
+            <div className="md:col-span-1">
+              <div className="flex aspect-video items-center justify-center rounded-xl bg-gradient-to-br from-blue-200 to-blue-300 p-4">
+                <FileQuestion className="h-16 w-16 text-blue-600" />
+              </div>
+              <p className="mt-2 text-center text-xs text-slate-400">Quiz thumbnail</p>
+            </div>
+
+            {/* Right: Form fields */}
+            <div className="space-y-4 md:col-span-2">
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Title *</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Chapter 1 Quiz" />
+              </div>
+
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Select Class *</Label>
+                <select value={selectedSectionSubjectId} onChange={(e) => setSelectedSectionSubjectId(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
+                  <option value="">Select your assigned class...</option>
+                  {teacherSectionSubjects.map((ss: any) => <option key={ss.id} value={ss.id}>{ss.subject?.name} - {ss.section?.name} ({ss.section?.grade?.name})</option>)}
+                </select>
+                {teacherSectionSubjects.length === 0 && <p className="mt-1 text-xs text-amber-600">No teaching assignments. Contact admin.</p>}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (min)</Label>
+                  <Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Pass (%)</Label>
+                  <Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Attempts</Label>
+                  <Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} />
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Let your learner know a little about the quiz" className="w-full rounded-lg border border-slate-200 p-2.5 text-sm text-slate-700" />
+                <p className="mt-1 text-right text-xs text-slate-400">{description.length}/400</p>
+              </div>
+
+              {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── STEP 2: QUESTION EDITOR (Two-column layout) ────────────────
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <Card className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border-0 p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">{isEditing ? 'Edit Quiz' : 'Create New Quiz'}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+    <div className="fixed inset-0 z-50 bg-slate-50">
+      {/* Top Bar */}
+      <div className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-5">
+        <div className="flex items-center gap-3">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          <span className="text-sm text-slate-400">Edited just now</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="border-slate-200 text-slate-600">Preview</Button>
+          <Button className="bg-violet-600 text-white hover:bg-violet-700">Publish</Button>
+        </div>
+      </div>
+
+      {/* Two-column layout */}
+      <div className="flex h-[calc(100vh-56px)]">
+        {/* Left Sidebar — Question List */}
+        <div className="w-64 shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Questions</span>
+            <Badge className="bg-violet-50 text-violet-600">{existingQuestions.length}</Badge>
+          </div>
+          {existingQuestions.length === 0 ? (
+            <p className="py-4 text-center text-xs text-slate-400">No questions yet. Add your first question on the right.</p>
+          ) : (
+            <div className="space-y-1">
+              {existingQuestions.map((q: any, idx: number) => {
+                const TypeIcon = questionTypeLabels[q.type]?.icon || FileQuestion;
+                return (
+                  <div key={q.id} className="group flex items-center gap-2 rounded-lg border border-slate-100 p-2 hover:bg-slate-50">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-500">{idx + 1}</div>
+                    <TypeIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <p className="flex-1 truncate text-xs text-slate-600">{q.questionText}</p>
+                    <button onClick={() => deleteQuestion.mutate(q.id, { onSuccess: () => toast({ title: 'Deleted' }) })} className="opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3 text-slate-300 hover:text-red-500" /></button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <p className="text-xs font-medium text-slate-400">Total Points: {existingQuestions.reduce((s: number, q: any) => s + (q.points || 0), 0)}</p>
+          </div>
         </div>
 
-        {!isEditing ? (
-          <div className="space-y-4">
-            <div>
-              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Select Class (Section + Subject) *</Label>
-              <select value={selectedSectionSubjectId} onChange={(e) => setSelectedSectionSubjectId(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
-                <option value="">Select your assigned class...</option>
-                {teacherSectionSubjects.map((ss: any) => (
-                  <option key={ss.id} value={ss.id}>{ss.subject?.name} — {ss.section?.name} ({ss.section?.grade?.name})</option>
-                ))}
-              </select>
-              {teacherSectionSubjects.length === 0 && <p className="mt-1 text-xs text-amber-600">No teaching assignments found. Contact your administrator.</p>}
-            </div>
-            <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Quiz Title *</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Chapter 1 Quiz" /></div>
-            <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label><Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Time Limit (min)</Label><Input type="number" value={timeLimit} onChange={(e) => setTimeLimit(e.target.value)} /></div>
-              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Passing Score (%)</Label><Input type="number" value={passingScore} onChange={(e) => setPassingScore(e.target.value)} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Max Attempts</Label><Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} /></div>
-              <div><Label className="mb-1.5 block text-sm font-medium text-slate-700">Status</Label><select value={status} onChange={(e) => setStatus(e.target.value as 'DRAFT' | 'PUBLISHED')} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700"><option value="DRAFT">Draft (not visible)</option><option value="PUBLISHED">Published (visible)</option></select></div>
-            </div>
-            {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-            <Button onClick={handleCreate} disabled={createQuiz.isPending} className="w-full bg-violet-600 text-white hover:bg-violet-700">{createQuiz.isPending ? 'Creating…' : 'Create Quiz'}</Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">✓ Quiz created! Add questions below. {quiz?.title && `(${quiz.title})`}</div>
-
-            {existingQuestions.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Questions ({existingQuestions.length})</p>
-                  <Badge className="bg-violet-50 text-violet-600 hover:bg-violet-50">{existingQuestions.reduce((sum: number, q: any) => sum + (q.points || 0), 0)} total points</Badge>
-                </div>
-                {existingQuestions.map((q: any, idx: number) => (
-                  <div key={q.id} className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-all hover:border-violet-200 hover:shadow-sm">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-sm font-bold text-violet-600">{idx + 1}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-900">{q.questionText}</p>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100 text-[10px]">{questionTypeLabels[q.type] ?? q.type}</Badge>
-                        <span className="text-xs text-slate-400">{q.points} pt</span>
-                      </div>
-                    </div>
-                    <button onClick={() => deleteQuestion.mutate(q.id, { onSuccess: () => toast({ title: 'Question deleted' }), onError: () => toast({ title: 'Error', variant: 'destructive' }) })} className="rounded-lg p-1.5 text-slate-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Add question form */}
-            <div className="rounded-lg border-2 border-dashed border-slate-200 p-4">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Add Question</h3>
-              <div className="space-y-3">
-                <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Type</Label>
-                  <select value={qType} onChange={(e) => { setQType(e.target.value); resetQuestionForm(); setQType(e.target.value); }} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-700">
-                    {Object.entries(questionTypeLabels).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
-                  </select>
-                </div>
-                <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Question Text *</Label><textarea value={qText} onChange={(e) => setQText(e.target.value)} rows={2} placeholder="Type the question..." className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500" /></div>
-
-                {/* MCQ Single */}
-                {qType === 'MULTIPLE_CHOICE_SINGLE' && (
-                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Options (select correct one)</Label><div className="space-y-1.5">
-                    {qOptions.map((opt, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <button type="button" onClick={() => setQCorrectIdx(idx)} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold', idx === qCorrectIdx ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>
-                          {idx === qCorrectIdx ? '✓' : String.fromCharCode(65 + idx)}
-                        </button>
-                        <Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={'Option ' + String.fromCharCode(65 + idx)} className="text-sm" />
-                        {qOptions.length > 2 && (
-                          <button type="button" onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
+        {/* Right: Main Editing Area */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mx-auto max-w-3xl">
+            {/* Question Type Selector + Required toggle */}
+            <div className="mb-4 flex items-center justify-between">
+              <div className="relative">
+                <button onClick={() => setShowTypeDropdown(!showTypeDropdown)} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-violet-300">
+                  <CurrentTypeIcon className="h-4 w-4 text-violet-500" />
+                  {questionTypeLabels[qType]?.label || 'Select Type'}
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                </button>
+                {showTypeDropdown && (
+                  <div className="absolute z-50 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                    {Object.entries(questionTypeLabels).map(([val, info]) => (
+                      <button key={val} onClick={() => { setQType(val); resetQuestionForm(); setShowTypeDropdown(false); }} className={cn('flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50', qType === val ? 'bg-violet-50 text-violet-600' : 'text-slate-700')}>
+                        <info.icon className="h-4 w-4" />
+                        {info.label}
+                      </button>
                     ))}
-                    <button type="button" onClick={() => setQOptions([...qOptions, ''])} className="text-xs text-violet-600 hover:underline">+ Add option</button>
-                  </div></div>
-                )}
-
-                {/* MCQ Multiple */}
-                {qType === 'MULTIPLE_CHOICE_MULTIPLE' && (
-                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Options (check all correct answers)</Label><div className="space-y-1.5">
-                    {qOptions.map((opt, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <button type="button" onClick={() => setQCorrectIdxs(qCorrectIdxs.includes(idx) ? qCorrectIdxs.filter((i) => i !== idx) : [...qCorrectIdxs, idx])} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 text-xs font-bold', qCorrectIdxs.includes(idx) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-slate-400')}>
-                          {qCorrectIdxs.includes(idx) ? '✓' : ''}
-                        </button>
-                        <Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={'Option ' + String.fromCharCode(65 + idx)} className="text-sm" />
-                        {qOptions.length > 2 && (
-                          <button type="button" onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => setQOptions([...qOptions, ''])} className="text-xs text-violet-600 hover:underline">+ Add option</button>
-                  </div></div>
-                )}
-
-                {/* True/False */}
-                {qType === 'TRUE_FALSE' && (
-                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Correct Answer</Label><div className="flex gap-2">
-                    <button type="button" onClick={() => setQCorrectIdx(0)} className={cn('rounded-lg border px-4 py-2 text-sm font-medium', qCorrectIdx === 0 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-600')}>True</button>
-                    <button type="button" onClick={() => setQCorrectIdx(1)} className={cn('rounded-lg border px-4 py-2 text-sm font-medium', qCorrectIdx === 1 ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 text-slate-600')}>False</button>
-                  </div></div>
-                )}
-
-                {/* Fill in the Blank */}
-                {qType === 'FILL_IN_BLANK' && (
-                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Correct Answers (one per blank)</Label><div className="space-y-1.5">
-                    {qBlanks.map((blank, idx) => (<div key={idx} className="flex items-center gap-2"><span className="text-xs text-slate-400">Blank {idx + 1}:</span><Input value={blank} onChange={(e) => { const n = [...qBlanks]; n[idx] = e.target.value; setQBlanks(n); }} placeholder="Correct answer" className="text-sm" />{qBlanks.length > 1 && <button type="button" onClick={() => setQBlanks(qBlanks.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}</div>))}
-                    <button type="button" onClick={() => setQBlanks([...qBlanks, ''])} className="text-xs text-violet-600 hover:underline">+ Add blank</button>
-                  </div></div>
-                )}
-
-                {/* Matching (drag & drop) */}
-                {qType === 'MATCHING' && (
-                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Matching Pairs (students drag right items to match left)</Label><div className="space-y-2">
-                    {qMatchingPairs.map((pair, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <Input value={pair.left} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], left: e.target.value }; setQMatchingPairs(n); }} placeholder="Left item" className="text-sm" />
-                        <span className="text-slate-400">{'↔'}</span>
-                        <Input value={pair.right} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], right: e.target.value }; setQMatchingPairs(n); }} placeholder="Right item" className="text-sm" />
-                        {qMatchingPairs.length > 2 && (
-                          <button type="button" onClick={() => setQMatchingPairs(qMatchingPairs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => setQMatchingPairs([...qMatchingPairs, { left: '', right: '' }])} className="text-xs text-violet-600 hover:underline">+ Add pair</button>
-                  </div></div>
-                )}
-
-                {/* Sorting (drag & drop) */}
-                {qType === 'SORTING' && (
-                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Items in Correct Order (students will drag to rearrange)</Label><div className="space-y-1.5">
-                    {qSortItems.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-slate-300" />
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-400">{idx + 1}</span>
-                        <Input value={item} onChange={(e) => { const n = [...qSortItems]; n[idx] = e.target.value; setQSortItems(n); }} placeholder={'Item ' + (idx + 1)} className="text-sm" />
-                        {qSortItems.length > 2 && (
-                          <button type="button" onClick={() => setQSortItems(qSortItems.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500">
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => setQSortItems([...qSortItems, ''])} className="text-xs text-violet-600 hover:underline">+ Add item</button>
-                  </div></div>
-                )}
-
-                {/* Short Answer / Essay */}
-                {(qType === 'SHORT_ANSWER' || qType === 'ESSAY') && (
-                  <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">{qType === 'SHORT_ANSWER' ? 'Reference Answer (for manual grading)' : 'Model Answer / Rubric Notes (for manual grading)'}</Label><textarea value={qTextAnswer} onChange={(e) => setQTextAnswer(e.target.value)} rows={qType === 'ESSAY' ? 4 : 2} placeholder="This will be used as a reference during manual grading" className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700" /></div>
-                )}
-
-                {/* File Upload */}
-                {qType === 'FILE_UPLOAD' && (
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">Students will be prompted to upload a file. This question type requires manual grading.</div>
-                )}
-
-                {/* Hotspot */}
-                {qType === 'HOTSPOT' && (
-                  <div className="space-y-2">
-                    <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Image URL</Label><Input value={qHotspotImage} onChange={(e) => setQHotspotImage(e.target.value)} placeholder="https://..." className="text-sm" /></div>
-                    <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Clickable Zones (x, y, width, height as % of image)</Label>
-                      {qHotspotZones.map((zone, idx) => (<div key={idx} className="flex items-center gap-1 text-xs"><Input type="number" value={zone.x} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], x: Number(e.target.value) }; setQHotspotZones(n); }} placeholder="X" className="w-16 text-sm" /><Input type="number" value={zone.y} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], y: Number(e.target.value) }; setQHotspotZones(n); }} placeholder="Y" className="w-16 text-sm" /><Input type="number" value={zone.w} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], w: Number(e.target.value) }; setQHotspotZones(n); }} placeholder="W" className="w-16 text-sm" /><Input type="number" value={zone.h} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], h: Number(e.target.value) }; setQHotspotZones(n); }} placeholder="H" className="w-16 text-sm" /><Input value={zone.label} onChange={(e) => { const n = [...qHotspotZones]; n[idx] = { ...n[idx], label: e.target.value }; setQHotspotZones(n); }} placeholder="Label" className="text-sm" /><button type="button" onClick={() => setQHotspotZones(qHotspotZones.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button></div>))}
-                      <button type="button" onClick={() => setQHotspotZones([...qHotspotZones, { x: 10, y: 10, w: 20, h: 20, label: '' }])} className="text-xs text-violet-600 hover:underline">+ Add zone</button>
-                    </div>
                   </div>
                 )}
-
-                <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Points</Label><Input type="number" min="1" max="100" value={qPoints} onChange={(e) => setQPoints(e.target.value)} className="w-24" /></div>
-                <div><Label className="mb-1.5 block text-xs font-medium text-slate-600">Explanation (optional, shown after answering)</Label><Input value={qExplanation} onChange={(e) => setQExplanation(e.target.value)} placeholder="Explanation for correct answer" className="text-sm" /></div>
-                {qError && <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-600">{qError}</div>}
-                <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-violet-600 text-white hover:bg-violet-700">{addQuestion.isPending ? 'Adding…' : 'Add Question'}</Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Required</span>
+                <button onClick={() => setQRequired(!qRequired)} className={cn('relative h-5 w-9 rounded-full transition-colors', qRequired ? 'bg-emerald-500' : 'bg-slate-300')}>
+                  <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform', qRequired ? 'left-4' : 'left-0.5')} />
+                </button>
               </div>
             </div>
-            <div className="flex justify-end"><Button onClick={onClose} className="bg-emerald-600 text-white hover:bg-emerald-700">Done</Button></div>
+
+            {/* Question Text */}
+            <div className="mb-4">
+              <Label className="mb-1.5 block text-xs text-slate-500">Question {existingQuestions.length + 1}*</Label>
+              <textarea value={qText} onChange={(e) => setQText(e.target.value)} rows={3} placeholder="Type your question here..." className="w-full rounded-lg border border-slate-200 p-3 text-sm text-slate-900 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400" />
+            </div>
+
+            {/* Answer Options — varies by type */}
+            <div className="mb-4">
+              <Label className="mb-2 block text-xs text-slate-500">Answers</Label>
+
+              {/* MCQ Single */}
+              {(qType === 'MULTIPLE_CHOICE_SINGLE' || qType === 'MULTIPLE_CHOICE_MULTIPLE') && (
+                <div className="space-y-2">
+                  {qOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <button onClick={() => qType === 'MULTIPLE_CHOICE_SINGLE' ? setQCorrectIdx(idx) : setQCorrectIdxs(qCorrectIdxs.includes(idx) ? qCorrectIdxs.filter(i => i !== idx) : [...qCorrectIdxs, idx])} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2', (qType === 'MULTIPLE_CHOICE_SINGLE' ? idx === qCorrectIdx : qCorrectIdxs.includes(idx)) ? 'border-violet-600 bg-violet-600' : 'border-slate-300')}>
+                        {(qType === 'MULTIPLE_CHOICE_SINGLE' ? idx === qCorrectIdx : qCorrectIdxs.includes(idx)) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                      </button>
+                      <Input value={opt} onChange={(e) => { const n = [...qOptions]; n[idx] = e.target.value; setQOptions(n); }} placeholder={'Option ' + (idx + 1)} className="text-sm" />
+                      {qOptions.length > 2 && <button onClick={() => setQOptions(qOptions.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}
+                    </div>
+                  ))}
+                  <button onClick={() => setQOptions([...qOptions, ''])} className="text-xs text-violet-600 hover:underline">+ Add answer</button>
+                </div>
+              )}
+
+              {/* True/False */}
+              {qType === 'TRUE_FALSE' && (
+                <div className="flex gap-3">
+                  {[0, 1].map(idx => (
+                    <button key={idx} onClick={() => setQCorrectIdx(idx)} className={cn('flex-1 rounded-lg border-2 p-4 text-center text-sm font-medium transition-all', qCorrectIdx === idx ? 'border-violet-500 bg-violet-50 text-violet-600' : 'border-slate-200 text-slate-600 hover:border-slate-300')}>{idx === 0 ? 'True' : 'False'}</button>
+                  ))}
+                </div>
+              )}
+
+              {/* Fill in the Blank */}
+              {qType === 'FILL_IN_BLANK' && (
+                <div className="space-y-2">
+                  {qBlanks.map((blank, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input value={blank} onChange={(e) => { const n = [...qBlanks]; n[idx] = e.target.value; setQBlanks(n); }} placeholder={'Correct answer ' + (idx + 1)} className="text-sm" />
+                      {qBlanks.length > 1 && <button onClick={() => setQBlanks(qBlanks.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}
+                    </div>
+                  ))}
+                  <button onClick={() => setQBlanks([...qBlanks, ''])} className="text-xs text-violet-600 hover:underline">+ Add correct answer</button>
+                </div>
+              )}
+
+              {/* Matching */}
+              {qType === 'MATCHING' && (
+                <div className="space-y-2">
+                  {qMatchingPairs.map((pair, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input value={pair.left} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], left: e.target.value }; setQMatchingPairs(n); }} placeholder="Left" className="text-sm" />
+                      <span className="text-slate-400">{'\u2194'}</span>
+                      <Input value={pair.right} onChange={(e) => { const n = [...qMatchingPairs]; n[idx] = { ...n[idx], right: e.target.value }; setQMatchingPairs(n); }} placeholder="Right" className="text-sm" />
+                      {qMatchingPairs.length > 2 && <button onClick={() => setQMatchingPairs(qMatchingPairs.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}
+                    </div>
+                  ))}
+                  <button onClick={() => setQMatchingPairs([...qMatchingPairs, { left: '', right: '' }])} className="text-xs text-violet-600 hover:underline">+ Add pair</button>
+                </div>
+              )}
+
+              {/* Sorting */}
+              {qType === 'SORTING' && (
+                <div className="space-y-2">
+                  {qSortItems.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <GripVertical className="h-4 w-4 text-slate-300" />
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-400">{idx + 1}</span>
+                      <Input value={item} onChange={(e) => { const n = [...qSortItems]; n[idx] = e.target.value; setQSortItems(n); }} placeholder={'Item ' + (idx + 1)} className="text-sm" />
+                      {qSortItems.length > 2 && <button onClick={() => setQSortItems(qSortItems.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><X className="h-4 w-4" /></button>}
+                    </div>
+                  ))}
+                  <button onClick={() => setQSortItems([...qSortItems, ''])} className="text-xs text-violet-600 hover:underline">+ Add item</button>
+                </div>
+              )}
+
+              {/* Short Answer / Essay */}
+              {(qType === 'SHORT_ANSWER' || qType === 'ESSAY') && (
+                <textarea value={qTextAnswer} onChange={(e) => setQTextAnswer(e.target.value)} rows={qType === 'ESSAY' ? 4 : 2} placeholder="Reference answer (for manual grading)" className="w-full rounded-lg border border-slate-200 p-3 text-sm" />
+              )}
+
+              {/* File Upload */}
+              {qType === 'FILE_UPLOAD' && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">Students will upload a file. Requires manual grading.</div>
+              )}
+            </div>
+
+            {/* Scoring + Settings */}
+            <div className="mb-4 flex items-center gap-6 border-t border-slate-100 pt-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-slate-400" />
+                <Input type="number" value={qEstimate} onChange={(e) => setQEstimate(e.target.value)} className="w-16 text-sm" />
+                <span className="text-xs text-slate-500">Mins</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-amber-400" />
+                <Input type="number" value={qPoints} onChange={(e) => setQPoints(e.target.value)} className="w-16 text-sm" />
+                <span className="text-xs text-slate-500">Points</span>
+              </div>
+            </div>
+
+            {/* Explanation */}
+            <div className="mb-4">
+              <Label className="mb-1.5 block text-xs text-slate-500">Explanation (optional)</Label>
+              <Input value={qExplanation} onChange={(e) => setQExplanation(e.target.value)} placeholder="Shown after answering" className="text-sm" />
+            </div>
+
+            {qError && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{qError}</div>}
+
+            {/* Add Question Button */}
+            <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-violet-600 py-2.5 text-white hover:bg-violet-700">
+              {addQuestion.isPending ? 'Adding...' : '+ Add Question'}
+            </Button>
           </div>
-        )}
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Quiz Runner (supports all 10 question types with drag & drop) ────────
 function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNavigate: (v: View) => void; onSubmitted: (attemptId: string) => void }) {
   const { data: quizData, isLoading } = useQuiz(quizId || null);
   const { data: enrollmentsData } = useEnrollments({ status: 'ACTIVE' });
