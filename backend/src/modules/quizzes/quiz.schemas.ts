@@ -19,6 +19,8 @@ export const createQuizSchema = z.object({
   showFeedback: z.boolean().default(true),
   showCorrectAnswers: z.boolean().default(false),
   status: z.nativeEnum(QuizStatus).default('DRAFT'),
+  quizPassword: z.string().min(1).max(100).optional(),
+  studentInfoRequired: z.boolean().optional(),
 });
 
 export const updateQuizSchema = z.object({
@@ -34,6 +36,8 @@ export const updateQuizSchema = z.object({
   showFeedback: z.boolean().optional(),
   showCorrectAnswers: z.boolean().optional(),
   status: z.nativeEnum(QuizStatus).optional(),
+  quizPassword: z.string().min(1).max(100).nullable().optional(),
+  studentInfoRequired: z.boolean().optional(),
 });
 
 export const quizQuerySchema = z.object({

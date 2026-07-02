@@ -258,15 +258,10 @@ export async function updateQuiz(
     }
   }
 
-  const updateData = { ...data };
   // Don't set contentId to null/undefined — MongoDB unique constraint treats null as a value
+  const updateData: any = { ...data };
   if (updateData.contentId === null || updateData.contentId === undefined) {
     delete updateData.contentId;
-  }
-  // Handle null quizPassword (to clear it)
-  const updateData: any = { ...data };
-  if (updateData.quizPassword === null) {
-    updateData.quizPassword = null;
   }
   const updated = await prisma.quiz.update({
     where: { id: quizId },
