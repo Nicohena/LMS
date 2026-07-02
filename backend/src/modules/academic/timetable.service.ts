@@ -164,7 +164,7 @@ export async function getTeacherTimetable(teacherId: string) {
 
   // Filter to only this teacher's entries
   const teacherEntries = entries.filter(
-    (e) => !e.sectionSubjectId || sectionSubjects.some((ss) => ss.id === e.sectionSubjectId)
+    (e: any) => !e.sectionSubjectId || sectionSubjects.some((ss) => ss.id === e.sectionSubjectId)
   );
 
   const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
