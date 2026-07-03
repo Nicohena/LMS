@@ -73,6 +73,9 @@ export interface QuizResultResponse {
   attemptNumber: number;
   startedAt: Date | null;
   submittedAt: Date | null;
+  // Identity the student typed in the pre-attempt form (teacher visibility).
+  studentName: string | null;
+  studentIdInput: string | null;
   questions: QuestionResult[];
   hasUngradedManual: boolean;
 }
