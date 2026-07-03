@@ -3854,8 +3854,12 @@ function QuizSubmissionsModal({ quizId, onClose }: { quizId: string | null; onCl
           {attempts.length > 0 && (
             <div className="space-y-2">
               {attempts.map((a: any, idx: number) => {
-                const studentName = a.user ? `${a.user.firstName} ${a.user.lastName}`.trim() : 'Unknown student';
-                const initials = a.user ? getInitials(studentName) : '?';
+                // Prefer the name the student typed at start; fall back to account name.
+                const accountName = a.user ? `${a.user.firstName} ${a.user.lastName}`.trim() : 'Unknown student';
+                const enteredName = (a.studentName && a.studentName.trim()) || '';
+                const enteredId = (a.studentIdInput && a.studentIdInput.trim()) || '';
+                const displayName = enteredName || accountName;
+                const initials = displayName ? getInitials(displayName) : '?';
                 const pct = a.scorePercentage ?? 0;
                 const maxScore = a.maxPossibleScore ?? 0;
                 const score = a.score ?? 0;
@@ -3870,7 +3874,15 @@ function QuizSubmissionsModal({ quizId, onClose }: { quizId: string | null; onCl
                     >
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[11px] font-bold text-violet-600">{initials}</div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-900">{studentName}</p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
+                          {enteredId && (
+                            <Badge className="bg-slate-100 text-slate-600 text-[10px] font-mono">ID: {enteredId}</Badge>
+                          )}
+                          {enteredName && enteredName !== accountName && (
+                            <span className="text-[10px] text-slate-400">(account: {accountName})</span>
+                          )}
+                        </div>
                         <p className="truncate text-xs text-slate-500">
                           {a.status?.replace(/_/g, ' ').toLowerCase()} · submitted {a.endTime ? formatDate(a.endTime) : a.startTime ? formatDate(a.startTime) : '—'}
                         </p>
@@ -3896,7 +3908,7 @@ function QuizSubmissionsModal({ quizId, onClose }: { quizId: string | null; onCl
                     {/* Expanded detail panel */}
                     {isOpen && (
                       <div className="border-t border-violet-200 bg-white px-4 py-4">
-                        <SubmissionDetailPanel attemptId={a.id} />
+                        <SubmissionDetailPanel attemptId={a.id} accountName={accountName} accountEmail={a.user?.email} />
                       </div>
                     )}
                   </div>
@@ -3911,7 +3923,7 @@ function QuizSubmissionsModal({ quizId, onClose }: { quizId: string | null; onCl
 }
 
 // ─── Per-question detail panel for a single student's attempt ──────────────
-function SubmissionDetailPanel({ attemptId }: { attemptId: string }) {
+function SubmissionDetailPanel({ attemptId, accountName, accountEmail }: { attemptId: string; accountName?: string; accountEmail?: string }) {
   const { data: resultsData, isLoading, isError } = useAttemptResults(attemptId);
   const results = (resultsData as any)?.results;
 
@@ -3945,6 +3957,27 @@ function SubmissionDetailPanel({ attemptId }: { attemptId: string }) {
 
   return (
     <div className="space-y-4">
+      {/* Student identity — name and ID typed at start, plus account info */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Student identity</p>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <div>
+            <span className="text-xs text-slate-500">Name (as entered): </span>
+            <span className="font-semibold text-slate-900">{results.studentName || '— not provided —'}</span>
+          </div>
+          <div>
+            <span className="text-xs text-slate-500">Student ID (as entered): </span>
+            <span className="font-semibold text-slate-900">{results.studentIdInput || '— not provided —'}</span>
+          </div>
+          {(accountName || accountEmail) && (
+            <div className="ml-auto text-right text-xs text-slate-500">
+              <p>Account: <span className="font-medium text-slate-700">{accountName || 'Unknown'}</span></p>
+              {accountEmail && <p>{accountEmail}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Quick stats banner */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5 text-center">
@@ -5187,7 +5220,15 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
     if (!matchingEnrollment) { setError('No active enrollment found.'); return; }
     setError('');
     startAttempt.mutate(
-      { quizId, enrollmentId: matchingEnrollment.id, password: quizPassword || undefined },
+      {
+        quizId,
+        enrollmentId: matchingEnrollment.id,
+        password: quizPassword || undefined,
+        // Forward the name/ID the student typed so the teacher can
+        // identify the submission later.
+        studentName: studentName.trim() || undefined,
+        studentId: studentId.trim() || undefined,
+      },
       { onSuccess: (data) => setAttemptId(data.attempt.id), onError: (err: any) => setError(err.response?.data?.message || 'Failed to start attempt') }
     );
   };

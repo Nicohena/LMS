@@ -622,8 +622,8 @@ export function useQuiz(quizId: string | null) {
 export function useStartQuizAttempt() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ quizId, enrollmentId, password }: { quizId: string; enrollmentId: string; password?: string }) => {
-      const res = await api.post(`/quizzes/${quizId}/attempts/start`, { enrollmentId, password });
+    mutationFn: async ({ quizId, enrollmentId, password, studentName, studentId }: { quizId: string; enrollmentId: string; password?: string; studentName?: string; studentId?: string }) => {
+      const res = await api.post(`/quizzes/${quizId}/attempts/start`, { enrollmentId, password, studentName, studentId });
       return res.data;
     },
     onSuccess: () => {

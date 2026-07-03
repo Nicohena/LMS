@@ -583,6 +583,10 @@ export async function startAttempt(
       attemptNumber: existingAttempts + 1,
       status: 'IN_PROGRESS',
       startTime: new Date(),
+      // Persist the name/ID the student typed in the pre-attempt form
+      // (teacher uses these to identify submissions).
+      studentName: data.studentName?.trim() || null,
+      studentIdInput: data.studentId?.trim() || null,
     },
   });
 
@@ -1065,6 +1069,9 @@ async function buildResultsResponse(
     attemptNumber: attempt.attemptNumber,
     startedAt: attempt.startTime,
     submittedAt: attempt.endTime,
+    // Identity the student typed in the pre-attempt form (teacher visibility).
+    studentName: attempt.studentName,
+    studentIdInput: attempt.studentIdInput,
     questions,
     hasUngradedManual,
   };

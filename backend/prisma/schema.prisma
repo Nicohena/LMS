@@ -376,6 +376,12 @@ model QuizAttempt {
   scorePercentage  Float?
   passed           Boolean?
   answers          Json?
+  // Free-form name/ID the student typed when starting the quiz
+  // (used by teachers to identify submissions on the school model where
+  // the student may be a guest or the account email doesn't match their
+  // real-world identity).
+  studentName      String?
+  studentIdInput   String?
   gradedAt         DateTime?
   gradedBy         String?       @db.ObjectId
   createdAt        DateTime      @default(now())
