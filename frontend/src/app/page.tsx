@@ -26,6 +26,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area,
   XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
@@ -3407,6 +3417,7 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
   const updateQuizMut = useUpdateQuiz();
   const [showCreate, setShowCreate] = useState(false);
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
+  const [quizToDelete, setQuizToDelete] = useState<{ id: string; title: string } | null>(null);
   const queryClient = useQueryClient();
   const allQuizzes = (data?.data ?? []) as any[];
   // Teachers only see quizzes they created (exclude ARCHIVED)
@@ -3414,19 +3425,41 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
     ? allQuizzes.filter((q: any) => (q.createdBy === authUser?.id || q.createdBy?.id === authUser?.id) && q.status !== 'ARCHIVED')
     : allQuizzes.filter((q: any) => q.status !== 'ARCHIVED');
 
-  const handleDelete = (e: React.MouseEvent, quizId: string) => {
+  // Open the confirmation dialog instead of deleting right away.
+  const handleDeleteClick = (e: React.MouseEvent, quizId: string, quizTitle: string) => {
     e.stopPropagation();
-    deleteQuizMut.mutate(quizId, {
+    setQuizToDelete({ id: quizId, title: quizTitle });
+  };
+
+  // Called when the user confirms inside the AlertDialog.
+  const confirmDelete = () => {
+    if (!quizToDelete) return;
+    const targetId = quizToDelete.id;
+    deleteQuizMut.mutate(targetId, {
       onSuccess: () => {
-        toast({ title: 'Quiz deleted', description: 'The quiz has been removed.' });
-        // Immediately remove from cache so UI updates without waiting for refetch
-        queryClient.setQueryData(['quizzes', { limit: 50, status: isTeacher ? undefined : 'PUBLISHED' }], (oldData: any) => {
-          if (!oldData?.data) return oldData;
-          return { ...oldData, data: oldData.data.filter((q: any) => q.id !== quizId) };
+        toast({
+          title: 'Quiz deleted',
+          description: `"${quizToDelete.title}" has been permanently removed.`,
         });
+        // Optimistically remove from cache so the UI updates instantly.
+        queryClient.setQueryData(
+          ['quizzes', { limit: 50, status: isTeacher ? undefined : 'PUBLISHED' }],
+          (oldData: any) => {
+            if (!oldData?.data) return oldData;
+            return { ...oldData, data: oldData.data.filter((q: any) => q.id !== targetId) };
+          },
+        );
         queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+        setQuizToDelete(null);
       },
-      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to delete quiz.', variant: 'destructive' }),
+      onError: (err: any) => {
+        toast({
+          title: 'Failed to delete quiz',
+          description: err.response?.data?.message || 'Please try again.',
+          variant: 'destructive',
+        });
+        setQuizToDelete(null);
+      },
     });
   };
 
@@ -3514,7 +3547,11 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
                 >
                   {q.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
                 </Button>
-                <button onClick={(e) => handleDelete(e, q.id)} title="Delete" className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500">
+                <button
+                  onClick={(e) => handleDeleteClick(e, q.id, q.title)}
+                  title="Delete"
+                  className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
+                >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -3528,6 +3565,40 @@ function QuizListView({ onNavigate, onSelectQuiz }: { onNavigate: (v: View) => v
 
       {/* Edit existing quiz */}
       {editingQuizId && <QuizEditorModal quizId={editingQuizId} onClose={() => { setEditingQuizId(null); queryClient.invalidateQueries({ queryKey: ['quizzes'] }); }} />}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!quizToDelete} onOpenChange={(open) => { if (!open && !deleteQuizMut.isPending) setQuizToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this quiz?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-1.5">
+                <p>
+                  You are about to permanently delete{' '}
+                  <span className="font-semibold text-slate-900">{quizToDelete?.title}</span>.
+                </p>
+                <p>
+                  This will also remove every question, attempt, answer and grading record
+                  tied to this quiz. <span className="font-medium text-red-600">This action cannot be undone.</span>
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteQuizMut.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault(); // stop the radix auto-close so we control it via state
+                confirmDelete();
+              }}
+              disabled={deleteQuizMut.isPending}
+              className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {deleteQuizMut.isPending ? 'Deleting…' : 'Delete quiz'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

@@ -76,17 +76,20 @@ function toQuizResponse(
   quiz: any,
   viewer?: { id: string; role: Role },
 ): QuizResponse {
+  // Strip the actual password value — it must never be sent to the client.
   const { _count, quizPassword, ...rest } = quiz;
   const response: any = {
     ...rest,
     questionCount: _count?.questions ?? 0,
     attemptCount: _count?.attempts ?? 0,
+    // hasPassword is safe to expose to everyone (including students & anonymous viewers).
+    // It only tells the UI to render a password input; the actual password value is never sent.
+    hasPassword: !!quizPassword,
   };
-  // Only include quizPassword for teachers/admins (the quiz owner)
-  if (viewer && (viewer.role === 'ADMIN' || viewer.role === 'TEACHER')) {
-    response.hasPassword = !!quizPassword;
+  // Defensive: make sure no leaked password value slips through via the spread of `rest`
+  if ('quizPassword' in response) {
+    delete response.quizPassword;
   }
-  // Never expose the actual password value to anyone via API response
   return response;
 }
 
