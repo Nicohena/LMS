@@ -11,6 +11,7 @@ import courseRouter from './modules/courses/course.routes';
 import enrollmentRouter, { autoEnrollmentRouter } from './modules/enrollments/enrollment.routes';
 import quizRouter from './modules/quizzes/quiz.routes';
 import assignmentRouter from './modules/assignments/assignment.routes';
+import assignmentEnhancedRouter from './modules/assignments/assignment-enhanced.routes';
 import { notificationRouter, discussionRouter, messageRouter, announcementRouter } from './modules/notifications/notification.routes';
 import certificateRouter from './modules/certificates/certificate.routes';
 import gamificationRouter from './modules/gamification/gamification.routes';
@@ -190,6 +191,7 @@ app.use('/api/v1/quizzes', quizRouter);
 
 // --- Assignments module ---
 app.use('/api/v1/assignments', assignmentRouter);
+app.use('/api/v1/assignments', assignmentEnhancedRouter);
 
 // --- School-based LMS: Academic structure ---
 app.use('/api/v1/academic', academicRouter);
