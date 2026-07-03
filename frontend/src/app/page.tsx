@@ -11,7 +11,7 @@ import {
   Video, File, Link2, ChevronDown, MoreHorizontal, Zap, CircleDot,
   Upload, Pin, BarChart3, Trash2, UserPlus, Edit,
   Download, Trophy, Target, Flame, Medal, BadgeCheck,
-  Check, GripVertical, Image,
+  Check, GripVertical, Image, Send,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
 import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion, useQuizAttempts } from '@/lib/hooks';
@@ -4949,7 +4949,31 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
         cleanAnswers[key] = val;
       }
     }
-    submitAttempt.mutate({ attemptId, answers: cleanAnswers, timeSpent }, { onSuccess: () => { setShowSubmit(false); onSubmitted(attemptId); }, onError: (err: any) => { setError(err.response?.data?.message || 'Failed to submit'); setShowSubmit(false); } });
+    submitAttempt.mutate(
+      { attemptId, answers: cleanAnswers, timeSpent },
+      {
+        onSuccess: (data: any) => {
+          setShowSubmit(false);
+          const needsManual = !!data?.results?.hasUngradedManual;
+          toast({
+            title: needsManual ? 'Submission received' : 'Quiz submitted',
+            description: needsManual
+              ? 'Your answers have been submitted. Some questions need teacher review — your final result will appear here once grading is complete.'
+              : 'Your quiz has been graded automatically.',
+          });
+          onSubmitted(attemptId);
+        },
+        onError: (err: any) => {
+          setError(err.response?.data?.message || 'Failed to submit');
+          setShowSubmit(false);
+          toast({
+            title: 'Submission failed',
+            description: err.response?.data?.message || 'Please try again.',
+            variant: 'destructive',
+          });
+        },
+      },
+    );
   };
 
   const answered = Object.keys(answers).length;
@@ -5334,6 +5358,9 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
   const passed = results.passed;
   const isPending = passed === null || passed === undefined;
+  // Backend flag: true when at least one answer is a manual-grade type whose
+  // points haven't been awarded yet (ESSAY, SHORT_ANSWER, FILE_UPLOAD, HOTSPOT).
+  const hasUngradedManual = !!(results as any).hasUngradedManual;
 
   return (
     <main className="mx-auto max-w-4xl p-4 lg:p-6">
@@ -5343,59 +5370,115 @@ function QuizResultsView({ attemptId, onNavigate }: { attemptId: string; onNavig
         <span className="font-medium text-slate-700">Results</span>
       </div>
 
-      {/* Score Summary */}
-      <Card className="mb-6 border border-slate-200 p-8 shadow-sm">
-        <div className="flex flex-col items-center text-center">
-          <div className="relative mb-4 flex h-32 w-32 items-center justify-center">
-            <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="42" fill="none" stroke="#E2E8F0" strokeWidth="8" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke={isPending ? '#F59E0B' : passed ? '#10B981' : '#EF4444'} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
-            </svg>
-            <div>
-              <p className="text-3xl font-bold text-slate-900">{score}%</p>
-              <p className="text-xs text-slate-400">Score</p>
+      {/* Summary Card — branches on whether manual grading is needed.
+          When the quiz has any ungraded manual questions, we show a
+          "Submission Received" confirmation screen instead of the standard
+          pass/fail result, because showing a partial score with a pass/fail
+          verdict would be misleading. */}
+      {hasUngradedManual ? (
+        <Card className="mb-6 border border-amber-200 bg-gradient-to-b from-amber-50/60 to-white p-8 shadow-sm">
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+              <Send className="h-8 w-8 text-amber-600" />
+            </div>
+            <Badge className="mb-2 bg-amber-50 text-amber-600 hover:opacity-90">
+              <Clock className="mr-1 h-3 w-3" />Awaiting Teacher Review
+            </Badge>
+            <h1 className="text-xl font-bold text-slate-900">Submission Received</h1>
+            <p className="mt-1 text-sm font-medium text-slate-700">{results.quizTitle}</p>
+            <p className="mt-3 max-w-md text-sm text-slate-500">
+              Your answers have been submitted successfully. This quiz contains{' '}
+              <span className="font-semibold text-amber-600">{pending} question{pending === 1 ? '' : 's'}</span>{' '}
+              that require manual grading by your teacher. Your final score and
+              pass/fail result will appear here once the review is complete.
+            </p>
+          </div>
+
+          {/* Auto-graded snapshot — informational only */}
+          <div className="mt-6 grid grid-cols-3 gap-4">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{correct}</p>
+              <p className="text-xs text-slate-500">Auto-graded correct</p>
+            </div>
+            <div className="rounded-lg border border-red-100 bg-red-50/40 p-3 text-center">
+              <p className="text-2xl font-bold text-red-500">{incorrect}</p>
+              <p className="text-xs text-slate-500">Auto-graded incorrect</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-center">
+              <p className="text-2xl font-bold text-amber-600">{pending}</p>
+              <p className="text-xs text-slate-500">Awaiting review</p>
             </div>
           </div>
-          <Badge className={cn('mb-2 hover:opacity-90', isPending ? 'bg-amber-50 text-amber-600' : passed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
-            {isPending ? <><Clock className="mr-1 h-3 w-3" />Pending Review</> : passed ? <><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</> : <><X className="mr-1 h-3 w-3" />Failed</>}
-          </Badge>
-          <h1 className="text-xl font-bold text-slate-900">Quiz Completed!</h1>
-          <p className="mt-1 text-sm text-slate-500">{results.quizTitle}</p>
-          <p className="mt-0.5 text-xs text-slate-400">{correct}/{total - pending} auto-graded{pending > 0 ? `, ${pending} pending review` : ''} · {results.pointsAwarded ?? 0}/{results.maxPossibleScore ?? total} points</p>
-        </div>
 
-        {/* Stats Row */}
-        <div className="mt-6 grid grid-cols-4 gap-4">
-          <div className="rounded-lg border border-slate-100 p-3 text-center">
-            <p className="text-2xl font-bold text-emerald-600">{correct}</p>
-            <p className="text-xs text-slate-400">Correct</p>
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-800">
+            <Clock className="mr-1.5 inline h-4 w-4" />
+            Provisional score (auto-graded only):{' '}
+            <span className="font-semibold">{results.pointsAwarded ?? 0} / {results.maxPossibleScore ?? total} points</span>
+            . This may change after manual grading.
           </div>
-          <div className="rounded-lg border border-slate-100 p-3 text-center">
-            <p className="text-2xl font-bold text-red-500">{incorrect}</p>
-            <p className="text-xs text-slate-400">Incorrect</p>
+        </Card>
+      ) : (
+        <Card className="mb-6 border border-slate-200 p-8 shadow-sm">
+          <div className="flex flex-col items-center text-center">
+            <div className="relative mb-4 flex h-32 w-32 items-center justify-center">
+              <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#E2E8F0" strokeWidth="8" />
+                <circle cx="50" cy="50" r="42" fill="none" stroke={isPending ? '#F59E0B' : passed ? '#10B981' : '#EF4444'} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`} />
+              </svg>
+              <div>
+                <p className="text-3xl font-bold text-slate-900">{score}%</p>
+                <p className="text-xs text-slate-400">Score</p>
+              </div>
+            </div>
+            <Badge className={cn('mb-2 hover:opacity-90', isPending ? 'bg-amber-50 text-amber-600' : passed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')}>
+              {isPending ? <><Clock className="mr-1 h-3 w-3" />Pending Review</> : passed ? <><CheckCircle2 className="mr-1 h-3 w-3" />Passed!</> : <><X className="mr-1 h-3 w-3" />Failed</>}
+            </Badge>
+            <h1 className="text-xl font-bold text-slate-900">Quiz Completed!</h1>
+            <p className="mt-1 text-sm text-slate-500">{results.quizTitle}</p>
+            <p className="mt-0.5 text-xs text-slate-400">{correct}/{total - pending} auto-graded{pending > 0 ? `, ${pending} pending review` : ''} · {results.pointsAwarded ?? 0}/{results.maxPossibleScore ?? total} points</p>
           </div>
-          {pending > 0 && (
+
+          <div className="mt-6 grid grid-cols-4 gap-4">
             <div className="rounded-lg border border-slate-100 p-3 text-center">
-              <p className="text-2xl font-bold text-amber-500">{pending}</p>
-              <p className="text-xs text-slate-400">Pending</p>
+              <p className="text-2xl font-bold text-emerald-600">{correct}</p>
+              <p className="text-xs text-slate-400">Correct</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3 text-center">
+              <p className="text-2xl font-bold text-red-500">{incorrect}</p>
+              <p className="text-xs text-slate-400">Incorrect</p>
+            </div>
+            {pending > 0 && (
+              <div className="rounded-lg border border-slate-100 p-3 text-center">
+                <p className="text-2xl font-bold text-amber-500">{pending}</p>
+                <p className="text-xs text-slate-400">Pending</p>
+              </div>
+            )}
+            <div className="rounded-lg border border-slate-100 p-3 text-center">
+              <p className="text-2xl font-bold text-violet-600">{accuracy}%</p>
+              <p className="text-xs text-slate-400">Accuracy</p>
+            </div>
+          </div>
+          {isPending && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-700">
+              <Clock className="mr-1.5 inline h-4 w-4" />
+              Your quiz contains questions that require manual grading. The final result will be available after your teacher reviews them.
             </div>
           )}
-          <div className="rounded-lg border border-slate-100 p-3 text-center">
-            <p className="text-2xl font-bold text-violet-600">{accuracy}%</p>
-            <p className="text-xs text-slate-400">Accuracy</p>
-          </div>
-        </div>
-        {isPending && (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-700">
-            <Clock className="mr-1.5 inline h-4 w-4" />
-            Your quiz contains questions that require manual grading. The final result will be available after your teacher reviews them.
-          </div>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Answer Review */}
       <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
-        <h2 className="mb-4 text-base font-semibold text-slate-900">Answer Review</h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-slate-900">
+            {hasUngradedManual ? 'Your Answers (Provisional)' : 'Answer Review'}
+          </h2>
+          {hasUngradedManual && (
+            <Badge className="bg-amber-50 text-amber-600 text-[10px]">
+              <Clock className="mr-1 h-3 w-3" />Pending review
+            </Badge>
+          )}
+        </div>
         <div className="space-y-3">
           {allQuestions.map((q: any, idx: number) => {
             const isPendingQ = q.isCorrect === null || q.isCorrect === undefined;
