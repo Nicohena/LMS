@@ -575,25 +575,42 @@ export async function startAttempt(
     // this start attempt AND the existing record is missing them. This covers:
     //   - student started the quiz, navigated away, came back, re-entered info
     //   - attempt was created before the Prisma migration added these columns
+    // We also write to the answers JSON (_studentInfo key) as a fallback so
+    // the info survives even if the Prisma client was generated before the
+    // schema change (Prisma silently drops unknown column writes in that case).
     const newName = data.studentName?.trim() || null;
     const newId = data.studentId?.trim() || null;
-    if (newName && !inProgress.studentName) {
+    const existingAnswers = (inProgress.answers as Record<string, any> | null) ?? {};
+    const existingInfo = (existingAnswers._studentInfo as { studentName?: string | null; studentIdInput?: string | null } | null) ?? {};
+    const mergedName = newName ?? inProgress.studentName ?? existingInfo.studentName ?? null;
+    const mergedId = newId ?? inProgress.studentIdInput ?? existingInfo.studentIdInput ?? null;
+
+    if ((newName && !inProgress.studentName) || (newId && !inProgress.studentIdInput)) {
       await prisma.quizAttempt.update({
         where: { id: inProgress.id },
-        data: { studentName: newName, ...(newId && !inProgress.studentIdInput ? { studentIdInput: newId } : {}) },
+        data: {
+          ...(newName && !inProgress.studentName ? { studentName: newName } : {}),
+          ...(newId && !inProgress.studentIdInput ? { studentIdInput: newId } : {}),
+          answers: { ...existingAnswers, _studentInfo: { studentName: mergedName, studentIdInput: mergedId } } as any,
+        },
       });
-      return { attempt: { ...inProgress, studentName: newName, studentIdInput: newId ?? inProgress.studentIdInput } };
-    }
-    if (newId && !inProgress.studentIdInput) {
-      await prisma.quizAttempt.update({
-        where: { id: inProgress.id },
-        data: { studentIdInput: newId },
-      });
-      return { attempt: { ...inProgress, studentIdInput: newId } };
+      return { attempt: { ...inProgress, studentName: mergedName, studentIdInput: mergedId } };
     }
     // Return the existing in-progress attempt
     return { attempt: inProgress };
   }
+
+  // Dual-write the student info: to the new dedicated columns (studentName,
+  // studentIdInput) AND to the answers JSON under a namespaced _studentInfo
+  // key. The JSON fallback ensures teachers see the info even if the user
+  // hasn't run the Prisma migration that adds the columns — Prisma silently
+  // drops unknown fields from `data` when the client was generated before
+  // the schema change, but the `answers` field already exists and is always
+  // written.
+  const studentInfoPayload = {
+    studentName: data.studentName?.trim() || null,
+    studentIdInput: data.studentId?.trim() || null,
+  };
 
   const attempt = await prisma.quizAttempt.create({
     data: {
@@ -603,10 +620,11 @@ export async function startAttempt(
       attemptNumber: existingAttempts + 1,
       status: 'IN_PROGRESS',
       startTime: new Date(),
-      // Persist the name/ID the student typed in the pre-attempt form
-      // (teacher uses these to identify submissions).
-      studentName: data.studentName?.trim() || null,
-      studentIdInput: data.studentId?.trim() || null,
+      // Dedicated columns (work once `prisma generate` + `db push` are run).
+      studentName: studentInfoPayload.studentName,
+      studentIdInput: studentInfoPayload.studentIdInput,
+      // JSON fallback (works regardless of migration state).
+      answers: { _studentInfo: studentInfoPayload } as any,
     },
   });
 
@@ -621,7 +639,7 @@ export async function saveProgress(
   assertValidObjectId(attemptId, 'Attempt');
   const attempt = await prisma.quizAttempt.findUnique({
     where: { id: attemptId },
-    select: { id: true, userId: true, status: true, timeSpent: true },
+    select: { id: true, userId: true, status: true, timeSpent: true, answers: true },
   });
   if (!attempt) throw new NotFoundError('Attempt not found');
   if (attempt.userId !== userId) {
@@ -634,10 +652,20 @@ export async function saveProgress(
   // Check time limit if applicable
   await enforceTimeLimit(attempt.id);
 
+  // Preserve the _studentInfo key (if any) when overwriting the answers JSON.
+  // saveProgress receives the student's in-progress answers keyed by questionId;
+  // without this merge, the student identity stored at attempt.answers._studentInfo
+  // would be wiped on every autosave.
+  const existingAnswers = (attempt.answers as Record<string, any> | null) ?? {};
+  const studentInfo = existingAnswers._studentInfo;
+  const mergedAnswers = studentInfo
+    ? { ...(data.answers as Record<string, any>), _studentInfo: studentInfo }
+    : (data.answers as Prisma.InputJsonValue);
+
   const updated = await prisma.quizAttempt.update({
     where: { id: attemptId },
     data: {
-      answers: data.answers as Prisma.InputJsonValue,
+      answers: mergedAnswers as Prisma.InputJsonValue,
       timeSpent: Math.max(attempt.timeSpent, data.timeSpent),
     },
     select: { id: true, status: true, timeSpent: true },
@@ -655,7 +683,7 @@ export async function submitAttempt(
   assertValidObjectId(attemptId, 'Attempt');
   const attempt = await prisma.quizAttempt.findUnique({
     where: { id: attemptId },
-    select: { id: true, userId: true, status: true, timeSpent: true, quizId: true, enrollmentId: true, attemptNumber: true, startTime: true },
+    select: { id: true, userId: true, status: true, timeSpent: true, quizId: true, enrollmentId: true, attemptNumber: true, startTime: true, answers: true },
   });
   if (!attempt) throw new NotFoundError('Attempt not found');
   if (attempt.userId !== userId) {
@@ -739,6 +767,14 @@ export async function submitAttempt(
   const finalScore = hasManualGrading ? totalScore : totalScore;
   const finalScorePercentage = hasManualGrading ? scorePercentage : scorePercentage;
 
+  // Preserve the _studentInfo key (if any) when overwriting the answers JSON
+  // with the student's submitted answers.
+  const existingAnswers = (attempt.answers as Record<string, any> | null) ?? {};
+  const studentInfo = existingAnswers._studentInfo;
+  const mergedSubmitAnswers = studentInfo
+    ? { ...(data.answers as Record<string, any>), _studentInfo: studentInfo }
+    : (data.answers as Prisma.InputJsonValue);
+
   // Update attempt
   const updated = await prisma.quizAttempt.update({
     where: { id: attemptId },
@@ -750,7 +786,7 @@ export async function submitAttempt(
       maxPossibleScore,
       scorePercentage: finalScorePercentage,
       passed: hasManualGrading ? null : passed,
-      answers: data.answers as Prisma.InputJsonValue,
+      answers: mergedSubmitAnswers as Prisma.InputJsonValue,
       gradedAt: hasManualGrading ? null : new Date(),
     },
   });
@@ -1004,7 +1040,18 @@ export async function getAttempts(
     },
   });
 
-  return { attempts };
+  // Normalize: if studentName/studentIdInput columns are null (e.g. attempt
+  // was created before the Prisma migration, or the client was generated
+  // before the schema change), fall back to the _studentInfo key in the
+  // answers JSON so the teacher's summary table still shows the identity.
+  const normalized = attempts.map((a) => {
+    if (a.studentName || a.studentIdInput) return a;
+    const aj = (a.answers as Record<string, any> | null) ?? {};
+    const info = (aj._studentInfo as { studentName?: string | null; studentIdInput?: string | null } | null) ?? {};
+    return { ...a, studentName: a.studentName ?? info.studentName ?? null, studentIdInput: a.studentIdInput ?? info.studentIdInput ?? null };
+  });
+
+  return { attempts: normalized };
 }
 
 export async function getResults(
@@ -1076,6 +1123,12 @@ async function buildResultsResponse(
 
   const hasUngradedManual = questions.some((q) => q.isManualGraded && q.pointsAwarded === null);
 
+  // Resolve student identity: prefer the dedicated columns, fall back to the
+  // _studentInfo key in the answers JSON (which survives even if the Prisma
+  // client was generated before the migration that added the columns).
+  const answersJson = (attempt.answers as Record<string, any> | null) ?? {};
+  const studentInfoFromJson = (answersJson._studentInfo as { studentName?: string | null; studentIdInput?: string | null } | null) ?? {};
+
   return {
     attemptId: attempt.id,
     quizId: attempt.quizId,
@@ -1090,8 +1143,8 @@ async function buildResultsResponse(
     startedAt: attempt.startTime,
     submittedAt: attempt.endTime,
     // Identity the student typed in the pre-attempt form (teacher visibility).
-    studentName: attempt.studentName,
-    studentIdInput: attempt.studentIdInput,
+    studentName: attempt.studentName ?? studentInfoFromJson.studentName ?? null,
+    studentIdInput: attempt.studentIdInput ?? studentInfoFromJson.studentIdInput ?? null,
     questions,
     hasUngradedManual,
   };
