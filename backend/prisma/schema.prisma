@@ -78,6 +78,8 @@ model User {
   sectionContents     SectionContent[]   @relation("sectionContentCreator")
   sectionQuizzes      SectionQuiz[]      @relation("sectionQuizCreator")
   sectionAssignments  SectionAssignment[] @relation("sectionAssignmentCreator")
+  rubricTemplates     RubricTemplate[]      @relation("rubricTemplateCreator")
+  assignmentAuditLogs AssignmentAuditLog[] @relation("assignmentAuditLogUser")
 }
 
 model RefreshToken {
@@ -437,8 +439,29 @@ model Answer {
 
 enum AssignmentStatus {
   DRAFT
+  SCHEDULED
   PUBLISHED
+  OPEN
+  CLOSED
   ARCHIVED
+}
+
+enum AssignmentType {
+  FILE_UPLOAD
+  MULTIPLE_FILE_UPLOAD
+  ESSAY
+  RICH_TEXT
+  SHORT_ANSWER
+  IMAGE_SUBMISSION
+  AUDIO_SUBMISSION
+  VIDEO_SUBMISSION
+  PDF_SUBMISSION
+  EXTERNAL_LINK
+  MIXED_SUBMISSION
+  OFFLINE
+  PRACTICAL
+  INDIVIDUAL
+  GROUP
 }
 
 enum SubmissionStatus {
@@ -486,11 +509,63 @@ model Assignment {
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
 
-  creator     User         @relation("assignmentCreator", fields: [createdBy], references: [id])
-  content     Content?     @relation(fields: [contentId], references: [id])
-  rubric      Rubric?
-  submissions Submission[]
-  peerReviews PeerReview[]
+  // ── New: classification & association ────────────────────────────────
+  category               String?
+  type                   AssignmentType   @default(FILE_UPLOAD)
+  difficulty             DifficultyLevel  @default(BEGINNER)
+  subjectId              String?          @db.ObjectId
+  sectionId              String?          @db.ObjectId
+  topic                  String?
+  unit                   String?
+
+  // ── New: grading configuration ───────────────────────────────────────
+  passingMarks           Float?
+  weightPercentage       Float            @default(0)
+  rubricTemplateId       String?          @db.ObjectId
+
+  // ── New: submission configuration ────────────────────────────────────
+  maxAttempts            Int              @default(1)
+  allowDrafts            Boolean          @default(true)
+  allowAutoSave          Boolean          @default(true)
+  requireConfirmation    Boolean          @default(true)
+
+  // ── New: file configuration ──────────────────────────────────────────
+  maxFiles               Int              @default(5)
+
+  // ── New: text configuration ──────────────────────────────────────────
+  minWordCount           Int?
+  maxWordCount           Int?
+  minCharCount           Int?
+  maxCharCount           Int?
+
+  // ── New: deadline configuration ──────────────────────────────────────
+  publishDate            DateTime?
+  gracePeriodDays        Int              @default(0)
+  timezone               String           @default("UTC")
+  allowLateSubmissions   Boolean          @default(true)
+
+  // ── New: visibility & workflow ───────────────────────────────────────
+  isPublic               Boolean          @default(false)
+  isTemplate             Boolean          @default(false)
+  templateId             String?          @db.ObjectId
+  visibility             String           @default("ENROLLED_ONLY")
+  publishedAt            DateTime?
+  closedAt               DateTime?
+  archivedAt             DateTime?
+
+  // ── New: metadata ────────────────────────────────────────────────────
+  estimatedTime          Int?
+  tags                   String[]
+  version                Int              @default(1)
+
+  creator          User                 @relation("assignmentCreator", fields: [createdBy], references: [id])
+  content          Content?             @relation(fields: [contentId], references: [id])
+  rubric           Rubric?
+  rubricTemplate   RubricTemplate?      @relation(fields: [rubricTemplateId], references: [id])
+  submissions      Submission[]
+  peerReviews      PeerReview[]
+  resources        AssignmentResource[]
+  auditLogs        AssignmentAuditLog[]
 }
 
 model Rubric {
@@ -504,6 +579,23 @@ model Rubric {
   updatedAt   DateTime @updatedAt
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+// Reusable rubric template — a teacher creates this once and applies it to
+// many assignments. Applying copies the criteria into a per-assignment Rubric.
+model RubricTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  criteria    Json
+  totalPoints Float    @default(100)
+  isTemplate  Boolean  @default(true)
+  createdBy   String   @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User         @relation("rubricTemplateCreator", fields: [createdBy], references: [id])
+  assignments Assignment[]
 }
 
 model Submission {
@@ -526,6 +618,30 @@ model Submission {
   plagiarismReport  String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+
+  // ── New: submission metadata ─────────────────────────────────────────
+  isDraft           Boolean          @default(false)
+  isLate            Boolean          @default(false)
+  wordCount         Int              @default(0)
+  characterCount    Int              @default(0)
+  submissionTime    DateTime?
+  deviceInfo        String?
+  ipAddress         String?
+
+  // ── New: grading extras ──────────────────────────────────────────────
+  percentage        Float?
+  letterGrade       String?
+  isPassing         Boolean?
+  privateNotes      String?
+
+  // ── New: revision tracking ───────────────────────────────────────────
+  revisionCount     Int              @default(0)
+  revisionHistory   Json?
+
+  // ── New: peer review summary ─────────────────────────────────────────
+  peerReviewScore   Float?
+  peerReviewFeedback String?
+  peerReviewStatus  String?
 
   assignment          Assignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   user                User         @relation("submissionUser", fields: [userId], references: [id])
@@ -1410,4 +1526,41 @@ model Timetable {
 
   section       Section       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   sectionSubject SectionSubject? @relation(fields: [sectionSubjectId], references: [id])
+}
+
+// ── Assignment module: new models ──────────────────────────────────────────
+
+model AssignmentResource {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId     String   @db.ObjectId
+  title            String
+  description      String?
+  fileUrl          String
+  fileType         String?
+  fileSize         Int?
+  originalFilename String?
+  publicId         String?
+  order            Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+model AssignmentAuditLog {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId  String   @db.ObjectId
+  userId        String   @db.ObjectId
+  action        String
+  entityType    String
+  entityId      String?
+  previousValue Json?
+  newValue      Json?
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation("assignmentAuditLogUser", fields: [userId], references: [id])
 }
