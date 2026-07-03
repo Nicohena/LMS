@@ -14,7 +14,7 @@ import {
   Check, GripVertical, Image, Send,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion, useQuizAttempts } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion, useQuizAttempts, useManualGradeAttempt } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { toast } from "@/hooks/use-toast";
 import { getSocket } from '@/lib/socket';
@@ -3830,12 +3830,16 @@ function HotspotEditor({ imageUrl, onImageUrlChange, zones, onZonesChange }: {
 function QuizSubmissionsModal({ quizId, onClose }: { quizId: string | null; onClose: () => void }) {
   const { data, isLoading, isError } = useQuizAttempts(quizId);
   const attempts = (data?.data ?? data?.attempts ?? []) as any[];
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white p-5">
-          <h2 className="text-lg font-bold text-slate-900">Student Submissions ({attempts.length})</h2>
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white p-5">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Student Submissions ({attempts.length})</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Click any row to view the student&apos;s full answer breakdown.</p>
+          </div>
           <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
         </div>
         <div className="p-6">
@@ -3848,60 +3852,269 @@ function QuizSubmissionsModal({ quizId, onClose }: { quizId: string | null; onCl
             </div>
           )}
           {attempts.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-xs text-slate-500">
-                    <th className="px-3 py-2 text-left font-medium">Student</th>
-                    <th className="px-3 py-2 text-left font-medium">Status</th>
-                    <th className="px-3 py-2 text-right font-medium">Score</th>
-                    <th className="px-3 py-2 text-right font-medium">%</th>
-                    <th className="px-3 py-2 text-center font-medium">Result</th>
-                    <th className="px-3 py-2 text-left font-medium">Submitted</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attempts.map((a: any, idx: number) => {
-                    const studentName = a.user ? `${a.user.firstName} ${a.user.lastName}` : 'Unknown';
-                    const initials = a.user ? getInitials(studentName) : '?';
-                    const pct = a.scorePercentage ?? 0;
-                    const maxScore = a.maxPossibleScore ?? 0;
-                    const score = a.score ?? 0;
-                    return (
-                      <tr key={a.id || idx} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-600">{initials}</div>
-                            <span className="font-medium text-slate-900">{studentName}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-3">
-                          <Badge className={cn(
-                            'text-[10px]',
-                            a.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' :
-                            a.status === 'IN_PROGRESS' ? 'bg-amber-50 text-amber-600' :
-                            a.status === 'TIMED_OUT' ? 'bg-red-50 text-red-600' :
-                            'bg-slate-100 text-slate-500'
-                          )}>{a.status?.replace(/_/g, ' ')}</Badge>
-                        </td>
-                        <td className="px-3 py-3 text-right text-slate-700">{score}/{maxScore}</td>
-                        <td className="px-3 py-3 text-right font-semibold text-slate-900">{pct}%</td>
-                        <td className="px-3 py-3 text-center">
+            <div className="space-y-2">
+              {attempts.map((a: any, idx: number) => {
+                const studentName = a.user ? `${a.user.firstName} ${a.user.lastName}`.trim() : 'Unknown student';
+                const initials = a.user ? getInitials(studentName) : '?';
+                const pct = a.scorePercentage ?? 0;
+                const maxScore = a.maxPossibleScore ?? 0;
+                const score = a.score ?? 0;
+                const isOpen = expandedId === a.id;
+                return (
+                  <div key={a.id || idx} className={cn('rounded-xl border transition-colors', isOpen ? 'border-violet-300 bg-violet-50/30' : 'border-slate-200 bg-white hover:bg-slate-50')}>
+                    {/* Summary row — clickable */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(isOpen ? null : a.id)}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[11px] font-bold text-violet-600">{initials}</div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">{studentName}</p>
+                        <p className="truncate text-xs text-slate-500">
+                          {a.status?.replace(/_/g, ' ').toLowerCase()} · submitted {a.endTime ? formatDate(a.endTime) : a.startTime ? formatDate(a.startTime) : '—'}
+                        </p>
+                      </div>
+                      <div className="hidden items-center gap-4 text-xs sm:flex">
+                        <div className="text-right">
+                          <p className="font-semibold text-slate-900">{score}/{maxScore}</p>
+                          <p className="text-slate-400">points</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-slate-900">{pct}%</p>
+                          <p className="text-slate-400">score</p>
+                        </div>
+                        <div className="text-center">
                           {a.passed === true && <Badge className="bg-emerald-100 text-emerald-700">Passed</Badge>}
                           {a.passed === false && <Badge className="bg-red-100 text-red-700">Failed</Badge>}
                           {a.passed === null && <Badge className="bg-amber-100 text-amber-700">Pending</Badge>}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-slate-500">
-                          {a.endTime ? formatDate(a.endTime) : a.startTime ? formatDate(a.startTime) : '—'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </div>
+                      <ChevronRight className={cn('h-4 w-4 shrink-0 text-slate-400 transition-transform', isOpen && 'rotate-90')} />
+                    </button>
+
+                    {/* Expanded detail panel */}
+                    {isOpen && (
+                      <div className="border-t border-violet-200 bg-white px-4 py-4">
+                        <SubmissionDetailPanel attemptId={a.id} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Per-question detail panel for a single student's attempt ──────────────
+function SubmissionDetailPanel({ attemptId }: { attemptId: string }) {
+  const { data: resultsData, isLoading, isError } = useAttemptResults(attemptId);
+  const results = (resultsData as any)?.results;
+
+  if (isLoading) {
+    return <div className="py-6 text-center text-sm text-slate-400">Loading answers…</div>;
+  }
+  if (isError || !results) {
+    return <div className="py-6 text-center text-sm text-red-500">Failed to load answers.</div>;
+  }
+
+  const questions = results.questions ?? [];
+  const total = questions.length;
+  const correct = questions.filter((q: any) => q.isCorrect === true).length;
+  const incorrect = questions.filter((q: any) => q.isCorrect === false).length;
+  const pending = questions.filter((q: any) => q.isCorrect === null || q.isCorrect === undefined).length;
+  const hasUngradedManual = !!(results as any).hasUngradedManual;
+
+  const formatAnswer = (val: any): string => {
+    if (val === undefined || val === null || val === '') return 'No answer submitted';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'boolean') return val ? 'True' : 'False';
+    if (Array.isArray(val)) return val.length === 0 ? 'No answer submitted' : val.map((v) => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(', ');
+    if (typeof val === 'object') {
+      // Matching: { left1: 'right1', left2: 'right2' }
+      const entries = Object.entries(val);
+      if (entries.length === 0) return 'No answer submitted';
+      return entries.map(([k, v]) => `${k} → ${String(v)}`).join('; ');
+    }
+    return String(val);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Quick stats banner */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5 text-center">
+          <p className="text-lg font-bold text-slate-900">{total}</p>
+          <p className="text-[10px] uppercase tracking-wide text-slate-500">Questions</p>
+        </div>
+        <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-2.5 text-center">
+          <p className="text-lg font-bold text-emerald-600">{correct}</p>
+          <p className="text-[10px] uppercase tracking-wide text-slate-500">Correct</p>
+        </div>
+        <div className="rounded-lg border border-red-100 bg-red-50/50 p-2.5 text-center">
+          <p className="text-lg font-bold text-red-500">{incorrect}</p>
+          <p className="text-[10px] uppercase tracking-wide text-slate-500">Incorrect</p>
+        </div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-2.5 text-center">
+          <p className="text-lg font-bold text-amber-600">{pending}</p>
+          <p className="text-[10px] uppercase tracking-wide text-slate-500">Pending review</p>
+        </div>
+      </div>
+
+      {hasUngradedManual && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <Clock className="mr-1.5 inline h-4 w-4" />
+          This submission contains manually-graded questions. Use the &quot;Grade&quot; row below to award points
+          (0 to the question&apos;s max points). The pass/fail status will be recomputed automatically once all
+          manual questions are graded.
+        </div>
+      )}
+
+      {/* Per-question list */}
+      <div className="space-y-2.5">
+        {questions.map((q: any, idx: number) => {
+          const isPendingQ = q.isCorrect === null || q.isCorrect === undefined;
+          const maxPts = q.pointsPossible ?? 1;
+          const awarded = q.pointsAwarded;
+          return (
+            <div
+              key={q.questionId ?? idx}
+              className={cn(
+                'rounded-lg border p-3',
+                isPendingQ ? 'border-amber-200 bg-amber-50/40' : q.isCorrect ? 'border-emerald-200 bg-emerald-50/40' : 'border-red-200 bg-red-50/40'
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700">{idx + 1}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{String(q.type || '').replace(/_/g, ' ').toLowerCase()}</span>
+                  </div>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{q.questionText}</p>
+                </div>
+                <div className="shrink-0 text-right text-xs">
+                  <p className={cn('font-semibold', isPendingQ ? 'text-amber-600' : q.isCorrect ? 'text-emerald-600' : 'text-red-500')}>
+                    {awarded === null || awarded === undefined ? '—' : awarded} / {maxPts} pts
+                  </p>
+                  {isPendingQ ? (
+                    <Badge className="bg-amber-100 text-amber-700 text-[9px]"><Clock className="mr-1 h-2.5 w-2.5" />Pending</Badge>
+                  ) : q.isCorrect ? (
+                    <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">Correct</Badge>
+                  ) : (
+                    <Badge className="bg-red-100 text-red-700 text-[9px]">Incorrect</Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2">
+                <div className="rounded bg-white/70 p-2">
+                  <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Student answer</p>
+                  <p className={cn('break-words', isPendingQ ? 'text-amber-700' : q.isCorrect ? 'text-emerald-700' : 'text-red-600')}>{formatAnswer(q.studentAnswer)}</p>
+                </div>
+                <div className="rounded bg-white/70 p-2">
+                  <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Correct answer</p>
+                  <p className="break-words text-emerald-700">{formatAnswer(q.correctAnswer)}</p>
+                </div>
+              </div>
+
+              {q.feedback && (
+                <p className="mt-2 rounded bg-slate-50 p-2 text-xs italic text-slate-600">
+                  <span className="font-semibold not-italic">Feedback:</span> {q.feedback}
+                </p>
+              )}
+              {q.explanation && (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  <span className="font-semibold">Explanation:</span> {q.explanation}
+                </p>
+              )}
+
+              {/* Inline manual grading for ESSAY/SHORT_ANSWER/FILE_UPLOAD/HOTSPOT */}
+              {q.isManualGraded && (
+                <ManualGradeRow attemptId={attemptId} questionId={q.questionId} maxPoints={maxPts} currentPoints={awarded} currentFeedback={q.feedback} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Inline manual grading widget for a single manual-grade question ───────
+function ManualGradeRow({ attemptId, questionId, maxPoints, currentPoints, currentFeedback }: {
+  attemptId: string;
+  questionId: string;
+  maxPoints: number;
+  currentPoints: number | null | undefined;
+  currentFeedback?: string;
+}) {
+  const manualGrade = useManualGradeAttempt();
+  const [pts, setPts] = useState<string>(currentPoints != null ? String(currentPoints) : '');
+  const [feedback, setFeedback] = useState<string>(currentFeedback ?? '');
+  const [saved, setSaved] = useState(false);
+
+  // Keep local state in sync if the upstream data changes (e.g. after another grade)
+  useEffect(() => {
+    setPts(currentPoints != null ? String(currentPoints) : '');
+    setFeedback(currentFeedback ?? '');
+  }, [currentPoints, currentFeedback]);
+
+  const handleSave = () => {
+    const ptsNum = Number(pts);
+    if (Number.isNaN(ptsNum) || ptsNum < 0) {
+      toast({ title: 'Invalid points', description: 'Enter a number 0 or greater.', variant: 'destructive' });
+      return;
+    }
+    if (ptsNum > maxPoints) {
+      toast({ title: 'Points exceed maximum', description: `Max for this question is ${maxPoints}.`, variant: 'destructive' });
+      return;
+    }
+    manualGrade.mutate(
+      { attemptId, grades: [{ questionId, pointsAwarded: ptsNum, feedback: feedback.trim() || undefined }] },
+      {
+        onSuccess: () => {
+          toast({ title: 'Grade saved', description: `${ptsNum} / ${maxPoints} points awarded.` });
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        },
+        onError: (err: any) => toast({ title: 'Failed to save grade', description: err.response?.data?.message || 'Please try again.', variant: 'destructive' }),
+      },
+    );
+  };
+
+  return (
+    <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/40 p-2.5">
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600">Manual grading</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <Label className="mb-1 block text-[10px] text-slate-500">Points (0–{maxPoints})</Label>
+          <Input
+            type="number"
+            min={0}
+            max={maxPoints}
+            step={0.5}
+            value={pts}
+            onChange={(e) => setPts(e.target.value)}
+            placeholder="0"
+            className="h-8 w-24 text-sm"
+          />
+        </div>
+        <div className="min-w-[200px] flex-1">
+          <Label className="mb-1 block text-[10px] text-slate-500">Feedback (optional)</Label>
+          <Input value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="e.g. Good effort, but…" className="h-8 text-sm" />
+        </div>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={manualGrade.isPending}
+          className="bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
+        >
+          {manualGrade.isPending ? 'Saving…' : saved ? 'Saved ✓' : 'Save grade'}
+        </Button>
       </div>
     </div>
   );
@@ -4105,8 +4318,39 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     if (!createdQuizId) { setQError('Create the quiz first.'); return; }
     const qData = buildQuestionData();
     if (!qData) return;
+    const payload = {
+      type: qType as any,
+      questionText: qText,
+      points: Number(qPoints) || 1,
+      options: qData.options,
+      correctAnswer: qData.correctAnswer,
+      explanation: qExplanation.trim() || undefined,
+    };
+
+    // EDIT mode — update the existing question in place.
+    if (editingQuestionIdx !== null) {
+      const existing = (quiz?.questions ?? [])[editingQuestionIdx];
+      if (!existing?.id) {
+        setQError('Could not find the question to update. Please reload the editor.');
+        return;
+      }
+      updateQuestion.mutate(
+        { questionId: existing.id, data: payload },
+        {
+          onSuccess: () => {
+            resetQuestionForm();
+            toast({ title: 'Question updated', description: 'Your changes have been saved.' });
+            if (createdQuizId) refetchQuiz();
+          },
+          onError: (err: any) => setQError(err.response?.data?.message || 'Failed to update.'),
+        },
+      );
+      return;
+    }
+
+    // CREATE mode — add a new question.
     addQuestion.mutate(
-      { quizId: createdQuizId!, data: { type: qType as any, questionText: qText, points: Number(qPoints) || 1, options: qData.options, correctAnswer: qData.correctAnswer, explanation: qExplanation.trim() || undefined } },
+      { quizId: createdQuizId!, data: payload },
       {
         onSuccess: () => {
           resetQuestionForm();
@@ -4453,8 +4697,14 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
             {qError && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{qError}</div>}
 
             {/* Add/Update Question Button */}
-            <Button onClick={handleAddQuestion} disabled={addQuestion.isPending} className="w-full bg-violet-600 py-2.5 text-white hover:bg-violet-700">
-              {addQuestion.isPending ? 'Adding...' : editingQuestionIdx !== null ? 'Update Question' : '+ Add Question'}
+            <Button
+              onClick={handleAddQuestion}
+              disabled={addQuestion.isPending || updateQuestion.isPending}
+              className="w-full bg-violet-600 py-2.5 text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              {editingQuestionIdx !== null
+                ? (updateQuestion.isPending ? 'Updating…' : 'Update Question')
+                : (addQuestion.isPending ? 'Adding…' : '+ Add Question')}
             </Button>
           </div>
         </div>

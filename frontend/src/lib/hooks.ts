@@ -659,6 +659,23 @@ export function useAttemptResults(attemptId: string | null) {
 
 // ─── Grading Escalation (Step 4) ─────────────────────────────────────────
 
+// ─── Manual grading (teacher) ─────────────────────────────────────────────
+export function useManualGradeAttempt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ attemptId, grades }: { attemptId: string; grades: Array<{ questionId: string; pointsAwarded: number; feedback?: string }> }) => {
+      const res = await api.patch(`/quizzes/attempts/${attemptId}/grade`, { grades });
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate the attempt results so the detail panel refetches
+      qc.invalidateQueries({ queryKey: ['quiz-attempt-results', variables.attemptId] });
+      // Also invalidate the attempts list so the summary table updates
+      qc.invalidateQueries({ queryKey: ['quiz-attempts'] });
+    },
+  });
+}
+
 export function useAdminOverrideGrade() {
   const queryClient = useQueryClient();
   return useMutation({
