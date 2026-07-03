@@ -14,7 +14,9 @@ import {
   Check, GripVertical, Image, Send,
 } from 'lucide-react';
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
-import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion, useQuizAttempts, useManualGradeAttempt } from '@/lib/hooks';
+import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion, useQuizAttempts, useManualGradeAttempt,
+  usePublishAssignment, useArchiveAssignment, useRestoreAssignment, useDuplicateAssignment,
+} from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { toast } from "@/hooks/use-toast";
 import { getSocket } from '@/lib/socket';
@@ -5831,11 +5833,102 @@ function AssignmentView({ assignmentId, onNavigate, onSelectAssignment }: { assi
 }
 
 // ─── Assignment List View ────────────────────────────────────────────────
+// Helper: format a deadline countdown with color-coded urgency
+function formatDeadline(due: Date | null): { text: string; color: string } {
+  if (!due) return { text: 'No deadline', color: 'text-slate-400' };
+  const now = new Date();
+  const ms = due.getTime() - now.getTime();
+  if (ms < 0) return { text: 'Overdue', color: 'text-red-500' };
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  if (days > 7) return { text: `${days} days left`, color: 'text-emerald-600' };
+  if (days > 1) return { text: `${days}d ${hours}h left`, color: 'text-amber-600' };
+  if (days === 1) return { text: `${days}d ${hours}h left`, color: 'text-orange-600' };
+  if (hours > 0) return { text: `${hours}h left`, color: 'text-red-500' };
+  const mins = Math.floor(ms / 60000);
+  return { text: `${mins}m left`, color: 'text-red-600' };
+}
+
+// Helper: status badge config
+const ASSIGNMENT_STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
+  DRAFT:     { label: 'Draft',     bg: 'bg-slate-100',  text: 'text-slate-600' },
+  SCHEDULED: { label: 'Scheduled', bg: 'bg-amber-50',   text: 'text-amber-600' },
+  PUBLISHED: { label: 'Published', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  OPEN:      { label: 'Open',      bg: 'bg-blue-50',    text: 'text-blue-600' },
+  CLOSED:    { label: 'Closed',    bg: 'bg-red-50',     text: 'text-red-600' },
+  ARCHIVED:  { label: 'Archived',  bg: 'bg-slate-100',  text: 'text-slate-400' },
+};
+
 function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v: View) => void; onSelectAssignment: (id: string) => void }) {
   const authUser = useAuthStore((s) => s.user);
   const isTeacher = authUser?.role === 'TEACHER' || authUser?.role === 'ADMIN';
-  const { data, isLoading, isError } = useAssignments({ limit: 50, status: isTeacher ? undefined : 'PUBLISHED' });
-  const assignments = (data?.data ?? []) as any[];
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'dueDate' | 'title' | 'createdAt'>('dueDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const { data, isLoading, isError } = useAssignments({
+    limit: 50,
+    status: isTeacher ? (statusFilter || undefined) : (statusFilter || 'PUBLISHED'),
+    search: search.trim() || undefined,
+  });
+
+  const publishMut = usePublishAssignment();
+  const archiveMut = useArchiveAssignment();
+  const restoreMut = useRestoreAssignment();
+  const duplicateMut = useDuplicateAssignment();
+
+  let assignments = (data?.data ?? []) as any[];
+  // Client-side sort
+  assignments = [...assignments].sort((a, b) => {
+    let cmp = 0;
+    if (sortBy === 'title') cmp = (a.title || '').localeCompare(b.title || '');
+    else if (sortBy === 'createdAt') cmp = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+    else if (sortBy === 'dueDate') {
+      const ad = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const bd = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      cmp = ad - bd;
+    }
+    return sortOrder === 'asc' ? cmp : -cmp;
+  });
+
+  const handlePublish = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    publishMut.mutate(id, {
+      onSuccess: () => toast({ title: 'Assignment published', description: 'Students can now see this assignment.' }),
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to publish.', variant: 'destructive' }),
+    });
+  };
+  const handleArchive = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    archiveMut.mutate(id, {
+      onSuccess: () => toast({ title: 'Assignment archived' }),
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to archive.', variant: 'destructive' }),
+    });
+  };
+  const handleRestore = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    restoreMut.mutate(id, {
+      onSuccess: () => toast({ title: 'Assignment restored' }),
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to restore.', variant: 'destructive' }),
+    });
+  };
+  const handleDuplicate = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    duplicateMut.mutate(id, {
+      onSuccess: () => toast({ title: 'Assignment duplicated', description: 'A copy has been created as a draft.' }),
+      onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to duplicate.', variant: 'destructive' }),
+    });
+  };
+
+  // Stats for teacher
+  const stats = isTeacher ? {
+    total: assignments.length,
+    published: assignments.filter((a) => a.status === 'PUBLISHED' || a.status === 'OPEN').length,
+    draft: assignments.filter((a) => a.status === 'DRAFT').length,
+    closed: assignments.filter((a) => a.status === 'CLOSED').length,
+    archived: assignments.filter((a) => a.status === 'ARCHIVED').length,
+  } : null;
 
   return (
     <main className="mx-auto max-w-5xl p-4 lg:p-6">
@@ -5848,32 +5941,138 @@ function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v
         <h1 className="text-2xl font-bold text-slate-900">{isTeacher ? 'All Assignments' : 'Available Assignments'}</h1>
         <p className="mt-1 text-sm text-slate-500">{assignments.length} {isTeacher ? 'total' : 'published'} assignments · {isTeacher ? 'Manage and grade submissions' : 'Submit your work'}</p>
       </div>
+
+      {/* Stats row (teacher only) */}
+      {isTeacher && stats && (
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="rounded-lg border border-slate-200 bg-white p-3 text-center">
+            <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+            <p className="text-xs text-slate-400">Total</p>
+          </div>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-center">
+            <p className="text-2xl font-bold text-emerald-600">{stats.published}</p>
+            <p className="text-xs text-slate-400">Published</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-center">
+            <p className="text-2xl font-bold text-slate-600">{stats.draft}</p>
+            <p className="text-xs text-slate-400">Draft</p>
+          </div>
+          <div className="rounded-lg border border-red-200 bg-red-50/50 p-3 text-center">
+            <p className="text-2xl font-bold text-red-600">{stats.closed}</p>
+            <p className="text-xs text-slate-400">Closed</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-center">
+            <p className="text-2xl font-bold text-slate-400">{stats.archived}</p>
+            <p className="text-xs text-slate-400">Archived</p>
+          </div>
+        </div>
+      )}
+
+      {/* Search + Filter + Sort controls */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search assignments..."
+            className="pl-9 text-sm"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          <option value="">All statuses</option>
+          <option value="DRAFT">Draft</option>
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="PUBLISHED">Published</option>
+          <option value="OPEN">Open</option>
+          <option value="CLOSED">Closed</option>
+          {isTeacher && <option value="ARCHIVED">Archived</option>}
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as any)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          <option value="dueDate">Sort by due date</option>
+          <option value="title">Sort by title</option>
+          <option value="createdAt">Sort by created date</option>
+        </select>
+        <button
+          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+          title={sortOrder === 'asc' ? 'Ascending (click for descending)' : 'Descending (click for ascending)'}
+        >
+          {sortOrder === 'asc' ? '↑' : '↓'}
+        </button>
+      </div>
+
       {isError && <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">Failed to load assignments.</div>}
       {isLoading && <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading assignments…</div>}
       {!isLoading && !isError && assignments.length === 0 && (
         <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          {isTeacher ? 'No assignments yet. Create one from a course detail page.' : 'No assignments available yet.'}
+          {search || statusFilter ? 'No assignments match your filters.' : (isTeacher ? 'No assignments yet. Create one from a course detail page.' : 'No assignments available yet.')}
         </div>
       )}
       <div className="space-y-3">
         {assignments.map((a: any) => {
           const due = a.dueDate ? new Date(a.dueDate) : null;
           const isOverdue = due && due < new Date();
+          const deadline = formatDeadline(due);
+          const statusCfg = ASSIGNMENT_STATUS_CONFIG[a.status] ?? ASSIGNMENT_STATUS_CONFIG.PUBLISHED;
           return (
-            <Card key={a.id} className="cursor-pointer border border-slate-200 p-5 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectAssignment(a.id)}>
+            <Card key={a.id} className="group cursor-pointer border border-slate-200 p-5 shadow-sm transition-all hover:shadow-md" onClick={() => onSelectAssignment(a.id)}>
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50"><FileText className="h-5 w-5 text-violet-600" /></div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
                     <h3 className="text-sm font-semibold text-slate-900">{a.title}</h3>
-                    <Badge className={cn('hover:opacity-90', isOverdue ? 'bg-red-50 text-red-600' : 'bg-violet-50 text-violet-600')}>{isOverdue ? 'Overdue' : 'Open'}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge className={cn('hover:opacity-90 text-[10px]', statusCfg.bg, statusCfg.text)}>{statusCfg.label}</Badge>
+                      {isOverdue && a.status !== 'CLOSED' && a.status !== 'ARCHIVED' && (
+                        <Badge className="bg-red-50 text-red-600 text-[10px]">Overdue</Badge>
+                      )}
+                    </div>
                   </div>
                   {a.description && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{a.description}</p>}
-                  <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Due: {due ? formatDate(due) : 'No deadline'}</span>
+                    <span className={cn('flex items-center gap-1 font-medium', deadline.color)}>{deadline.text}</span>
                     <span className="flex items-center gap-1"><Award className="h-3 w-3" />{a.maxPoints} pts</span>
+                    {a.type && a.type !== 'FILE_UPLOAD' && (
+                      <Badge className="bg-slate-100 text-slate-500 text-[9px]">{String(a.type).replace(/_/g, ' ').toLowerCase()}</Badge>
+                    )}
                     {a.requiresFileUpload && <span className="flex items-center gap-1"><Upload className="h-3 w-3" />File upload</span>}
+                    {a.difficulty && (
+                      <Badge className={cn('text-[9px]', a.difficulty === 'BEGINNER' ? 'bg-emerald-50 text-emerald-600' : a.difficulty === 'INTERMEDIATE' ? 'bg-amber-50 text-amber-600' : a.difficulty === 'ADVANCED' ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600')}>{a.difficulty.charAt(0) + a.difficulty.slice(1).toLowerCase()}</Badge>
+                    )}
                   </div>
+                  {/* Teacher action buttons */}
+                  {isTeacher && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                      {(a.status === 'DRAFT' || a.status === 'SCHEDULED') && (
+                        <Button size="sm" onClick={(e) => handlePublish(e, a.id)} disabled={publishMut.isPending} className="bg-emerald-600 text-white text-xs hover:bg-emerald-700 disabled:opacity-50">
+                          <CheckCircle2 className="mr-1 h-3 w-3" />Publish
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" onClick={(e) => handleDuplicate(e, a.id)} disabled={duplicateMut.isPending} className="border-slate-200 text-slate-600 text-xs">
+                        <Plus className="mr-1 h-3 w-3" />Duplicate
+                      </Button>
+                      {a.status !== 'ARCHIVED' && (
+                        <Button size="sm" variant="outline" onClick={(e) => handleArchive(e, a.id)} disabled={archiveMut.isPending} className="border-slate-200 text-slate-600 text-xs hover:bg-amber-50">
+                          Archive
+                        </Button>
+                      )}
+                      {a.status === 'ARCHIVED' && (
+                        <Button size="sm" variant="outline" onClick={(e) => handleRestore(e, a.id)} disabled={restoreMut.isPending} className="border-emerald-200 text-emerald-600 text-xs">
+                          Restore
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-300" />
               </div>
