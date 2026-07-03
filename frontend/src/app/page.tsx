@@ -4328,8 +4328,11 @@ function QuizEditorModal({ onClose, quizId: existingQuizId }: { onClose: () => v
     };
 
     // EDIT mode — update the existing question in place.
+    // Note: the API returns { quiz, questions } as separate top-level fields,
+    // so we use `existingQuestions` (derived at the top of this component) —
+    // NOT `quiz.questions`, which is undefined.
     if (editingQuestionIdx !== null) {
-      const existing = (quiz?.questions ?? [])[editingQuestionIdx];
+      const existing = existingQuestions[editingQuestionIdx];
       if (!existing?.id) {
         setQError('Could not find the question to update. Please reload the editor.');
         return;
