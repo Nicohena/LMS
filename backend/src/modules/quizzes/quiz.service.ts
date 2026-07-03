@@ -571,6 +571,26 @@ export async function startAttempt(
     orderBy: { createdAt: 'desc' },
   });
   if (inProgress) {
+    // Backfill studentName/studentIdInput if the student re-entered them on
+    // this start attempt AND the existing record is missing them. This covers:
+    //   - student started the quiz, navigated away, came back, re-entered info
+    //   - attempt was created before the Prisma migration added these columns
+    const newName = data.studentName?.trim() || null;
+    const newId = data.studentId?.trim() || null;
+    if (newName && !inProgress.studentName) {
+      await prisma.quizAttempt.update({
+        where: { id: inProgress.id },
+        data: { studentName: newName, ...(newId && !inProgress.studentIdInput ? { studentIdInput: newId } : {}) },
+      });
+      return { attempt: { ...inProgress, studentName: newName, studentIdInput: newId ?? inProgress.studentIdInput } };
+    }
+    if (newId && !inProgress.studentIdInput) {
+      await prisma.quizAttempt.update({
+        where: { id: inProgress.id },
+        data: { studentIdInput: newId },
+      });
+      return { attempt: { ...inProgress, studentIdInput: newId } };
+    }
     // Return the existing in-progress attempt
     return { attempt: inProgress };
   }
