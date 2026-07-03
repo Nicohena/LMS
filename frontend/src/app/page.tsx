@@ -4613,8 +4613,22 @@ function OrderingQuestion({ items, answer, onAnswerChange }: {
   const [dragOverZone, setDragOverZone] = useState<'pool' | 'answer' | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
+  // Shuffle the options pool ONCE per question so students never see them in
+  // the teacher's correct order. The parent passes `key={currentQuestion.id}`
+  // so this component remounts (and re-runs this initializer) when the
+  // student navigates to a different question.
+  const [shuffledItems] = useState<string[]>(() => {
+    // Fisher–Yates shuffle (less biased than Array.prototype.sort(random))
+    const arr = [...items];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  });
+
   const placed = new Set(answer);
-  const pool = items.filter((item) => !placed.has(item));
+  const pool = shuffledItems.filter((item) => !placed.has(item));
 
   const handleDragStart = (from: 'pool' | 'answer', idx: number) => {
     setDragFrom(from);
@@ -4907,16 +4921,11 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [attemptId, currentQ, questions.length]);
-  // Initialize shuffled order for SORTING questions when question loads
-  useEffect(() => {
-    if (!attemptId || questions.length === 0) return;
-    const q = questions[currentQ];
-    if (q?.type === "SORTING" && !answers[q.id]) {
-      const correct = (q.correctAnswer as string[]) ?? [];
-      const shuffled = correct.slice().sort(() => Math.random() - 0.5);
-      setAnswers((prev) => ({ ...prev, [q.id]: shuffled }));
-    }
-  }, [currentQ, attemptId]);
+  // Note: we no longer pre-fill the SORTING answer here. The backend strips
+  // `correctAnswer` from students, so the previous initializer silently did
+  // nothing for them. The OrderingQuestion component now shuffles its options
+  // pool once on mount, so the student starts with an empty answer area and
+  // a randomly-ordered pool to drag from.
 
   const enrollments = (enrollmentsData?.data ?? []) as any[];
   const matchingEnrollment = enrollments[0];
@@ -5097,73 +5106,32 @@ function QuizRunner({ quizId, onNavigate, onSubmitted }: { quizId: string; onNav
         );
       }
       case 'MATCHING': {
-        // options.pairs = [{left, right}], correctAnswer = {left: right}
+        // Delegate to the MatchingQuestion component which shuffles the right
+        // column ONCE on mount (via useState lazy initializer) and keeps items
+        // stationary after they're used. The previous inline implementation
+        // called `.sort(() => Math.random() - 0.5)` on every render, causing
+        // the right column to jump around as the student interacted.
         const pairs = options?.pairs ?? [];
-        const rightItems = pairs.map((p: any) => p.right).sort(() => Math.random() - 0.5); // shuffled
         const userMatches = (answers[currentQuestion.id] as Record<string, string>) ?? {};
         return (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500">Drag items from the right column to match with the left column.</p>
-            <div className="grid grid-cols-2 gap-4">
-              {/* Left column — fixed */}
-              <div className="space-y-2">
-                {pairs.map((p: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                    <span className="font-medium text-slate-700">{p.left}</span>
-                    <Badge className={cn('ml-2', userMatches[p.left] ? 'bg-violet-50 text-violet-600' : 'bg-slate-100 text-slate-400')}>{userMatches[p.left] ?? '?'}</Badge>
-                  </div>
-                ))}
-              </div>
-              {/* Right column — draggable items */}
-              <div className="space-y-2">
-                {rightItems.map((item: string, idx: number) => {
-                  const used = Object.values(userMatches).includes(item);
-                  return (
-                    <div
-                      key={idx}
-                      draggable={!used}
-                      onDragStart={() => setDraggedMatch(item)}
-                      onDragEnd={() => setDraggedMatch(null)}
-                      onClick={() => {
-                        // Also support click-to-assign: find first unmatched left item
-                        const unmatched = pairs.find((p: any) => !userMatches[p.left]);
-                        if (unmatched) setAnswers({ ...answers, [currentQuestion.id]: { ...userMatches, [unmatched.left]: item } });
-                      }}
-                      className={cn('cursor-grab rounded-lg border p-3 text-sm font-medium transition-all active:cursor-grabbing', used ? 'border-slate-100 bg-slate-50 text-slate-300 line-through' : 'border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-400 hover:shadow-sm', draggedMatch === item && 'opacity-50')}
-                    >
-                      <GripVertical className="mr-1.5 inline h-3.5 w-3.5 text-slate-400" />{item}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            {/* Drop zones for left items */}
-            <div className="space-y-1.5">
-              {pairs.map((p: any, idx: number) => (
-                <div
-                  key={idx}
-                  onDragOver={handleDragOver}
-                  onDrop={() => { if (draggedMatch) setAnswers({ ...answers, [currentQuestion.id]: { ...userMatches, [p.left]: draggedMatch } }); }}
-                  onClick={() => { // Click left item to clear
-                    if (userMatches[p.left]) { const n = { ...userMatches }; delete n[p.left]; setAnswers({ ...answers, [currentQuestion.id]: n }); }
-                  }}
-                  className={cn('flex items-center gap-2 rounded-lg border-2 border-dashed p-2 text-xs cursor-pointer', userMatches[p.left] ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 hover:border-violet-300')}
-                >
-                  <span className="font-medium text-slate-600">{p.left}</span>
-                  <span className="text-slate-400">→</span>
-                  <span className={cn('font-medium', userMatches[p.left] ? 'text-emerald-600' : 'text-slate-300')}>{userMatches[p.left] ?? 'Drop here or click right item'}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <MatchingQuestion
+            pairs={pairs}
+            answer={userMatches}
+            onAnswerChange={(matches) => setAnswers({ ...answers, [currentQuestion.id]: matches })}
+          />
         );
       }
       case 'SORTING': {
-        const allItems = (currentQuestion.options?.items ?? currentQuestion.correctAnswer ?? []) as string[];
+        // Prefer options.items (always present for SORTING questions) — never
+        // fall back to correctAnswer because it's stripped from students.
+        const allItems = (currentQuestion.options?.items ?? []) as string[];
         const rawAnswer = answers[currentQuestion.id];
         const userOrder = Array.isArray(rawAnswer) ? rawAnswer as string[] : [];
+        // The `key` prop forces OrderingQuestion to remount (and re-shuffle)
+        // when the student navigates to a different question.
         return (
           <OrderingQuestion
+            key={currentQuestion.id}
             items={allItems}
             answer={userOrder}
             onAnswerChange={(order) => setAnswers({ ...answers, [currentQuestion.id]: order })}
