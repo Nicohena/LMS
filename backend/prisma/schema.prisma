@@ -381,7 +381,7 @@ model QuizAttempt {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  quiz        Quiz           @relation(fields: [quizId], references: [id])
+  quiz        Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
   user        User           @relation(fields: [userId], references: [id])
   enrollment  Enrollment     @relation(fields: [enrollmentId], references: [id])
   answers_rel Answer[]
@@ -800,7 +800,7 @@ model Certificate {
   template CertificateTemplate @relation(fields: [templateId], references: [id])
   user     User                @relation(fields: [userId], references: [id])
   course   Course?             @relation(fields: [courseId], references: [id])
-  quiz     Quiz?               @relation(fields: [quizId], references: [id])
+  quiz     Quiz?               @relation(fields: [quizId], references: [id], onDelete: Cascade)
 }
 
 model BadgeTemplate {
