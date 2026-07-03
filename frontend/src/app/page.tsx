@@ -2980,6 +2980,10 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
   const assignmentIdByContent: Record<string, string> = {};
   for (const [cid, a] of Object.entries(assignmentByContent)) assignmentIdByContent[cid] = (a as any).id;
 
+  // Defensive default: when apiCourse is null (e.g. request failed or
+  // refetching after an error), return an empty Course shape rather than
+  // null. This prevents "Cannot read properties of null (reading 'modules')"
+  // on the next line's course.modules?.reduce(...) call.
   const course: Course = apiCourse ? {
     id: apiCourse.id ?? apiCourse.course?.id ?? '',
     title: apiCourse.title ?? apiCourse.course?.title ?? 'Course',
@@ -3004,7 +3008,13 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
         completed: false,
       })),
     })),
-  } : null as any;
+  } : {
+    id: '', title: 'Course', description: '', instructor: 'Unknown',
+    category: 'General', difficulty: 'Beginner', duration: '—',
+    lessons: 0, students: 0, rating: 0,
+    thumbnail: 'bg-gradient-to-br from-violet-500 to-violet-500',
+    modules: [],
+  };
   const [activeLesson, setActiveLesson] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeModule, setActiveModule] = useState(0);
