@@ -25,7 +25,13 @@ import {
   diffSourcePlugin,
   DiffSourceToggleWrapper,
   HighlightToggle,
-  KitchenSinkToolbar,
+  StrikeThroughSupSubToggles,
+  Separator,
+  InsertFrontmatter,
+  frontmatterPlugin,
+  directivesPlugin,
+  AdmonitionDirectiveDescriptor,
+  InsertAdmonition,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 
@@ -37,9 +43,11 @@ interface RichTextEditorProps {
 }
 
 /**
- * Markdown-based rich text editor powered by MDXEditor.
- * Supports: headings, bold/italic/underline, lists, quotes, links,
- * code blocks, images, tables, thematic breaks, source view toggle.
+ * Enhanced markdown-based rich text editor powered by MDXEditor.
+ * Full Word-like toolbar with: undo/redo, block type (headings/quote/paragraph),
+ * bold/italic/underline, strikethrough/subscript/superscript, highlight,
+ * bullet/numbered lists, links, code blocks, images, tables, thematic breaks,
+ * frontmatter, admonitions (callouts), and markdown source view toggle.
  */
 export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichTextEditorProps) {
   return (
@@ -54,15 +62,23 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
             toolbarContents: () => (
               <DiffSourceToggleWrapper>
                 <UndoRedo />
+                <Separator />
                 <BlockTypeSelect />
+                <Separator />
                 <BoldItalicUnderlineToggles />
+                <StrikeThroughSupSubToggles />
                 <HighlightToggle />
+                <Separator />
                 <ListsToggle />
+                <Separator />
                 <CreateLink />
-                <InsertCodeBlock />
                 <InsertImage />
+                <Separator />
                 <InsertTable />
                 <InsertThematicBreak />
+                <InsertCodeBlock />
+                <InsertFrontmatter />
+                <InsertAdmonition />
               </DiffSourceToggleWrapper>
             ),
           }),
@@ -77,8 +93,12 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
           linkPlugin(),
           linkDialogPlugin(),
           diffSourcePlugin(),
+          frontmatterPlugin(),
+          directivesPlugin({
+            directiveDescriptors: [AdmonitionDirectiveDescriptor],
+          }),
         ]}
-        contentEditableClassName="prose max-w-none min-h-[200px] p-4 focus:outline-none"
+        contentEditableClassName="prose prose-slate max-w-none min-h-[300px] p-5 focus:outline-none"
       />
     </div>
   );
@@ -106,6 +126,10 @@ export function RichTextRenderer({ content }: { content: string }) {
           imagePlugin(),
           tablePlugin(),
           linkPlugin(),
+          frontmatterPlugin(),
+          directivesPlugin({
+            directiveDescriptors: [AdmonitionDirectiveDescriptor],
+          }),
         ]}
         contentEditableClassName="focus:outline-none"
       />

@@ -2794,7 +2794,11 @@ function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: strin
   const allContents = apiModules.flatMap((m: any) => m.contents ?? []);
   const content = allContents.find((c: any) => c.id === contentId);
 
-  // Load markdown from contentJson when content changes
+  // Load markdown from contentJson when content changes.
+  // Handles multiple storage formats for backward compatibility:
+  //   - string (raw markdown)
+  //   - { type: 'markdown', content: '...' } (current canonical format)
+  //   - { html: '...' } (legacy format from older Add Content modal)
   useEffect(() => {
     if (content?.contentJson) {
       const cj = content.contentJson as any;
@@ -2802,6 +2806,9 @@ function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: strin
         setMarkdown(cj);
       } else if (cj?.type === 'markdown' && typeof cj.content === 'string') {
         setMarkdown(cj.content);
+      } else if (typeof cj?.html === 'string') {
+        // Legacy format — treat the html value as markdown content
+        setMarkdown(cj.html);
       } else {
         setMarkdown('');
       }
@@ -3079,7 +3086,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
     if (newContentType === 'VIDEO' && newContentVideoUrl.trim()) data.videoUrl = newContentVideoUrl.trim();
     if (newContentType === 'EXTERNAL_LINK' && newContentExternalUrl.trim()) data.externalUrl = newContentExternalUrl.trim();
     if (newContentType === 'DOCUMENT' && newContentFileUrl.trim()) data.fileUrl = newContentFileUrl.trim();
-    if (newContentType === 'PAGE' && newContentRichText.trim()) data.contentJson = { html: newContentRichText };
+    if (newContentType === 'PAGE' && newContentRichText.trim()) data.contentJson = { type: 'markdown', content: newContentRichText };
     if (newContentDuration && (newContentType === 'VIDEO' || newContentType === 'DOCUMENT')) data.duration = Number(newContentDuration);
     createContentMut.mutate(
       { moduleId, data },
@@ -3119,7 +3126,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
     if (newContentType === 'VIDEO' && newContentVideoUrl.trim()) data.videoUrl = newContentVideoUrl.trim();
     if (newContentType === 'EXTERNAL_LINK' && newContentExternalUrl.trim()) data.externalUrl = newContentExternalUrl.trim();
     if (newContentType === 'DOCUMENT' && newContentFileUrl.trim()) data.fileUrl = newContentFileUrl.trim();
-    if (newContentType === 'PAGE' && newContentRichText.trim()) data.contentJson = { html: newContentRichText };
+    if (newContentType === 'PAGE' && newContentRichText.trim()) data.contentJson = { type: 'markdown', content: newContentRichText };
     if (newContentDuration && (newContentType === 'VIDEO' || newContentType === 'DOCUMENT')) data.duration = Number(newContentDuration);
     updateContentMut.mutate(
       { contentId: editingContentId, data },
@@ -3235,10 +3242,10 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
         </div>
       </Card>
 
-      {/* Two-column: Content + Sidebar */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* Two-column: Content + Sidebar — content area takes 3/4 on wide screens */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* Content Area */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           <Card className="border border-slate-200 p-5 shadow-sm rounded-xl">
             <div className="mb-4 flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50">
