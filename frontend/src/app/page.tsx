@@ -2874,8 +2874,21 @@ function PageContentEditor({ courseId, contentId, canAuthor }: { courseId: strin
 
       {canAuthor && isEditing ? (
         <div className="space-y-3">
-          {content.type === 'PAGE' && (
-            <RichTextEditor value={markdown} onChange={setMarkdown} placeholder="Write your lesson content here. Supports markdown: **bold**, *italic*, # headings, - lists, > quotes, [links](url)..." />
+          {(content.type === 'PAGE' || content.type === 'MIXED') && (
+            <div className="space-y-3">
+              <Label className="text-xs font-medium text-slate-600">📝 Rich Text Content</Label>
+              <RichTextEditor value={markdown} onChange={setMarkdown} placeholder="Write your lesson content here. Supports markdown: **bold**, *italic*, # headings, - lists, > quotes, [links](url)..." />
+            </div>
+          )}
+          {content.type === 'MIXED' && (
+            <div className="space-y-3">
+              <Label className="text-xs font-medium text-slate-600">🎥 Video URL (optional)</Label>
+              <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." />
+              <Label className="text-xs font-medium text-slate-600">🔗 External Link (optional)</Label>
+              <Input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} placeholder="https://..." />
+              <Label className="text-xs font-medium text-slate-600">📎 Document URL (optional)</Label>
+              <Input value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} placeholder="https://.../document.pdf" />
+            </div>
           )}
           {content.type === 'VIDEO' && (
             <div className="space-y-2">
@@ -2971,7 +2984,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [showAddContent, setShowAddContent] = useState<string | null>(null); // module ID
   const [newContentTitle, setNewContentTitle] = useState('');
-  const [newContentType, setNewContentType] = useState<'PAGE' | 'VIDEO' | 'DOCUMENT' | 'QUIZ' | 'ASSIGNMENT' | 'EXTERNAL_LINK'>('PAGE');
+  const [newContentType, setNewContentType] = useState<'PAGE' | 'VIDEO' | 'DOCUMENT' | 'QUIZ' | 'ASSIGNMENT' | 'EXTERNAL_LINK' | 'MIXED'>('PAGE');
   const [newContentDescription, setNewContentDescription] = useState('');
   const [newContentVideoUrl, setNewContentVideoUrl] = useState('');
   const [newContentExternalUrl, setNewContentExternalUrl] = useState('');
@@ -3083,11 +3096,14 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
       title: newContentTitle.trim(), type: newContentType, isPublished: true,
       description: newContentDescription.trim() || undefined,
     };
-    if (newContentType === 'VIDEO' && newContentVideoUrl.trim()) data.videoUrl = newContentVideoUrl.trim();
-    if (newContentType === 'EXTERNAL_LINK' && newContentExternalUrl.trim()) data.externalUrl = newContentExternalUrl.trim();
-    if (newContentType === 'DOCUMENT' && newContentFileUrl.trim()) data.fileUrl = newContentFileUrl.trim();
-    if (newContentType === 'PAGE' && newContentRichText.trim()) data.contentJson = { type: 'markdown', content: newContentRichText };
-    if (newContentDuration && (newContentType === 'VIDEO' || newContentType === 'DOCUMENT')) data.duration = Number(newContentDuration);
+    // For MIXED type, send ALL fields that have values. For other types,
+    // only send the relevant field.
+    const isMixed = newContentType === 'MIXED';
+    if ((isMixed || newContentType === 'VIDEO') && newContentVideoUrl.trim()) data.videoUrl = newContentVideoUrl.trim();
+    if ((isMixed || newContentType === 'EXTERNAL_LINK') && newContentExternalUrl.trim()) data.externalUrl = newContentExternalUrl.trim();
+    if ((isMixed || newContentType === 'DOCUMENT') && newContentFileUrl.trim()) data.fileUrl = newContentFileUrl.trim();
+    if ((isMixed || newContentType === 'PAGE') && newContentRichText.trim()) data.contentJson = { type: 'markdown', content: newContentRichText };
+    if (newContentDuration && (isMixed || newContentType === 'VIDEO' || newContentType === 'DOCUMENT')) data.duration = Number(newContentDuration);
     createContentMut.mutate(
       { moduleId, data },
       {
@@ -3123,11 +3139,12 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
       title: newContentTitle.trim(),
       description: newContentDescription.trim() || undefined,
     };
-    if (newContentType === 'VIDEO' && newContentVideoUrl.trim()) data.videoUrl = newContentVideoUrl.trim();
-    if (newContentType === 'EXTERNAL_LINK' && newContentExternalUrl.trim()) data.externalUrl = newContentExternalUrl.trim();
-    if (newContentType === 'DOCUMENT' && newContentFileUrl.trim()) data.fileUrl = newContentFileUrl.trim();
-    if (newContentType === 'PAGE' && newContentRichText.trim()) data.contentJson = { type: 'markdown', content: newContentRichText };
-    if (newContentDuration && (newContentType === 'VIDEO' || newContentType === 'DOCUMENT')) data.duration = Number(newContentDuration);
+    const isMixed = newContentType === 'MIXED';
+    if ((isMixed || newContentType === 'VIDEO') && newContentVideoUrl.trim()) data.videoUrl = newContentVideoUrl.trim();
+    if ((isMixed || newContentType === 'EXTERNAL_LINK') && newContentExternalUrl.trim()) data.externalUrl = newContentExternalUrl.trim();
+    if ((isMixed || newContentType === 'DOCUMENT') && newContentFileUrl.trim()) data.fileUrl = newContentFileUrl.trim();
+    if ((isMixed || newContentType === 'PAGE') && newContentRichText.trim()) data.contentJson = { type: 'markdown', content: newContentRichText };
+    if (newContentDuration && (isMixed || newContentType === 'VIDEO' || newContentType === 'DOCUMENT')) data.duration = Number(newContentDuration);
     updateContentMut.mutate(
       { contentId: editingContentId, data },
       {
@@ -3363,6 +3380,67 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                   </div>
                 );
               }
+              // MIXED type — render all available content fields
+              if (activeLessonObj.type === 'mixed') {
+                const cj = activeContent?.contentJson as any;
+                const markdownText = cj?.type === 'markdown' ? cj.content : (typeof cj === 'string' ? cj : (cj?.html || ''));
+                return (
+                  <div className="space-y-5">
+                    {activeContent?.description && <p className="text-sm text-slate-500">{activeContent.description}</p>}
+                    {/* Rich text */}
+                    {markdownText && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                        <RichTextRenderer content={markdownText} />
+                      </div>
+                    )}
+                    {/* Video */}
+                    {activeContent?.videoUrl && (
+                      <div className="overflow-hidden rounded-lg">
+                        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">🎥 Video</p>
+                        {activeContent.videoUrl.includes('youtube.com') || activeContent.videoUrl.includes('youtu.be') ? (
+                          <iframe src={activeContent.videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')} className="aspect-video w-full" allowFullScreen />
+                        ) : activeContent.videoUrl.includes('vimeo.com') ? (
+                          <iframe src={activeContent.videoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')} className="aspect-video w-full" allowFullScreen />
+                        ) : (
+                          <video src={activeContent.videoUrl} controls className="aspect-video w-full" />
+                        )}
+                      </div>
+                    )}
+                    {/* Document */}
+                    {activeContent?.fileUrl && (
+                      <div>
+                        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">📎 Document</p>
+                        <a href={activeContent.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 text-sm hover:bg-emerald-50">
+                          <File className="h-8 w-8 text-emerald-600" />
+                          <div className="flex-1">
+                            <p className="font-semibold text-slate-900">{activeContent.fileUrl.split('/').pop() || 'Document'}</p>
+                            <p className="text-xs text-slate-500">Click to open in a new tab</p>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-emerald-600" />
+                        </a>
+                      </div>
+                    )}
+                    {/* External link */}
+                    {activeContent?.externalUrl && (
+                      <div>
+                        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">🔗 External Resource</p>
+                        <a href={activeContent.externalUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 p-4 text-sm text-violet-700 hover:bg-violet-100">
+                          <Link2 className="h-8 w-8 text-violet-600" />
+                          <div className="flex-1">
+                            <p className="font-semibold text-slate-900">Open external resource</p>
+                            <p className="text-xs text-slate-500">{activeContent.externalUrl}</p>
+                          </div>
+                          <ChevronRight className="h-5 w-5" />
+                        </a>
+                      </div>
+                    )}
+                    {/* Empty state */}
+                    {!markdownText && !activeContent?.videoUrl && !activeContent?.fileUrl && !activeContent?.externalUrl && (
+                      <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-600">No content has been added to this lesson yet. {canAuthor && 'Click the edit icon to add rich text, video, documents, or links.'}</p>
+                    )}
+                  </div>
+                );
+              }
               // Default: video placeholder + tabs
               return (
                 <>
@@ -3570,6 +3648,7 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                       <option value="QUIZ">❓ Quiz</option>
                       <option value="ASSIGNMENT">📝 Assignment</option>
                       <option value="EXTERNAL_LINK">🔗 External Link</option>
+                      <option value="MIXED">🎨 Mixed (text + video + files + links)</option>
                     </select>
                     {editingContentId && <p className="mt-1 text-xs text-slate-400">Type cannot be changed after creation.</p>}
                   </div>
@@ -3593,6 +3672,92 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
                     </div>
                     <div className="overflow-hidden rounded-lg border border-slate-200">
                       <RichTextEditor value={newContentRichText} onChange={setNewContentRichText} placeholder="Write your lesson content here. Use the toolbar above to format text, add headings, lists, links, images, tables, and more..." />
+                    </div>
+                  </div>
+                )}
+
+                {/* MIXED type — show ALL content fields at once so teachers
+                    can combine rich text + video + document + external link
+                    in a single content item. */}
+                {newContentType === 'MIXED' && (
+                  <div className="space-y-5">
+                    {/* Rich text section */}
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <Label className="text-sm font-medium text-slate-700">📝 Rich Text Content</Label>
+                        <span className="text-xs text-slate-400">{newContentRichText.length} characters</span>
+                      </div>
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <RichTextEditor value={newContentRichText} onChange={setNewContentRichText} placeholder="Write your lesson content here (optional)..." />
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100" />
+
+                    {/* Video section */}
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">🎥 Video (optional)</Label>
+                      <Input value={newContentVideoUrl} onChange={(e) => setNewContentVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=... or direct video URL" className="text-sm" />
+                      {newContentVideoUrl && (
+                        <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
+                          {newContentVideoUrl.includes('youtube.com') || newContentVideoUrl.includes('youtu.be') ? (
+                            <iframe src={newContentVideoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')} className="aspect-video w-full" allowFullScreen />
+                          ) : newContentVideoUrl.includes('vimeo.com') ? (
+                            <iframe src={newContentVideoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')} className="aspect-video w-full" allowFullScreen />
+                          ) : (
+                            <video src={newContentVideoUrl} controls className="aspect-video w-full" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-100" />
+
+                    {/* Document section */}
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">📎 Document (optional)</Label>
+                      {newContentFileUrl ? (
+                        <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                          <File className="h-8 w-8 text-emerald-600" />
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-sm font-medium text-slate-700">{newContentFileName || 'Uploaded file'}</p>
+                            <a href={newContentFileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline">View file →</a>
+                          </div>
+                          <button onClick={() => { setNewContentFileUrl(''); setNewContentFileName(''); }} className="rounded-lg px-3 py-1.5 text-xs text-red-500 hover:bg-red-50">Remove</button>
+                        </div>
+                      ) : (
+                        <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center hover:border-violet-400 hover:bg-violet-50/30">
+                          <Upload className="mb-2 h-8 w-8 text-slate-300" />
+                          <p className="text-sm font-medium text-slate-600">Click to upload a document</p>
+                          <p className="mt-1 text-xs text-slate-400">PDF, DOCX, PPTX, XLSX, ZIP, images</p>
+                          <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} disabled={uploadFileMut.isPending} />
+                          {uploadFileMut.isPending && <p className="mt-2 text-xs text-violet-500">Uploading...</p>}
+                        </label>
+                      )}
+                      <div className="mt-2">
+                        <Input value={newContentFileUrl} onChange={(e) => { setNewContentFileUrl(e.target.value); setNewContentFileName(e.target.value.split('/').pop() || ''); }} placeholder="Or paste document URL directly..." className="text-sm" />
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100" />
+
+                    {/* External link section */}
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">🔗 External Link (optional)</Label>
+                      <Input value={newContentExternalUrl} onChange={(e) => setNewContentExternalUrl(e.target.value)} placeholder="https://example.com/additional-resource" className="text-sm" />
+                      {newContentExternalUrl && (
+                        <a href={newContentExternalUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm text-violet-700 hover:bg-violet-100">
+                          <Link2 className="h-4 w-4" />Test link →
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-100" />
+
+                    {/* Duration */}
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">⏱ Estimated Duration (minutes)</Label>
+                      <Input type="number" value={newContentDuration} onChange={(e) => setNewContentDuration(e.target.value)} placeholder="e.g., 15" className="w-32 text-sm" />
                     </div>
                   </div>
                 )}

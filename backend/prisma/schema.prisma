@@ -671,15 +671,13 @@ model PeerReview {
 }
 
 model GradeHistory {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  submissionId     String   @db.ObjectId
-  previousGrade    Float?
-  newGrade         Float
-  previousFeedback String?
-  newFeedback      String?
-  changedBy        String   @db.ObjectId
-  reason           String?
-  createdAt        DateTime @default(now())
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  submissionId  String   @db.ObjectId
+  previousGrade Float?
+  newGrade      Float
+  changedBy     String   @db.ObjectId
+  reason        String?
+  createdAt     DateTime @default(now())
 
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   changer    User       @relation("gradeChanger", fields: [changedBy], references: [id])
