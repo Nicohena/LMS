@@ -3534,107 +3534,173 @@ function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectAssignme
         </div>
       )}
 
-      {/* Add Content / Edit Content Modal */}
+      {/* Add Content / Edit Content Modal — wide, Word-like layout */}
       {(showAddContent || editingContentId) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border-0 p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">{editingContentId ? 'Edit Content' : 'Add Content'}</h2>
-              <button onClick={() => { setShowAddContent(null); setEditingContentId(null); resetContentForm(); }} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          <div className="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            {/* Sticky header */}
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
+                  <FileText className="h-5 w-5 text-violet-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">{editingContentId ? 'Edit Content' : 'Add Content'}</h2>
+                  <p className="text-xs text-slate-400">{newContentType === 'PAGE' ? 'Write rich text content with full formatting' : newContentType === 'VIDEO' ? 'Embed a video from YouTube, Vimeo, or a direct URL' : newContentType === 'DOCUMENT' ? 'Upload or link a downloadable document' : newContentType === 'EXTERNAL_LINK' ? 'Link to an external resource' : 'Create content for this module'}</p>
+                </div>
+              </div>
+              <button onClick={() => { setShowAddContent(null); setEditingContentId(null); resetContentForm(); }} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X className="h-5 w-5" /></button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Content Title *</Label>
-                <Input value={newContentTitle} onChange={(e) => setNewContentTitle(e.target.value)} placeholder="e.g., Introduction to UX" />
-              </div>
-              <div>
-                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Content Type</Label>
-                <select value={newContentType} onChange={(e) => setNewContentType(e.target.value as any)} disabled={!!editingContentId} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400">
-                  <option value="PAGE">Page (rich text)</option>
-                  <option value="VIDEO">Video</option>
-                  <option value="DOCUMENT">Document</option>
-                  <option value="QUIZ">Quiz</option>
-                  <option value="ASSIGNMENT">Assignment</option>
-                  <option value="EXTERNAL_LINK">External Link</option>
-                </select>
-                {editingContentId && <p className="mt-1 text-xs text-slate-400">Content type cannot be changed after creation.</p>}
-                {!editingContentId && (newContentType === 'QUIZ' || newContentType === 'ASSIGNMENT') && (
-                  <p className="mt-1 text-xs text-slate-400">
-                    {newContentType === 'QUIZ' && 'After creating this content, you can attach quiz questions via the Quizzes page.'}
-                    {newContentType === 'ASSIGNMENT' && 'After creating this content, you can configure the assignment via the Assignments page.'}
-                  </p>
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="space-y-5">
+                {/* Section: Basic Info */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label className="mb-1.5 block text-sm font-medium text-slate-700">Content Title *</Label>
+                    <Input value={newContentTitle} onChange={(e) => setNewContentTitle(e.target.value)} placeholder="e.g., Introduction to UX Design" className="text-sm" />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-sm font-medium text-slate-700">Content Type</Label>
+                    <select value={newContentType} onChange={(e) => setNewContentType(e.target.value as any)} disabled={!!editingContentId} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400">
+                      <option value="PAGE">📄 Page (rich text)</option>
+                      <option value="VIDEO">🎥 Video</option>
+                      <option value="DOCUMENT">📎 Document</option>
+                      <option value="QUIZ">❓ Quiz</option>
+                      <option value="ASSIGNMENT">📝 Assignment</option>
+                      <option value="EXTERNAL_LINK">🔗 External Link</option>
+                    </select>
+                    {editingContentId && <p className="mt-1 text-xs text-slate-400">Type cannot be changed after creation.</p>}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
+                  <textarea value={newContentDescription} onChange={(e) => setNewContentDescription(e.target.value)} placeholder="Brief description shown in the course outline..." rows={2} className="w-full rounded-lg border border-slate-200 p-2.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none" />
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-slate-100" />
+
+                {/* Section: Type-specific content */}
+                {newContentType === 'PAGE' && (
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <Label className="text-sm font-medium text-slate-700">Page Content</Label>
+                      <span className="text-xs text-slate-400">{newContentRichText.length} characters</span>
+                    </div>
+                    <div className="overflow-hidden rounded-lg border border-slate-200">
+                      <RichTextEditor value={newContentRichText} onChange={setNewContentRichText} placeholder="Write your lesson content here. Use the toolbar above to format text, add headings, lists, links, images, tables, and more..." />
+                    </div>
+                  </div>
                 )}
-              </div>
-              <div>
-                <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
-                <textarea value={newContentDescription} onChange={(e) => setNewContentDescription(e.target.value)} placeholder="Brief description shown in the course outline..." rows={2} className="w-full rounded-lg border border-slate-200 p-2.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none" />
-              </div>
-              {newContentType === 'PAGE' && (
-                <div>
-                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">Page Content (rich text)</Label>
-                  <div className="rounded-lg border border-slate-200">
-                    <RichTextEditor value={newContentRichText} onChange={setNewContentRichText} placeholder="Write your page content here..." />
-                  </div>
-                </div>
-              )}
-              {newContentType === 'VIDEO' && (
-                <>
-                  <div>
-                    <Label className="mb-1.5 block text-sm font-medium text-slate-700">Video URL</Label>
-                    <Input value={newContentVideoUrl} onChange={(e) => setNewContentVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=... or direct video URL" className="text-sm" />
-                    <p className="mt-1 text-xs text-slate-400">Supports YouTube, Vimeo, or direct video file URLs.</p>
-                  </div>
-                  <div>
-                    <Label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (minutes)</Label>
-                    <Input type="number" value={newContentDuration} onChange={(e) => setNewContentDuration(e.target.value)} placeholder="e.g., 15" className="w-32 text-sm" />
-                  </div>
-                </>
-              )}
-              {newContentType === 'EXTERNAL_LINK' && (
-                <div>
-                  <Label className="mb-1.5 block text-sm font-medium text-slate-700">External URL *</Label>
-                  <Input value={newContentExternalUrl} onChange={(e) => setNewContentExternalUrl(e.target.value)} placeholder="https://example.com/resource" className="text-sm" />
-                  <p className="mt-1 text-xs text-slate-400">Students will open this URL in a new tab when they click the lesson.</p>
-                </div>
-              )}
-              {newContentType === 'DOCUMENT' && (
-                <>
-                  <div>
-                    <Label className="mb-1.5 block text-sm font-medium text-slate-700">Document File</Label>
-                    {newContentFileUrl ? (
-                      <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                        <File className="h-5 w-5 text-emerald-600" />
-                        <span className="flex-1 truncate text-sm text-slate-700">{newContentFileName || 'Uploaded file'}</span>
-                        <button onClick={() => { setNewContentFileUrl(''); setNewContentFileName(''); }} className="text-xs text-red-500 hover:underline">Remove</button>
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border-2 border-dashed border-slate-200 p-6 text-center">
-                        <Upload className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                        <p className="text-sm text-slate-500">Click to upload or drag and drop</p>
-                        <input type="file" className="mt-2 text-xs text-slate-400" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} disabled={uploadFileMut.isPending} />
-                        {uploadFileMut.isPending && <p className="mt-1 text-xs text-violet-500">Uploading...</p>}
+
+                {newContentType === 'VIDEO' && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">Video URL</Label>
+                      <Input value={newContentVideoUrl} onChange={(e) => setNewContentVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=... or direct video URL" className="text-sm" />
+                      <p className="mt-1 text-xs text-slate-400">Supports YouTube, Vimeo, or direct video file URLs (MP4, WebM).</p>
+                    </div>
+                    {newContentVideoUrl && (
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        {newContentVideoUrl.includes('youtube.com') || newContentVideoUrl.includes('youtu.be') ? (
+                          <iframe src={newContentVideoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')} className="aspect-video w-full" allowFullScreen />
+                        ) : newContentVideoUrl.includes('vimeo.com') ? (
+                          <iframe src={newContentVideoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')} className="aspect-video w-full" allowFullScreen />
+                        ) : (
+                          <video src={newContentVideoUrl} controls className="aspect-video w-full" />
+                        )}
                       </div>
                     )}
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (minutes)</Label>
+                      <Input type="number" value={newContentDuration} onChange={(e) => setNewContentDuration(e.target.value)} placeholder="e.g., 15" className="w-32 text-sm" />
+                    </div>
                   </div>
-                  <div>
-                    <Label className="mb-1.5 block text-sm font-medium text-slate-700">Or paste file URL directly</Label>
-                    <Input value={newContentFileUrl} onChange={(e) => { setNewContentFileUrl(e.target.value); setNewContentFileName(e.target.value.split('/').pop() || ''); }} placeholder="https://example.com/document.pdf" className="text-sm" />
+                )}
+
+                {newContentType === 'EXTERNAL_LINK' && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">External URL *</Label>
+                      <Input value={newContentExternalUrl} onChange={(e) => setNewContentExternalUrl(e.target.value)} placeholder="https://example.com/resource" className="text-sm" />
+                      <p className="mt-1 text-xs text-slate-400">Students will open this URL in a new tab when they click the lesson.</p>
+                    </div>
+                    {newContentExternalUrl && (
+                      <a href={newContentExternalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm text-violet-700 hover:bg-violet-100">
+                        <Link2 className="h-4 w-4" />Test link →
+                      </a>
+                    )}
                   </div>
-                  <div>
-                    <Label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (minutes)</Label>
-                    <Input type="number" value={newContentDuration} onChange={(e) => setNewContentDuration(e.target.value)} placeholder="e.g., 10" className="w-32 text-sm" />
+                )}
+
+                {newContentType === 'DOCUMENT' && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">Document File</Label>
+                      {newContentFileUrl ? (
+                        <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                          <File className="h-8 w-8 text-emerald-600" />
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-sm font-medium text-slate-700">{newContentFileName || 'Uploaded file'}</p>
+                            <a href={newContentFileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline">View file →</a>
+                          </div>
+                          <button onClick={() => { setNewContentFileUrl(''); setNewContentFileName(''); }} className="rounded-lg px-3 py-1.5 text-xs text-red-500 hover:bg-red-50">Remove</button>
+                        </div>
+                      ) : (
+                        <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center hover:border-violet-400 hover:bg-violet-50/30">
+                          <Upload className="mb-2 h-10 w-10 text-slate-300" />
+                          <p className="text-sm font-medium text-slate-600">Click to upload or drag and drop</p>
+                          <p className="mt-1 text-xs text-slate-400">PDF, DOCX, PPTX, XLSX, ZIP, images — up to 100MB</p>
+                          <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} disabled={uploadFileMut.isPending} />
+                          {uploadFileMut.isPending && <p className="mt-2 text-xs text-violet-500">Uploading...</p>}
+                        </label>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">Or paste file URL directly</Label>
+                      <Input value={newContentFileUrl} onChange={(e) => { setNewContentFileUrl(e.target.value); setNewContentFileName(e.target.value.split('/').pop() || ''); }} placeholder="https://example.com/document.pdf" className="text-sm" />
+                    </div>
+                    <div>
+                      <Label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (minutes)</Label>
+                      <Input type="number" value={newContentDuration} onChange={(e) => setNewContentDuration(e.target.value)} placeholder="e.g., 10" className="w-32 text-sm" />
+                    </div>
                   </div>
-                </>
-              )}
-              {authorErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{authorErr}</div>}
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => { setShowAddContent(null); setEditingContentId(null); resetContentForm(); }} className="flex-1 border-slate-200 text-slate-600">Cancel</Button>
-                <Button onClick={() => editingContentId ? handleUpdateContent() : handleCreateContent(showAddContent!)} disabled={createContentMut.isPending || updateContentMut.isPending} className="flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
+                )}
+
+                {(!editingContentId && (newContentType === 'QUIZ' || newContentType === 'ASSIGNMENT')) && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                    <p className="font-medium">Heads up</p>
+                    <p className="mt-1 text-xs">
+                      {newContentType === 'QUIZ' && 'After creating this content, you can attach quiz questions via the Quizzes page.'}
+                      {newContentType === 'ASSIGNMENT' && 'After creating this content, you can configure the assignment via the Assignments page.'}
+                    </p>
+                  </div>
+                )}
+
+                {authorErr && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{authorErr}</div>}
+              </div>
+            </div>
+
+            {/* Sticky footer */}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+              <p className="text-xs text-slate-400">
+                {newContentType === 'PAGE' && 'Tip: Use markdown shortcuts like **bold**, # headings, - lists'}
+                {newContentType === 'VIDEO' && 'Tip: YouTube and Vimeo URLs are automatically embedded'}
+                {newContentType === 'DOCUMENT' && 'Tip: Uploaded files are stored securely on Cloudinary'}
+                {newContentType === 'EXTERNAL_LINK' && 'Tip: Links open in a new tab for students'}
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => { setShowAddContent(null); setEditingContentId(null); resetContentForm(); }} className="border-slate-200 text-slate-600">Cancel</Button>
+                <Button onClick={() => editingContentId ? handleUpdateContent() : handleCreateContent(showAddContent!)} disabled={createContentMut.isPending || updateContentMut.isPending} className="bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
                   {editingContentId ? (updateContentMut.isPending ? 'Updating...' : 'Update Content') : (createContentMut.isPending ? 'Creating...' : 'Create Content')}
                 </Button>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       )}
     </main>
