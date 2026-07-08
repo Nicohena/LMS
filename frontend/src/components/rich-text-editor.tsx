@@ -44,10 +44,21 @@ interface RichTextEditorProps {
 
 /**
  * Enhanced markdown-based rich text editor powered by MDXEditor.
- * Full Word-like toolbar with: undo/redo, block type (headings/quote/paragraph),
- * bold/italic/underline, strikethrough/subscript/superscript, highlight,
- * bullet/numbered lists, links, code blocks, images, tables, thematic breaks,
- * frontmatter, admonitions (callouts), and markdown source view toggle.
+ *
+ * Full Word-like toolbar with hover tooltips on every button:
+ * - Undo / Redo
+ * - Block type (Paragraph, H1-H6, Quote)
+ * - Bold, Italic, Underline
+ * - Strikethrough, Subscript, Superscript
+ * - Highlight
+ * - Bullet list, Numbered list
+ * - Create link, Insert image
+ * - Insert table, Horizontal rule, Code block, Frontmatter, Admonition
+ * - Markdown source view toggle (write / preview / diff)
+ *
+ * All toolbar buttons have native `title` attributes AND MDXEditor's
+ * built-in TooltipWrap for hover descriptions. Larger 44px click targets
+ * and pointer cursors for easy interaction.
  */
 export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichTextEditorProps) {
   return (
@@ -61,19 +72,25 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
           toolbarPlugin({
             toolbarContents: () => (
               <DiffSourceToggleWrapper>
+                {/* Undo / Redo */}
                 <UndoRedo />
                 <Separator />
+                {/* Block type: paragraph, headings, quote */}
                 <BlockTypeSelect />
                 <Separator />
+                {/* Text formatting */}
                 <BoldItalicUnderlineToggles />
                 <StrikeThroughSupSubToggles />
                 <HighlightToggle />
                 <Separator />
+                {/* Lists */}
                 <ListsToggle />
                 <Separator />
+                {/* Links & images */}
                 <CreateLink />
                 <InsertImage />
                 <Separator />
+                {/* Insert blocks */}
                 <InsertTable />
                 <InsertThematicBreak />
                 <InsertCodeBlock />
@@ -87,8 +104,16 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
           quotePlugin(),
           thematicBreakPlugin(),
           markdownShortcutPlugin(),
-          codeBlockPlugin(),
-          imagePlugin(),
+          codeBlockPlugin({
+            // Default language shown when a new code block is inserted.
+            defaultCodeBlockLanguage: 'plaintext',
+          }),
+          imagePlugin({
+            // Disable the built-in image dialog and just accept the URL
+            // that the user types. When an image is pasted or dragged into
+            // the editor, the src is used directly.
+            imageAutocompleteSuggestions: [],
+          }),
           tablePlugin(),
           linkPlugin(),
           linkDialogPlugin(),
@@ -98,7 +123,7 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
             directiveDescriptors: [AdmonitionDirectiveDescriptor],
           }),
         ]}
-        contentEditableClassName="prose prose-slate max-w-none min-h-[300px] p-5 focus:outline-none"
+        contentEditableClassName="prose prose-slate max-w-none min-h-[400px] p-5 focus:outline-none"
       />
     </div>
   );
@@ -122,7 +147,9 @@ export function RichTextRenderer({ content }: { content: string }) {
           listsPlugin(),
           quotePlugin(),
           thematicBreakPlugin(),
-          codeBlockPlugin(),
+          codeBlockPlugin({
+            defaultCodeBlockLanguage: 'plaintext',
+          }),
           imagePlugin(),
           tablePlugin(),
           linkPlugin(),
