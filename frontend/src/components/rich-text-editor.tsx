@@ -34,6 +34,8 @@ import {
   InsertAdmonition,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { useEffect, useRef } from 'react';
 
 interface RichTextEditorProps {
   value: string;
@@ -61,17 +63,78 @@ interface RichTextEditorProps {
  * and pointer cursors for easy interaction.
  */
 export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichTextEditorProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // After mount, set native title attributes on every toolbar button so
+  // the browser shows a hover tooltip with the tool name. This is a
+  // guaranteed fallback that works even if the radix TooltipProvider
+  // doesn't render the styled tooltips.
+  useEffect(() => {
+    if (!wrapperRef.current || readOnly) return;
+    const btn = wrapperRef.current.querySelectorAll('.mdxeditor-toolbar button');
+    // Map common button labels/aria-labels to descriptive names
+    const labelMap: Record<string, string> = {
+      'undo': 'Undo',
+      'redo': 'Redo',
+      'bold': 'Bold (Ctrl+B)',
+      'italic': 'Italic (Ctrl+I)',
+      'underline': 'Underline (Ctrl+U)',
+      'strikethrough': 'Strikethrough',
+      'subscript': 'Subscript',
+      'superscript': 'Superscript',
+      'highlight': 'Highlight',
+      'bullet list': 'Bullet List',
+      'numbered list': 'Numbered List',
+      'link': 'Insert Link',
+      'image': 'Insert Image',
+      'table': 'Insert Table',
+      'code block': 'Insert Code Block',
+      'thematic break': 'Horizontal Rule',
+      'frontmatter': 'Insert Frontmatter',
+      'admonition': 'Insert Callout',
+      'paragraph': 'Paragraph',
+      'heading 1': 'Heading 1',
+      'heading 2': 'Heading 2',
+      'heading 3': 'Heading 3',
+      'heading 4': 'Heading 4',
+      'heading 5': 'Heading 5',
+      'heading 6': 'Heading 6',
+      'quote': 'Quote Block',
+      'write': 'Write Mode',
+      'preview': 'Preview Mode',
+      'diff': 'Diff Mode',
+    };
+    btn.forEach((b) => {
+      const text = (b.textContent || '').toLowerCase().trim();
+      const aria = (b.getAttribute('aria-label') || '').toLowerCase().trim();
+      const title = b.getAttribute('title') || '';
+      if (title) return; // already has a title
+      // Try to find a matching label
+      for (const [key, val] of Object.entries(labelMap)) {
+        if (text.includes(key) || aria.includes(key)) {
+          b.setAttribute('title', val);
+          return;
+        }
+      }
+      // Fallback: use the text content capitalized
+      if (text) {
+        b.setAttribute('title', text.charAt(0).toUpperCase() + text.slice(1));
+      }
+    });
+  }, [readOnly]);
+
   return (
-    <div className="rich-text-editor-wrapper rounded-lg border border-slate-200 bg-white overflow-hidden">
-      <MDXEditor
-        markdown={value || ''}
-        onChange={onChange}
-        placeholder={placeholder || 'Start writing...'}
-        readOnly={readOnly}
-        plugins={[
-          toolbarPlugin({
-            toolbarContents: () => (
-              <DiffSourceToggleWrapper>
+    <TooltipProvider delayDuration={300}>
+      <div ref={wrapperRef} className="rich-text-editor-wrapper rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <MDXEditor
+          markdown={value || ''}
+          onChange={onChange}
+          placeholder={placeholder || 'Start writing...'}
+          readOnly={readOnly}
+          plugins={[
+            toolbarPlugin({
+              toolbarContents: () => (
+                <DiffSourceToggleWrapper>
                 {/* Undo / Redo */}
                 <UndoRedo />
                 <Separator />
@@ -123,9 +186,10 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
             directiveDescriptors: [AdmonitionDirectiveDescriptor],
           }),
         ]}
-        contentEditableClassName="prose prose-slate max-w-none min-h-[400px] p-5 focus:outline-none"
-      />
-    </div>
+          contentEditableClassName="prose prose-slate max-w-none min-h-[400px] p-5 focus:outline-none"
+        />
+      </div>
+    </TooltipProvider>
   );
 }
 
