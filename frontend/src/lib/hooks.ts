@@ -788,6 +788,45 @@ export function useAssignments(params?: { page?: number; limit?: number; search?
   });
 }
 
+export function useCreateAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      title: string;
+      description?: string;
+      instructions?: string;
+      contentId?: string;
+      dueDate?: string;
+      maxPoints?: number;
+      type?: string;
+      difficulty?: string;
+      category?: string;
+      requiresFileUpload?: boolean;
+      allowedFileTypes?: string[];
+      maxFileSizeMB?: number;
+      maxFiles?: number;
+      allowResubmissions?: boolean;
+      maxResubmissions?: number;
+      allowDrafts?: boolean;
+      allowLateSubmissions?: boolean;
+      latePenaltyPercentage?: number;
+      passingMarks?: number;
+      weightPercentage?: number;
+      minWordCount?: number;
+      maxWordCount?: number;
+      estimatedTime?: number;
+      tags?: string[];
+      status?: string;
+    }) => {
+      const res = await api.post('/assignments', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+}
+
 // Fetch assignments for multiple contentIds in parallel — single meta-query with client-side filter
 export function useAssignmentsForContents(contentIds: string[]) {
   return useQuery({

@@ -16,6 +16,7 @@ import {
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
 import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion, useQuizAttempts, useManualGradeAttempt,
   usePublishAssignment, useArchiveAssignment, useRestoreAssignment, useDuplicateAssignment,
+  useCreateAssignment,
 } from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { toast } from "@/hooks/use-toast";
@@ -5866,6 +5867,7 @@ function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<'dueDate' | 'title' | 'createdAt'>('dueDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data, isLoading, isError } = useAssignments({
     limit: 50,
@@ -5877,6 +5879,7 @@ function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v
   const archiveMut = useArchiveAssignment();
   const restoreMut = useRestoreAssignment();
   const duplicateMut = useDuplicateAssignment();
+  const createMut = useCreateAssignment();
 
   let assignments = (data?.data ?? []) as any[];
   // Client-side sort
@@ -5937,9 +5940,16 @@ function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="font-medium text-slate-700">Assignments</span>
       </div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{isTeacher ? 'All Assignments' : 'Available Assignments'}</h1>
-        <p className="mt-1 text-sm text-slate-500">{assignments.length} {isTeacher ? 'total' : 'published'} assignments · {isTeacher ? 'Manage and grade submissions' : 'Submit your work'}</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{isTeacher ? 'All Assignments' : 'Available Assignments'}</h1>
+          <p className="mt-1 text-sm text-slate-500">{assignments.length} {isTeacher ? 'total' : 'published'} assignments · {isTeacher ? 'Manage and grade submissions' : 'Submit your work'}</p>
+        </div>
+        {isTeacher && (
+          <Button onClick={() => setShowCreate(true)} className="bg-violet-600 text-white hover:bg-violet-700">
+            <Plus className="mr-1.5 h-4 w-4" />Create Assignment
+          </Button>
+        )}
       </div>
 
       {/* Stats row (teacher only) */}
@@ -6080,7 +6090,252 @@ function AssignmentListView({ onNavigate, onSelectAssignment }: { onNavigate: (v
           );
         })}
       </div>
+
+      {/* Create Assignment Modal */}
+      {showCreate && (
+        <CreateAssignmentModal
+          onClose={() => setShowCreate(false)}
+          onCreate={(data) => {
+            createMut.mutate(data, {
+              onSuccess: () => {
+                toast({ title: 'Assignment created', description: 'It has been saved as a draft. Publish it when ready.' });
+                setShowCreate(false);
+              },
+              onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to create assignment.', variant: 'destructive' }),
+            });
+          }}
+          isPending={createMut.isPending}
+        />
+      )}
     </main>
+  );
+}
+
+// ─── Create Assignment Modal ─────────────────────────────────────────────
+function CreateAssignmentModal({ onClose, onCreate, isPending }: {
+  onClose: () => void;
+  onCreate: (data: any) => void;
+  isPending: boolean;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [type, setType] = useState('FILE_UPLOAD');
+  const [difficulty, setDifficulty] = useState('BEGINNER');
+  const [category, setCategory] = useState('');
+  const [maxPoints, setMaxPoints] = useState('100');
+  const [passingMarks, setPassingMarks] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [requiresFileUpload, setRequiresFileUpload] = useState(true);
+  const [allowedFileTypes, setAllowedFileTypes] = useState('pdf, docx, zip');
+  const [maxFileSizeMB, setMaxFileSizeMB] = useState('10');
+  const [maxFiles, setMaxFiles] = useState('5');
+  const [allowResubmissions, setAllowResubmissions] = useState(true);
+  const [maxResubmissions, setMaxResubmissions] = useState('3');
+  const [allowDrafts, setAllowDrafts] = useState(true);
+  const [allowLateSubmissions, setAllowLateSubmissions] = useState(true);
+  const [latePenaltyPercentage, setLatePenaltyPercentage] = useState('0');
+  const [minWordCount, setMinWordCount] = useState('');
+  const [maxWordCount, setMaxWordCount] = useState('');
+  const [estimatedTime, setEstimatedTime] = useState('');
+  const [tags, setTags] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = () => {
+    setError('');
+    if (!title.trim()) { setError('Title is required.'); return; }
+    const data: any = {
+      title: title.trim(),
+      description: description.trim() || undefined,
+      instructions: instructions.trim() || undefined,
+      type,
+      difficulty,
+      category: category.trim() || undefined,
+      maxPoints: Number(maxPoints) || 100,
+      passingMarks: passingMarks ? Number(passingMarks) : undefined,
+      requiresFileUpload,
+      allowedFileTypes: allowedFileTypes.split(',').map((s) => s.trim()).filter(Boolean),
+      maxFileSizeMB: Number(maxFileSizeMB) || 10,
+      maxFiles: Number(maxFiles) || 5,
+      allowResubmissions,
+      maxResubmissions: Number(maxResubmissions) || 3,
+      allowDrafts,
+      allowLateSubmissions,
+      latePenaltyPercentage: Number(latePenaltyPercentage) || 0,
+      minWordCount: minWordCount ? Number(minWordCount) : undefined,
+      maxWordCount: maxWordCount ? Number(maxWordCount) : undefined,
+      estimatedTime: estimatedTime ? Number(estimatedTime) : undefined,
+      tags: tags.split(',').map((s) => s.trim()).filter(Boolean),
+      status: 'DRAFT',
+    };
+    if (dueDate) data.dueDate = new Date(dueDate).toISOString();
+    onCreate(data);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white p-5">
+          <h2 className="text-lg font-bold text-slate-900">Create New Assignment</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="space-y-4 p-6">
+          {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+
+          {/* Basic Info */}
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">Title *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Chapter 5 Essay" className="text-sm" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">Description</Label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of the assignment..." rows={2} className="w-full rounded-lg border border-slate-200 p-2.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">Instructions</Label>
+            <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Detailed instructions for students..." rows={3} className="w-full rounded-lg border border-slate-200 p-2.5 text-sm text-slate-700 focus:border-violet-500 focus:outline-none" />
+          </div>
+
+          {/* Type + Difficulty + Category */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Type</Label>
+              <select value={type} onChange={(e) => setType(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
+                <option value="FILE_UPLOAD">File Upload</option>
+                <option value="MULTIPLE_FILE_UPLOAD">Multiple Files</option>
+                <option value="ESSAY">Essay</option>
+                <option value="RICH_TEXT">Rich Text</option>
+                <option value="SHORT_ANSWER">Short Answer</option>
+                <option value="EXTERNAL_LINK">External Link</option>
+                <option value="OFFLINE">Offline</option>
+                <option value="PRACTICAL">Practical</option>
+              </select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Difficulty</Label>
+              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-700">
+                <option value="BEGINNER">Beginner</option>
+                <option value="INTERMEDIATE">Intermediate</option>
+                <option value="ADVANCED">Advanced</option>
+                <option value="EXPERT">Expert</option>
+              </select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Category</Label>
+              <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Homework" className="text-sm" />
+            </div>
+          </div>
+
+          {/* Grading */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Max Points</Label>
+              <Input type="number" value={maxPoints} onChange={(e) => setMaxPoints(e.target.value)} className="text-sm" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Passing Marks</Label>
+              <Input type="number" value={passingMarks} onChange={(e) => setPassingMarks(e.target.value)} placeholder="Optional" className="text-sm" />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">Estimated Time (min)</Label>
+              <Input type="number" value={estimatedTime} onChange={(e) => setEstimatedTime(e.target.value)} placeholder="Optional" className="text-sm" />
+            </div>
+          </div>
+
+          {/* Deadline */}
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">Due Date</Label>
+            <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="text-sm" />
+          </div>
+
+          {/* File Upload Config */}
+          {requiresFileUpload && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">File Upload Configuration</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1 block text-xs text-slate-500">Allowed File Types (comma-separated)</Label>
+                  <Input value={allowedFileTypes} onChange={(e) => setAllowedFileTypes(e.target.value)} className="text-sm" />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs text-slate-500">Max File Size (MB)</Label>
+                  <Input type="number" value={maxFileSizeMB} onChange={(e) => setMaxFileSizeMB(e.target.value)} className="text-sm" />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs text-slate-500">Max Number of Files</Label>
+                  <Input type="number" value={maxFiles} onChange={(e) => setMaxFiles(e.target.value)} className="text-sm" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Text Config (for essay/rich text types) */}
+          {(type === 'ESSAY' || type === 'RICH_TEXT' || type === 'SHORT_ANSWER') && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Text Configuration</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1 block text-xs text-slate-500">Min Word Count</Label>
+                  <Input type="number" value={minWordCount} onChange={(e) => setMinWordCount(e.target.value)} placeholder="Optional" className="text-sm" />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs text-slate-500">Max Word Count</Label>
+                  <Input type="number" value={maxWordCount} onChange={(e) => setMaxWordCount(e.target.value)} placeholder="Optional" className="text-sm" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submission Config */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Submission Configuration</p>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={requiresFileUpload} onChange={(e) => setRequiresFileUpload(e.target.checked)} className="h-4 w-4 accent-violet-600" />
+                Requires file upload
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={allowResubmissions} onChange={(e) => setAllowResubmissions(e.target.checked)} className="h-4 w-4 accent-violet-600" />
+                Allow resubmissions
+              </label>
+              {allowResubmissions && (
+                <div className="ml-6">
+                  <Label className="mb-1 block text-xs text-slate-500">Max Resubmissions</Label>
+                  <Input type="number" value={maxResubmissions} onChange={(e) => setMaxResubmissions(e.target.value)} className="w-32 text-sm" />
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={allowDrafts} onChange={(e) => setAllowDrafts(e.target.checked)} className="h-4 w-4 accent-violet-600" />
+                Allow draft saves
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={allowLateSubmissions} onChange={(e) => setAllowLateSubmissions(e.target.checked)} className="h-4 w-4 accent-violet-600" />
+                Allow late submissions
+              </label>
+              {allowLateSubmissions && (
+                <div className="ml-6">
+                  <Label className="mb-1 block text-xs text-slate-500">Late Penalty (%)</Label>
+                  <Input type="number" value={latePenaltyPercentage} onChange={(e) => setLatePenaltyPercentage(e.target.value)} className="w-32 text-sm" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">Tags (comma-separated)</Label>
+            <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g., chapter5, essay, midterm" className="text-sm" />
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t border-slate-100 bg-white p-5">
+          <Button variant="outline" onClick={onClose} className="border-slate-200 text-slate-600">Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isPending} className="bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
+            {isPending ? 'Creating…' : 'Create Assignment'}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
