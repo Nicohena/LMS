@@ -48,7 +48,7 @@ export async function getTeacherDashboardData(teacherId: string) {
   const atRiskStudents = studentSections
     .filter((ss: any) => {
       if (ss.sectionProgress.length === 0) return true; // no activity
-      const avgProgress = ss.sectionProgress.reduce((sum, p) => sum + p.progressPercent, 0) / ss.sectionProgress.length;
+      const avgProgress = ss.sectionProgress.reduce((sum: number, p: any) => sum + (p.progressPercent ?? 0), 0) / ss.sectionProgress.length;
       return avgProgress < 30;
     })
     .slice(0, 10)
@@ -59,7 +59,7 @@ export async function getTeacherDashboardData(teacherId: string) {
       sectionName: ss.section.name,
       gradeName: ss.section.grade.name,
       avgProgress: ss.sectionProgress.length > 0
-        ? Math.round(ss.sectionProgress.reduce((sum, p) => sum + p.progressPercent, 0) / ss.sectionProgress.length)
+        ? Math.round(ss.sectionProgress.reduce((sum: number, p: any) => sum + (p.progressPercent ?? 0), 0) / ss.sectionProgress.length)
         : 0,
     }));
 
@@ -160,9 +160,9 @@ export async function getStudentDashboardData(studentId: string) {
   const totalContent = allProgress.length;
   const completedContent = allProgress.filter((p) => p.status === 'COMPLETED').length;
   const overallProgress = totalContent > 0
-    ? Math.round(allProgress.reduce((sum, p) => sum + p.progressPercent, 0) / totalContent)
+    ? Math.round(allProgress.reduce((sum: number, p: any) => sum + (p.progressPercent ?? 0), 0) / totalContent)
     : 0;
-  const totalTimeSpent = allProgress.reduce((sum, p) => sum + p.timeSpent, 0);
+  const totalTimeSpent = allProgress.reduce((sum: number, p: any) => sum + (p.timeSpent ?? 0), 0);
 
   return {
     stats: {
@@ -222,7 +222,7 @@ export async function getAdminSchoolDashboardData() {
   const enrollmentByGrade = sectionsByGrade.map((g) => ({
     grade: g.name,
     sections: g._count.sections,
-    students: g.sections.reduce((sum, s) => sum + s._count.studentSections, 0),
+    students: g.sections.reduce((sum: number, s: any) => sum + (s._count?.studentSections ?? 0), 0),
   }));
 
   // Teacher workload distribution
