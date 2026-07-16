@@ -1,16 +1,57 @@
+# Kiro AI Skills (not part of LMS project)
 skills/
+
+# Dependencies
 node_modules/
+
+# Environment files
 .env
+.env.local
+.env.*.local
 backend/.env
 backend/.env.test
+
+# Development scripts (user-specific paths)
 backend/start-dev.js
 backend/test-imports.js
+scripts/
+
+# Logs and runtime files
 *.log
 *.pid
+*.out.log
+logs/
+
+# Build artifacts
 dist/
+build/
+.next/
+
+# User uploads and downloads
 upload/
 download/
+
+# Development notes (should be in docs/ if needed)
 worklog.md
-frontend/dev.log
-.zscripts/dev.log
-.zscripts/dev.pid
+
+# Lock files (keeping package-lock.json for npm, ignoring others)
+yarn.lock
+pnpm-lock.yaml
+bun.lock
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Editor directories
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+.tmp/
+temp/
+*.tmp
