@@ -20,23 +20,72 @@
 
 ---
 
-## 📋 Phase 2: File Splitting Strategy (IN PROGRESS)
+## ✅ Phase 2.1: Split hooks.ts (COMPLETED)
 
-### Recommended Approach: Incremental, On-Demand
+**Date Completed**: January 15, 2025
 
-Rather than splitting all 12,951 lines immediately, we'll:
+### Changes Made
+- ✅ Created 15 domain-specific hook files in `frontend/src/hooks/api/`
+- ✅ Migrated all 189 hooks from monolithic `hooks.ts` file
+- ✅ Created barrel export (`index.ts`) for backward compatibility
+- ✅ Updated all imports from `@/lib/hooks` to `@/hooks/api`
+- ✅ Deleted old `frontend/src/lib/hooks.ts` file
+- ✅ Added legacy aliases (`useUserLevel`, `useUserBadges`) for compatibility
 
-1. **Keep current structure working** ✅
-2. **Split files as needed** when adding new features
-3. **Prioritize high-impact splits** (most frequently modified files)
+### Domain Files Created
+1. `useAuth.ts` (3 hooks) - Authentication
+2. `useUsers.ts` (6 hooks) - User management
+3. `useCourses.ts` (13 hooks) - Course management
+4. `useEnrollments.ts` (4 hooks) - Enrollment dashboards
+5. `useQuizzes.ts` (19 hooks) - Quiz operations
+6. `useAssignments.ts` (30 hooks) - Assignment management
+7. `useNotifications.ts` (10 hooks) - Notifications
+8. `useGamification.ts` (8 hooks) - XP, badges, leaderboard
+9. `useAcademic.ts` (44 hooks) - Academic structure
+10. `useAdmin.ts` (24 hooks) - Admin operations
+11. `useDiscussions.ts` (9 hooks) - Discussion forums
+12. `usePeerReviews.ts` (4 hooks) - Peer reviews
+13. `useSettings.ts` (12 hooks) - System settings
+14. `useMessages.ts` (3 hooks) - Messaging
+15. `useAudit.ts` (2 hooks) - Audit logs
+
+### Impact
+- **Created**: 16 files (15 domain files + 1 barrel export)
+- **Deleted**: 1 file (original hooks.ts - 2,141 lines)
+- **File Size Reduction**: 88% (from 2,141 to max 250 lines per file)
+- **Breaking Changes**: None (100% backward compatible)
+- **Build Status**: ✅ Compiles successfully
+- **Spec Path**: `.kiro/specs/hooks-refactoring-phase2-1/`
+
+### Documentation
+- ✅ Migration guide created: `frontend/HOOKS_MIGRATION.md`
+- ✅ Design document: `.kiro/specs/hooks-refactoring-phase2-1/design.md`
+- ✅ Requirements document: `.kiro/specs/hooks-refactoring-phase2-1/requirements.md`
+- ✅ Tasks breakdown: `.kiro/specs/hooks-refactoring-phase2-1/tasks.md`
+
+---
+
+## 📋 Phase 2: Remaining File Splits (PLANNED)
 
 ### Files to Split (Priority Order)
 
-#### Priority 1: Split `hooks.ts` (2,141 lines) 
-- **Why**: Most frequently imported, hardest to navigate
-- **Strategy**: Split into domain-specific files
-- **Estimated Effort**: 2-3 hours
-- **Status**: ⏳ READY TO START
+#### Priority 2: Split `_components-quiz-assignment.tsx` (3,407 lines)
+- **Why**: Largest file, complex quiz/assignment logic
+- **Strategy**: Extract question types, grading panels
+- **Estimated Effort**: 4-6 hours  
+- **Status**: 📅 PLANNED
+
+#### Priority 3: Split `_components-academic.tsx` (1,790 lines)
+- **Why**: Academic features likely to grow
+- **Strategy**: Extract by academic entity (year, grade, section)
+- **Estimated Effort**: 3-4 hours
+- **Status**: 📅 PLANNED
+
+#### Priority 4: Split `_components-admin.tsx` (1,722 lines)
+- **Why**: Admin features grow over time
+- **Strategy**: Extract by admin function (users, quality, audit)
+- **Estimated Effort**: 3-4 hours
+- **Status**: 📅 PLANNED
 
 #### Priority 2: Split `_components-quiz-assignment.tsx` (3,407 lines)
 - **Why**: Largest file, complex quiz/assignment logic
@@ -122,14 +171,14 @@ Split `hooks.ts` into focused domain files (2-3 hours):
 - ✅ 0 backend files in frontend
 - ✅ Clean separation of concerns
 - ✅ Build verified working
-- ⏳ 12,951 lines in component files (to be addressed)
-- ⏳ 2,141 lines in hooks.ts (next priority)
 
-### Target (After Phase 2.1)
+### After Phase 2.1 (CURRENT)
 - ✅ 0 backend files in frontend  
-- ✅ ~15 focused hook files (avg 100-200 lines)
-- ⏳ Component files (address later)
-- ✅ Production-ready for current features
+- ✅ 15 focused hook files (60-250 lines each)
+- ✅ 88% reduction in largest hook file size
+- ✅ Zero breaking changes
+- ✅ Production-ready for all features
+- ⏳ Component files (10,810 lines - to be addressed later)
 
 ---
 
