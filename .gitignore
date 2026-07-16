@@ -2,6 +2,15 @@ skills/
 node_modules/
 .env
 backend/.env
+backend/.env.test
 backend/start-dev.js
 backend/test-imports.js
 *.log
+*.pid
+dist/
+upload/
+download/
+worklog.md
+frontend/dev.log
+.zscripts/dev.log
+.zscripts/dev.pid
