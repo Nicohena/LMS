@@ -186,17 +186,3 @@ export function useDeleteContent(courseId: string | null) {
     },
   });
 }
-
-export function useSelfEnroll() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (courseId: string) => {
-      const res = await api.post(`/courses/${courseId}/self-enroll`);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-    },
-  });
-}
