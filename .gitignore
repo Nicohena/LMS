@@ -11,10 +11,15 @@ node_modules/
 backend/.env
 backend/.env.test
 
-# Development scripts (user-specific paths)
+# Development/Deployment scripts (user-specific, not portable)
 backend/start-dev.js
 backend/test-imports.js
 scripts/
+.zscripts/
+
+# Deployment-specific configs (not part of source code)
+Caddyfile
+mini-services/
 
 # Logs and runtime files
 *.log
