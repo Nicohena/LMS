@@ -60,3 +60,34 @@ Thumbs.db
 .tmp/
 temp/
 *.tmp
+
+# ─── Duplicate/stale backend copies at repo root ──────────────────────────
+# These are leftover from the original scaffold and duplicate backend/
+lms-backend/
+src/
+prisma/
+
+# ─── Root-level config files that belong in backend/ or frontend/ ─────────
+# The actual project configs live in backend/ and frontend/ subdirectories
+/package.json
+/package-lock.json
+/tsconfig.json
+/jest.config.js
+/next.config.ts
+/tailwind.config.ts
+/postcss.config.mjs
+/eslint.config.mjs
+/components.json
+/bun.lock
+
+# ─── Development artifacts and snapshots ──────────────────────────────────
+db/
+examples/
+test/
+tool-results/
+.initial_snapshot.json
+.env.example
+.env.test
+
+# ─── Kiro AI tool files ───────────────────────────────────────────────────
+.kiro/
