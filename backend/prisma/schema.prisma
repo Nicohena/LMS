@@ -151,6 +151,38 @@ model Course {
   leaderboardSnapshots LeaderboardSnapshot[]
   academicYear AcademicYear? @relation(fields: [academicYearId], references: [id])
   favorites    Favorite[]
+  settings    CourseSettings?
+}
+
+// Course-level settings for the instructor workspace (visibility,
+// scheduling, module progression, quiz defaults, grading scheme, storage).
+model CourseSettings {
+  id                        String   @id @default(auto()) @map("_id") @db.ObjectId
+  courseId                  String   @unique @db.ObjectId
+  // Visibility
+  isVisibleToStudents       Boolean  @default(true)
+  requireEnrollmentKey      Boolean  @default(false)
+  enrollmentKey             String?
+  // Scheduling
+  startDate                 DateTime?
+  endDate                   DateTime?
+  // Module progression
+  allowDragDrop             Boolean  @default(true)
+  sequentialProgression     Boolean  @default(false)
+  requirePrerequisites      Boolean  @default(false)
+  // Quiz defaults
+  defaultShuffleQuestions   Boolean  @default(true)
+  defaultShuffleAnswers     Boolean  @default(true)
+  defaultShowCorrectAnswers Boolean  @default(false)
+  // Grading
+  gradingScheme             String   @default("percentage") // percentage | letter | points
+  // Storage (updated on file upload)
+  storageUsedMB             Float    @default(0)
+  storageLimitMB            Float    @default(10240) // 10 GB default
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }
 
 model Module {

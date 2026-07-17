@@ -21,6 +21,7 @@ import {
   uploadThumbnailController,
   courseErrorHandler,
 } from './course.controller';
+import { getCourseSettingsController, updateCourseSettingsController, getCourseAnalyticsSummaryController } from './course.controller';
 import {
   createCourseSchema,
   updateCourseSchema,
@@ -93,5 +94,11 @@ router.get('/me/slot-limit', checkSlotLimitController);
 
 // Service error handler
 router.use(courseErrorHandler);
+
+
+// --- Course Settings (workspace properties) ---
+router.get('/:id/settings', authenticate, getCourseSettingsController);
+router.patch('/:id/settings', authenticate, authorize('TEACHER', 'ADMIN'), updateCourseSettingsController);
+router.get('/:id/analytics-summary', authenticate, authorize('TEACHER', 'ADMIN'), getCourseAnalyticsSummaryController);
 
 export default router;

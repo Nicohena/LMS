@@ -17,6 +17,7 @@ import {
   reorderContents as reorderContentsService,
   setCourseThumbnail,
 } from './course.service';
+import { getCourseSettings, updateCourseSettings, getCourseAnalyticsSummary } from './course.service';
 import { uploadImage, getClientIp, getUserAgent } from '../../common/services/upload.service';
 import { logAction } from '../../common/services/audit.service';
 import { isHttpError } from '../../common/errors';
@@ -394,4 +395,35 @@ export function courseErrorHandler(
     return;
   }
   next(err);
+}
+
+// ---------------------------------------------------------------------------
+// Course Settings
+// ---------------------------------------------------------------------------
+
+export async function getCourseSettingsController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const courseId = paramId(req, 'id');
+    const viewer = { id: req.user!.sub, role: req.user!.role };
+    const settings = await getCourseSettings(courseId, viewer);
+    res.status(200).json({ settings });
+  } catch (err) { next(err); }
+}
+
+export async function updateCourseSettingsController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const courseId = paramId(req, 'id');
+    const viewer = { id: req.user!.sub, role: req.user!.role };
+    const settings = await updateCourseSettings(courseId, viewer, req.body);
+    res.status(200).json({ message: 'Settings updated.', settings });
+  } catch (err) { next(err); }
+}
+
+export async function getCourseAnalyticsSummaryController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const courseId = paramId(req, 'id');
+    const viewer = { id: req.user!.sub, role: req.user!.role };
+    const summary = await getCourseAnalyticsSummary(courseId, viewer);
+    res.status(200).json(summary);
+  } catch (err) { next(err); }
 }

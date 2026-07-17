@@ -2139,3 +2139,53 @@ export function useApplyRubricTemplate() {
     },
   });
 }
+
+// ─── Course Settings (workspace properties) ───────────────────────────────
+
+export function useCourseSettings(courseId: string | null) {
+  return useQuery({
+    queryKey: ['course-settings', courseId],
+    queryFn: async () => {
+      const res = await api.get(`/courses/${courseId}/settings`);
+      return res.data;
+    },
+    enabled: !!courseId,
+  });
+}
+
+export function useUpdateCourseSettings(courseId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      isVisibleToStudents?: boolean;
+      requireEnrollmentKey?: boolean;
+      enrollmentKey?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
+      allowDragDrop?: boolean;
+      sequentialProgression?: boolean;
+      requirePrerequisites?: boolean;
+      defaultShuffleQuestions?: boolean;
+      defaultShuffleAnswers?: boolean;
+      defaultShowCorrectAnswers?: boolean;
+      gradingScheme?: string;
+    }) => {
+      const res = await api.patch(`/courses/${courseId}/settings`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      if (courseId) qc.invalidateQueries({ queryKey: ['course-settings', courseId] });
+    },
+  });
+}
+
+export function useCourseAnalyticsSummary(courseId: string | null) {
+  return useQuery({
+    queryKey: ['course-analytics-summary', courseId],
+    queryFn: async () => {
+      const res = await api.get(`/courses/${courseId}/analytics-summary`);
+      return res.data;
+    },
+    enabled: !!courseId,
+  });
+}

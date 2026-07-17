@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { View, Course } from './_shared';
+import { useCourseSettings, useUpdateCourseSettings, useCourseAnalyticsSummary } from '@/lib/hooks';
+import { toast } from '@/hooks/use-toast';
 
 // ─── Course workspace navigation items ────────────────────────────────────
 const COURSE_NAV_ITEMS = [
@@ -237,7 +239,7 @@ export function CourseWorkspace({
           </div>
 
           <div className="overflow-y-auto p-3">
-            <CoursePropertiesPanel activeNav={activeNav} course={course} />
+            <CoursePropertiesPanel activeNav={activeNav} course={course} courseId={courseId} />
           </div>
         </aside>
       )}
@@ -246,9 +248,33 @@ export function CourseWorkspace({
 }
 
 // ─── Context-sensitive properties panel ───────────────────────────────────
-function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; course: Course }) {
+function CoursePropertiesPanel({ activeNav, course, courseId }: { activeNav: CourseNavId; course: Course; courseId: string }) {
+  const { data: settingsData, isLoading: settingsLoading } = useCourseSettings(courseId);
+  const { data: analytics } = useCourseAnalyticsSummary(courseId);
+  const updateSettings = useUpdateCourseSettings(courseId);
+  const settings = settingsData?.settings;
+
+  const handleUpdate = (field: string, value: any) => {
+    if (!settings) return;
+    updateSettings.mutate(
+      { [field]: value },
+      {
+        onError: (err: any) => toast({ title: 'Error', description: err.response?.data?.message || 'Failed to update setting.', variant: 'destructive' }),
+      }
+    );
+  };
+
   const totalLessons = course.modules?.reduce((acc, m) => acc + m.lessons.length, 0) ?? 0;
   const totalModules = course.modules?.length ?? 0;
+  const storageUsed = settings?.storageUsedMB ?? 0;
+  const storageLimit = settings?.storageLimitMB ?? 10240;
+  const storagePct = storageLimit > 0 ? Math.round((storageUsed / storageLimit) * 100) : 0;
+  const storageUsedGB = (storageUsed / 1024).toFixed(1);
+  const storageLimitGB = (storageLimit / 1024).toFixed(0);
+
+  if (settingsLoading) {
+    return <div className="py-8 text-center text-xs text-slate-400">Loading settings...</div>;
+  }
 
   // Common properties shown for all views
   const commonProps = (
@@ -258,11 +284,11 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Course Stats</p>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <p className="font-semibold text-slate-900">{totalModules}</p>
+            <p className="font-semibold text-slate-900">{analytics?.totalModules ?? totalModules}</p>
             <p className="text-slate-400">Modules</p>
           </div>
           <div>
-            <p className="font-semibold text-slate-900">{totalLessons}</p>
+            <p className="font-semibold text-slate-900">{analytics?.totalLessons ?? totalLessons}</p>
             <p className="text-slate-400">Lessons</p>
           </div>
         </div>
@@ -273,11 +299,21 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <Label className="mb-1.5 block text-xs font-medium text-slate-500">Visibility</Label>
         <div className="space-y-1.5">
           <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" defaultChecked className="h-3.5 w-3.5 accent-violet-600" />
+            <input
+              type="checkbox"
+              checked={settings?.isVisibleToStudents ?? true}
+              onChange={(e) => handleUpdate('isVisibleToStudents', e.target.checked)}
+              className="h-3.5 w-3.5 accent-violet-600"
+            />
             <Eye className="h-3.5 w-3.5" /> Visible to students
           </label>
           <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" className="h-3.5 w-3.5 accent-violet-600" />
+            <input
+              type="checkbox"
+              checked={settings?.requireEnrollmentKey ?? false}
+              onChange={(e) => handleUpdate('requireEnrollmentKey', e.target.checked)}
+              className="h-3.5 w-3.5 accent-violet-600"
+            />
             <Lock className="h-3.5 w-3.5" /> Require enrollment key
           </label>
         </div>
@@ -289,18 +325,28 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <div className="space-y-2">
           <div>
             <p className="mb-0.5 text-[10px] text-slate-400">Start date</p>
-            <Input type="date" className="h-8 text-xs" />
+            <Input
+              type="date"
+              className="h-8 text-xs"
+              value={settings?.startDate ? new Date(settings.startDate).toISOString().split('T')[0] : ''}
+              onChange={(e) => handleUpdate('startDate', e.target.value || null)}
+            />
           </div>
           <div>
             <p className="mb-0.5 text-[10px] text-slate-400">End date</p>
-            <Input type="date" className="h-8 text-xs" />
+            <Input
+              type="date"
+              className="h-8 text-xs"
+              value={settings?.endDate ? new Date(settings.endDate).toISOString().split('T')[0] : ''}
+              onChange={(e) => handleUpdate('endDate', e.target.value || null)}
+            />
           </div>
         </div>
       </div>
     </div>
   );
 
-  // Nav-specific properties
+  // Nav-specific properties — all data-driven from settings/analytics
   const navSpecific: Record<CourseNavId, React.ReactNode> = {
     home: (
       <div className="space-y-3">
@@ -313,15 +359,30 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <p className="text-xs font-semibold text-slate-500">Module Settings</p>
         <div className="space-y-1.5">
           <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" defaultChecked className="h-3.5 w-3.5 accent-violet-600" />
+            <input
+              type="checkbox"
+              checked={settings?.allowDragDrop ?? true}
+              onChange={(e) => handleUpdate('allowDragDrop', e.target.checked)}
+              className="h-3.5 w-3.5 accent-violet-600"
+            />
             <GripVertical className="h-3.5 w-3.5" /> Allow drag-and-drop reorder
           </label>
           <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" defaultChecked className="h-3.5 w-3.5 accent-violet-600" />
+            <input
+              type="checkbox"
+              checked={settings?.sequentialProgression ?? false}
+              onChange={(e) => handleUpdate('sequentialProgression', e.target.checked)}
+              className="h-3.5 w-3.5 accent-violet-600"
+            />
             <CheckCircle2 className="h-3.5 w-3.5" /> Sequential progression
           </label>
           <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" className="h-3.5 w-3.5 accent-violet-600" />
+            <input
+              type="checkbox"
+              checked={settings?.requirePrerequisites ?? false}
+              onChange={(e) => handleUpdate('requirePrerequisites', e.target.checked)}
+              className="h-3.5 w-3.5 accent-violet-600"
+            />
             <Lock className="h-3.5 w-3.5" /> Require prerequisites
           </label>
         </div>
@@ -347,9 +408,9 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <div className="rounded-lg border border-slate-100 p-2 text-xs text-slate-500">
           <p className="font-medium text-slate-600">Storage</p>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-violet-500" style={{ width: '23%' }} />
+            <div className="h-full rounded-full bg-violet-500" style={{ width: `${storagePct}%` }} />
           </div>
-          <p className="mt-1 text-[10px]">2.3 GB of 10 GB used</p>
+          <p className="mt-1 text-[10px]">{storageUsedGB} GB of {storageLimitGB} GB used</p>
         </div>
       </div>
     ),
@@ -367,20 +428,6 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <Button size="sm" className="w-full bg-violet-600 text-xs hover:bg-violet-700">
           <Plus className="mr-1 h-3.5 w-3.5" />New Assignment
         </Button>
-        <div>
-          <Label className="mb-1 block text-xs font-medium text-slate-500">Submission Types</Label>
-          <div className="space-y-1">
-            <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" defaultChecked className="h-3.5 w-3.5 accent-violet-600" /> File upload
-            </label>
-            <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" defaultChecked className="h-3.5 w-3.5 accent-violet-600" /> Online text
-            </label>
-            <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" className="h-3.5 w-3.5 accent-violet-600" /> External URL
-            </label>
-          </div>
-        </div>
       </div>
     ),
     quizzes: (
@@ -393,13 +440,28 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
           <Label className="mb-1 block text-xs font-medium text-slate-500">Default Settings</Label>
           <div className="space-y-1">
             <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" defaultChecked className="h-3.5 w-3.5 accent-violet-600" /> Shuffle questions
+              <input
+                type="checkbox"
+                checked={settings?.defaultShuffleQuestions ?? true}
+                onChange={(e) => handleUpdate('defaultShuffleQuestions', e.target.checked)}
+                className="h-3.5 w-3.5 accent-violet-600"
+              /> Shuffle questions
             </label>
             <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" defaultChecked className="h-3.5 w-3.5 accent-violet-600" /> Shuffle answers
+              <input
+                type="checkbox"
+                checked={settings?.defaultShuffleAnswers ?? true}
+                onChange={(e) => handleUpdate('defaultShuffleAnswers', e.target.checked)}
+                className="h-3.5 w-3.5 accent-violet-600"
+              /> Shuffle answers
             </label>
             <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" className="h-3.5 w-3.5 accent-violet-600" /> Show correct answers after
+              <input
+                type="checkbox"
+                checked={settings?.defaultShowCorrectAnswers ?? false}
+                onChange={(e) => handleUpdate('defaultShowCorrectAnswers', e.target.checked)}
+                className="h-3.5 w-3.5 accent-violet-600"
+              /> Show correct answers after
             </label>
           </div>
         </div>
@@ -437,10 +499,14 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         </Button>
         <div>
           <Label className="mb-1 block text-xs font-medium text-slate-500">Grading Scheme</Label>
-          <select className="w-full rounded border border-slate-200 p-1.5 text-xs">
-            <option>Percentage</option>
-            <option>Letter Grade</option>
-            <option>Points</option>
+          <select
+            value={settings?.gradingScheme ?? 'percentage'}
+            onChange={(e) => handleUpdate('gradingScheme', e.target.value)}
+            className="w-full rounded border border-slate-200 p-1.5 text-xs"
+          >
+            <option value="percentage">Percentage</option>
+            <option value="letter">Letter Grade</option>
+            <option value="points">Points</option>
           </select>
         </div>
       </div>
@@ -475,15 +541,15 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <div className="space-y-2 rounded-lg border border-slate-100 p-2">
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-500">Completion rate</span>
-            <span className="font-semibold text-slate-900">68%</span>
+            <span className="font-semibold text-slate-900">{analytics?.completionRate ?? 0}%</span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-500">Avg. grade</span>
-            <span className="font-semibold text-slate-900">B+</span>
+            <span className="text-slate-500">Avg. progress</span>
+            <span className="font-semibold text-slate-900">{analytics?.averageProgress ?? 0}%</span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-500">Active students</span>
-            <span className="font-semibold text-slate-900">42</span>
+            <span className="font-semibold text-slate-900">{analytics?.totalStudents ?? 0}</span>
           </div>
         </div>
       </div>
@@ -494,15 +560,15 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 p-2 text-xs">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-            <span className="text-emerald-700">32 on track</span>
+            <span className="text-emerald-700">{analytics?.studentDistribution?.onTrack ?? 0} on track</span>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-amber-100 bg-amber-50 p-2 text-xs">
             <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
-            <span className="text-amber-700">7 behind</span>
+            <span className="text-amber-700">{analytics?.studentDistribution?.behind ?? 0} behind</span>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 p-2 text-xs">
             <AlertCircle className="h-3.5 w-3.5 text-red-600" />
-            <span className="text-red-700">3 at risk</span>
+            <span className="text-red-700">{analytics?.studentDistribution?.atRisk ?? 0} at risk</span>
           </div>
         </div>
       </div>
@@ -512,11 +578,14 @@ function CoursePropertiesPanel({ activeNav, course }: { activeNav: CourseNavId; 
         <p className="text-xs text-slate-500">General course configuration.</p>
         <div>
           <Label className="mb-1 block text-xs font-medium text-slate-500">Course Name</Label>
-          <Input className="h-8 text-xs" defaultValue={course.title} />
+          <Input className="h-8 text-xs" defaultValue={course.title} readOnly />
         </div>
         <div>
           <Label className="mb-1 block text-xs font-medium text-slate-500">Difficulty</Label>
-          <select className="w-full rounded border border-slate-200 p-1.5 text-xs">
+          <select
+            className="w-full rounded border border-slate-200 p-1.5 text-xs"
+            defaultValue={course.difficulty}
+          >
             <option>Beginner</option>
             <option>Intermediate</option>
             <option>Advanced</option>

@@ -614,3 +614,156 @@ export async function setCourseThumbnail(
 
   return toCourseResponse(updated);
 }
+
+// ---------------------------------------------------------------------------
+// Course Settings (workspace properties)
+// ---------------------------------------------------------------------------
+
+export async function getCourseSettings(
+  courseId: string,
+  viewer: { id: string; role: Role },
+) {
+  assertValidObjectId(courseId, 'Course');
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, createdBy: true },
+  });
+  if (!course) throw new NotFoundError('Course not found');
+
+  // Students can read settings (for visibility checks); teachers/admins can too
+  let settings = await prisma.courseSettings.findUnique({
+    where: { courseId },
+  });
+  if (!settings) {
+    // Auto-create default settings if they don't exist
+    settings = await prisma.courseSettings.create({
+      data: { courseId },
+    });
+  }
+  return settings;
+}
+
+export async function updateCourseSettings(
+  courseId: string,
+  viewer: { id: string; role: Role },
+  data: {
+    isVisibleToStudents?: boolean;
+    requireEnrollmentKey?: boolean;
+    enrollmentKey?: string | null;
+    startDate?: string | Date | null;
+    endDate?: string | Date | null;
+    allowDragDrop?: boolean;
+    sequentialProgression?: boolean;
+    requirePrerequisites?: boolean;
+    defaultShuffleQuestions?: boolean;
+    defaultShuffleAnswers?: boolean;
+    defaultShowCorrectAnswers?: boolean;
+    gradingScheme?: string;
+  },
+) {
+  assertValidObjectId(courseId, 'Course');
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, createdBy: true },
+  });
+  if (!course) throw new NotFoundError('Course not found');
+  // Only the course owner or admin can update settings
+  if (viewer.role !== 'ADMIN' && course.createdBy !== viewer.id) {
+    throw new ForbiddenError('You can only update settings for courses you own');
+  }
+
+  // Ensure settings record exists
+  let settings = await prisma.courseSettings.findUnique({ where: { courseId } });
+  if (!settings) {
+    settings = await prisma.courseSettings.create({ data: { courseId } });
+  }
+
+  const updateData: any = {};
+  if (data.isVisibleToStudents !== undefined) updateData.isVisibleToStudents = data.isVisibleToStudents;
+  if (data.requireEnrollmentKey !== undefined) updateData.requireEnrollmentKey = data.requireEnrollmentKey;
+  if (data.enrollmentKey !== undefined) updateData.enrollmentKey = data.enrollmentKey || null;
+  if (data.startDate !== undefined) updateData.startDate = data.startDate ? new Date(data.startDate) : null;
+  if (data.endDate !== undefined) updateData.endDate = data.endDate ? new Date(data.endDate) : null;
+  if (data.allowDragDrop !== undefined) updateData.allowDragDrop = data.allowDragDrop;
+  if (data.sequentialProgression !== undefined) updateData.sequentialProgression = data.sequentialProgression;
+  if (data.requirePrerequisites !== undefined) updateData.requirePrerequisites = data.requirePrerequisites;
+  if (data.defaultShuffleQuestions !== undefined) updateData.defaultShuffleQuestions = data.defaultShuffleQuestions;
+  if (data.defaultShuffleAnswers !== undefined) updateData.defaultShuffleAnswers = data.defaultShuffleAnswers;
+  if (data.defaultShowCorrectAnswers !== undefined) updateData.defaultShowCorrectAnswers = data.defaultShowCorrectAnswers;
+  if (data.gradingScheme !== undefined) updateData.gradingScheme = data.gradingScheme;
+
+  return prisma.courseSettings.update({
+    where: { courseId },
+    data: updateData,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Course analytics summary (for the workspace analytics panel)
+// ---------------------------------------------------------------------------
+
+export async function getCourseAnalyticsSummary(
+  courseId: string,
+  viewer: { id: string; role: Role },
+) {
+  assertValidObjectId(courseId, 'Course');
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, createdBy: true, title: true },
+  });
+  if (!course) throw new NotFoundError('Course not found');
+  if (viewer.role !== 'ADMIN' && course.createdBy !== viewer.id) {
+    throw new ForbiddenError('You can only view analytics for courses you own');
+  }
+
+  // Count enrolled students
+  const totalStudents = await prisma.enrollment.count({
+    where: { courseId, status: 'ACTIVE' },
+  });
+
+  // Count modules and lessons
+  const modules = await prisma.module.findMany({
+    where: { courseId },
+    include: { _count: { select: { contents: true } } },
+  });
+  const totalModules = modules.length;
+  const totalLessons = modules.reduce((sum, m) => sum + m._count.contents, 0);
+
+  // Count completed progress records
+  const progressRecords = await prisma.progress.findMany({
+    where: {
+      enrollment: { courseId },
+    },
+    select: { status: true, progressPercent: true },
+  });
+
+  const completedCount = progressRecords.filter((p) => p.status === 'COMPLETED').length;
+  const completionRate = totalLessons > 0 && progressRecords.length > 0
+    ? Math.round((completedCount / (progressRecords.length * totalLessons > 0 ? progressRecords.length * totalLessons : 1)) * 100)
+    : 0;
+
+  // Calculate average progress across all enrolled students
+  const avgProgress = progressRecords.length > 0
+    ? Math.round(progressRecords.reduce((sum, p) => sum + (p.progressPercent ?? 0), 0) / progressRecords.length)
+    : 0;
+
+  // Student progress distribution
+  const onTrack = progressRecords.filter((p) => (p.progressPercent ?? 0) >= 60).length;
+  const behind = progressRecords.filter((p) => (p.progressPercent ?? 0) >= 20 && (p.progressPercent ?? 0) < 60).length;
+  const atRisk = progressRecords.filter((p) => (p.progressPercent ?? 0) < 20).length;
+
+  return {
+    courseId,
+    courseTitle: course.title,
+    totalStudents,
+    totalModules,
+    totalLessons,
+    completionRate,
+    averageProgress: avgProgress,
+    studentDistribution: {
+      onTrack,
+      behind,
+      atRisk,
+    },
+  };
+}
