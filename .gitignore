@@ -64,8 +64,8 @@ temp/
 # ─── Duplicate/stale backend copies at repo root ──────────────────────────
 # These are leftover from the original scaffold and duplicate backend/
 lms-backend/
-src/
-prisma/
+/src/
+/prisma/
 
 # ─── Root-level config files that belong in backend/ or frontend/ ─────────
 # The actual project configs live in backend/ and frontend/ subdirectories
@@ -81,9 +81,9 @@ prisma/
 /bun.lock
 
 # ─── Development artifacts and snapshots ──────────────────────────────────
-db/
-examples/
-test/
+/db/
+/examples/
+/test/
 tool-results/
 .initial_snapshot.json
 .env.example

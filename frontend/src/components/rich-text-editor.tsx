@@ -46,13 +46,35 @@ interface RichTextEditorProps {
   readOnly?: boolean;
 }
 
+/**
+ * Enhanced markdown-based rich text editor powered by MDXEditor.
+ *
+ * Full Word-like toolbar with hover tooltips on every button:
+ * - Undo / Redo
+ * - Block type (Paragraph, H1-H6, Quote)
+ * - Bold, Italic, Underline
+ * - Strikethrough, Subscript, Superscript
+ * - Highlight
+ * - Bullet list, Numbered list
+ * - Create link, Insert image
+ * - Insert table, Horizontal rule, Code block, Frontmatter, Admonition
+ * - Markdown source view toggle (write / preview / diff)
+ *
+ * All toolbar buttons have native `title` attributes AND MDXEditor's
+ * built-in TooltipWrap for hover descriptions. Larger 44px click targets
+ * and pointer cursors for easy interaction.
+ */
 export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichTextEditorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // After mount, set native title attributes on every toolbar button so
+  // the browser shows a hover tooltip with the tool name. This is a
+  // guaranteed fallback that works even if the radix TooltipProvider
+  // doesn't render the styled tooltips.
   useEffect(() => {
     if (!wrapperRef.current || readOnly) return;
     const btn = wrapperRef.current.querySelectorAll('.mdxeditor-toolbar button');
-
+    // Map common button labels/aria-labels to descriptive names
     const labelMap: Record<string, string> = {
       'undo': 'Undo',
       'redo': 'Redo',
@@ -88,14 +110,15 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
       const text = (b.textContent || '').toLowerCase().trim();
       const aria = (b.getAttribute('aria-label') || '').toLowerCase().trim();
       const title = b.getAttribute('title') || '';
-      if (title) return; 
+      if (title) return; // already has a title
+      // Try to find a matching label
       for (const [key, val] of Object.entries(labelMap)) {
         if (text.includes(key) || aria.includes(key)) {
           b.setAttribute('title', val);
           return;
         }
       }
-      
+      // Fallback: use the text content capitalized
       if (text) {
         b.setAttribute('title', text.charAt(0).toUpperCase() + text.slice(1));
       }
@@ -147,7 +170,9 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
           thematicBreakPlugin(),
           markdownShortcutPlugin(),
           codeBlockPlugin({
-            
+            // Register the built-in CodeMirrorEditor as a catch-all so
+            // every language (including plaintext) has an editor. Without
+            // this, the runtime throws 'No CodeBlockEditor registered'.
             codeBlockEditorDescriptors: [
               {
                 priority: 0,
@@ -201,7 +226,9 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
             autoLoadLanguageSupport: true,
           }),
           imagePlugin({
-            
+            // Disable the built-in image dialog and just accept the URL
+            // that the user types. When an image is pasted or dragged into
+            // the editor, the src is used directly.
             imageAutocompleteSuggestions: [],
           }),
           tablePlugin(),
@@ -220,7 +247,10 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly }: RichT
   );
 }
 
-
+/**
+ * Render stored markdown content as read-only HTML.
+ * Uses the same MDXEditor in readOnly mode for consistent rendering.
+ */
 export function RichTextRenderer({ content }: { content: string }) {
   if (!content || content.trim() === '') {
     return <p className="text-sm italic text-slate-400">No content yet.</p>;

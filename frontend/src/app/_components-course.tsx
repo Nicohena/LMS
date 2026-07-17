@@ -16,7 +16,7 @@ import {
 import { cn, getInitials, formatDate, timeAgo } from '@/lib/utils';
 import { useLogin, useLogout, useMyProfile, useUpdateMyProfile, useCourses, useMyCourses, useCourse, useCreateCourse, usePublishCourse, useArchiveCourse, useSelfEnroll, useCreateModule, useUpdateModule, useDeleteModule, useCreateContent, useDeleteContent, useUpdateContent, useFlaggedContent, useModerateContent, useQualityReport, useRecalculateQuality, useFlagCourse, useUnflagCourse, useAdminRoles, useCreateAdminRole, useDeleteAdminRole, useAssignAdminRole, useAdmins, useRemoveAdminRole, useStudentDashboard, useTeacherDashboard, usePlatformDashboard, useAdminAlerts, useRecentActivity, useUsers, useCreateUser, useUpdateUser, useDeleteUser, useDiscussions, useCreateDiscussion, useDiscussion, useCreateReply, useUpvoteDiscussion, useDeleteDiscussion, useMarkBestAnswer, useChangePassword, useAuditLogs, useQuizAnalytics, useAdminOverrideGrade, useEscalateGrade, useGradeDisputes, useResolveDispute, useEscalations, useTeacherResolveEscalation, useAdminResolveEscalation, useAutoEnrollRules, useCreateAutoEnrollRule, useDeleteAutoEnrollRule, useTriggerAutoEnroll, useConversations, useMessages, useSendMessage, useUserLevel, useUserBadges, useLeaderboard, useMyCertificates, useStreak, useSettings, useBatchUpdateSettings, useMaintenanceStatus, useEnableMaintenance, useDisableMaintenance, useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, useMarkAnnouncementRead, useQuizzes, useQuizzesForContents, useQuiz, useStartQuizAttempt, useSubmitQuizAttempt, useAttemptResults, useCreateQuiz, useUpdateQuiz, useDeleteQuiz, useAddQuestion, useDeleteQuestion, useAssignments, useAssignmentsForContents, useAssignment, useSubmissions, useCreateSubmission, useUploadFile, useGradeSubmission, useRequestRevision, useMyPeerReviews, useAssignPeerReviews, useSubmitPeerReview, useReceivedPeerReviews, useNotificationPreferences, useUpdateNotificationPreference, useEnrollments, useAcademicYears, useCurrentAcademicYear, useGrades, useSubjects, useSections, useSectionStudents, useSectionSubjects, useCreateAcademicYear, useCreateGrade, useCreateSubject, useCreateSection, useAssignTeacher, useAssignStudent, useRemoveStudentFromSection, useUserSections, useTeacherSections, useSectionContent, useSectionQuizzes, useSectionAssignments, useTeacherSchoolDashboard, useStudentSchoolDashboard, useAdminSchoolDashboard, useXPHistory, useStudentTimetable, useTeacherTimetable, useSectionTimetable, useCreateTimetableBatch, useDeleteTimetableEntry, useUpdateQuestion, useQuizAttempts, useManualGradeAttempt,
   usePublishAssignment, useArchiveAssignment, useRestoreAssignment, useDuplicateAssignment,
-} from '@/hooks/api';
+} from '@/lib/hooks';
 import { useAuthStore } from '@/lib/auth-store';
 import { toast } from "@/hooks/use-toast";
 import { getSocket } from '@/lib/socket';
@@ -57,6 +57,7 @@ import {
   formatDeadline,
   ASSIGNMENT_STATUS_CONFIG,
 } from './_shared';
+import { CourseWorkspace, type CourseNavId } from './_components-workspace';
 
 // ─── Sidebar (icon-only, narrow design) ──────────────────────────────────
 // ─── Extracted leaf components ────────────────────────────────────────────
@@ -692,6 +693,7 @@ export function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectA
   const [activeLesson, setActiveLesson] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeModule, setActiveModule] = useState(0);
+  const [activeNav, setActiveNav] = useState<CourseNavId>('modules');
 
   const lessonTypeIcons: Record<string, typeof Video> = {
     video: Video, page: File, quiz: FileQuestion, assignment: FileText,
@@ -834,18 +836,29 @@ export function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectA
     return <main className="mx-auto max-w-7xl p-4 lg:p-6"><div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading course…</div></main>;
   }
 
-  return (
-    <main className="mx-auto max-w-7xl p-4 lg:p-6">
-      {/* Breadcrumb */}
-      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-        <button onClick={() => onNavigate('catalog')} className="hover:text-slate-700">Catalog</button>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-medium text-slate-700">{course.title}</span>
-      </div>
+  // For teachers, wrap the content in the three-panel workspace layout.
+  // Students see the existing view unchanged.
+  if (canAuthor) {
+    return (
+      <CourseWorkspace
+        course={course}
+        courseId={courseId}
+        activeNav={activeNav}
+        onNavChange={setActiveNav}
+        onNavigate={onNavigate}
+        canAuthor={canAuthor}
+      >
+        <div className="p-4 lg:p-6">
+          {/* Breadcrumb */}
+          <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+            <button onClick={() => onNavigate('catalog')} className="hover:text-slate-700">Catalog</button>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="font-medium text-slate-700">{course.title}</span>
+          </div>
 
-      <button onClick={() => onNavigate('catalog')} className="mb-4 flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700">
-        <ArrowLeft className="h-4 w-4" />Back to Catalog
-      </button>
+          <button onClick={() => onNavigate('catalog')} className="mb-4 flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700">
+            <ArrowLeft className="h-4 w-4" />Back to Catalog
+          </button>
 
       {/* Course Hero */}
       <Card className={cn('relative mb-6 overflow-hidden border-0 p-8 shadow-md', course.thumbnail)}>
@@ -1510,6 +1523,60 @@ export function CourseDetailView({ courseId, onNavigate, onSelectQuiz, onSelectA
           </div>
         </div>
       )}
+        </div>
+      </CourseWorkspace>
+    );
+  }
+
+  // Student path — existing layout without the workspace panels
+  return (
+    <main className="mx-auto max-w-7xl p-4 lg:p-6">
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+        <button onClick={() => onNavigate('catalog')} className="hover:text-slate-700">Catalog</button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-slate-700">{course.title}</span>
+      </div>
+      <button onClick={() => onNavigate('catalog')} className="mb-4 flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700">
+        <ArrowLeft className="h-4 w-4" />Back to Catalog
+      </button>
+      <Card className={cn('relative mb-6 overflow-hidden border-0 p-8 shadow-md', course.thumbnail)}>
+        <div className="relative z-10">
+          <Badge className="mb-3 bg-white/20 text-white hover:bg-white/30">{course.category}</Badge>
+          <h1 className="mb-2 text-3xl font-bold text-white">{course.title}</h1>
+          <p className="mb-4 max-w-2xl text-sm text-white/80">{course.description}</p>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-white/90">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">{course.instructor.split(' ').map(n => n[0]).join('')}</div>
+              <span>{course.instructor}</span>
+            </div>
+            <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-violet-300 text-violet-300" />{course.rating}</span>
+            <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{course.students.toLocaleString()} students</span>
+            <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{course.duration}</span>
+            <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" />{course.lessons} lessons</span>
+          </div>
+          <div className="mt-6 flex items-center gap-3">
+            <Button onClick={() => {
+              const activeLessonObj = course.modules?.[activeModule]?.lessons?.[activeLesson];
+              if (activeLessonObj) handleLessonClick(activeModule, activeLesson, activeLessonObj);
+            }} className="bg-white text-violet-600 hover:bg-white/90"><PlayCircle className="mr-2 h-4 w-4" />Continue Learning</Button>
+            <Button variant="outline" onClick={() => setIsFavorite(!isFavorite)} className={cn('border-white/30 text-white hover:bg-white/10', isFavorite && 'bg-white/20')}>
+              {isFavorite ? <><Star className="mr-1.5 h-4 w-4 fill-violet-300 text-violet-300" />Favorited</> : <><Star className="mr-1.5 h-4 w-4" />Add to Favorites</>}
+            </Button>
+            {!canAuthor && !isStudent && (
+              <Button onClick={() => selfEnrollMut.mutate(courseId)} disabled={selfEnrollMut.isPending} className="bg-emerald-500 text-white hover:bg-emerald-600">
+                {selfEnrollMut.isPending ? 'Enrolling...' : 'Enroll Now'}
+              </Button>
+            )}
+          </div>
+          {course.progress !== undefined && (
+            <div className="mt-4 max-w-xs">
+              <div className="mb-1 flex items-center justify-between text-xs text-white/80"><span>Your Progress</span><span>{course.progress}%</span></div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-white/20"><div className="h-full rounded-full bg-white" style={{ width: `{course.progress}%` }} /></div>
+            </div>
+          )}
+        </div>
+      </Card>
+      <p className="py-8 text-center text-sm text-slate-400">Course content will appear here.</p>
     </main>
   );
 }
